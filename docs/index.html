@@ -463,17 +463,22 @@
   <span class="code-keyword">def</span> generate_greeting
     result = <span class="code-keyword">track_llm_call</span>(
       <span class="code-string">"customer_support_greeting"</span>,
-      variables: { customer_name: params[:name] },
-      provider: <span class="code-string">"openai"</span>,
-      model: <span class="code-string">"gpt-4"</span>
+      variables: { customer_name: params[:name] }
+      <span class="code-comment"># provider/model optional - uses version's model_config</span>
     ) <span class="code-keyword">do</span> |prompt|
-      OpenAI::Client.new.chat(
-        messages: [{ role: <span class="code-string">"user"</span>, content: prompt }]
-      )
+      <span class="code-comment"># Return just the text (simplest)</span>
+      <span class="code-string">"Hello #{params[:name]}! How can I help you today?"</span>
+
+      <span class="code-comment"># Or return structured hash with token counts:</span>
+      <span class="code-comment"># response = OpenAI::Client.new.chat(...)</span>
+      <span class="code-comment"># {</span>
+      <span class="code-comment">#   text: response.dig("choices", 0, "message", "content"),</span>
+      <span class="code-comment">#   tokens_prompt: response.dig("usage", "prompt_tokens"),</span>
+      <span class="code-comment">#   tokens_completion: response.dig("usage", "completion_tokens")</span>
+      <span class="code-comment"># }</span>
     <span class="code-keyword">end</span>
 
     <span class="code-comment"># Auto-evaluation runs automatically!</span>
-    <span class="code-comment"># Access: result[:overall_score], result[:evaluation_breakdown]</span>
 
     render json: { greeting: result[:response_text] }
   <span class="code-keyword">end</span>

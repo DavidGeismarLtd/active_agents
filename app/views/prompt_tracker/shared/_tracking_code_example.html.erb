@@ -12,28 +12,37 @@
     <div class="card-body">
       <pre><code class="language-ruby"># Track a call for <%= prompt.name %> (v<%= version.version_number %>)
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "<%= prompt.name %>",
+  prompt_slug: "<%= prompt.slug %>",
   variables: {
     <%= version.variables_schema.map { |v| "#{v['name']}: \"your_value\"" }.join(",\n    ") %>
-  },
-  provider: "openai",  # or "anthropic", "google", etc.
-  model: "gpt-4o",
+  }<% if version.model_config.present? && version.model_config["provider"] && version.model_config["model"] %>,
+  # provider/model are optional - defaults to version's model_config:
+  # provider: "<%= version.model_config["provider"] %>", model: "<%= version.model_config["model"] %>"
+  # Uncomment above to override for testing different models<% else %>,
+  provider: "openai",  # Required if not in version's model_config
+  model: "gpt-4o"      # Required if not in version's model_config<% end %>,
   user_id: current_user&.id,  # Optional: track which user made the call
   environment: Rails.env.to_s  # Optional: "production", "staging", etc.
 ) do |rendered_prompt|
   # Make your actual LLM API call here
   # The rendered_prompt contains the template with variables filled in
 
-  client = OpenAI::Client.new
-  response = client.chat(
-    parameters: {
-      model: "gpt-4o",
-      messages: [{ role: "user", content: rendered_prompt }]
-    }
-  )
+  # Option 1: Return just the text (simplest)
+  "Your LLM response text here"
 
-  # Return the response text
-  response.dig("choices", 0, "message", "content")
+  # Option 2: Return structured hash with token counts
+  # client = OpenAI::Client.new
+  # response = client.chat(
+  #   parameters: {
+  #     model: "gpt-4o",
+  #     messages: [{ role: "user", content: rendered_prompt }]
+  #   }
+  # )
+  # {
+  #   text: response.dig("choices", 0, "message", "content"),
+  #   tokens_prompt: response.dig("usage", "prompt_tokens"),
+  #   tokens_completion: response.dig("usage", "completion_tokens")
+  # }
 end
 
 # Use the result
@@ -43,4 +52,3 @@ puts result[:tracking_id]    # Unique ID for this call
     </div>
   </div>
 <% end %>
-

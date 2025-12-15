@@ -11,12 +11,14 @@
 #  description :text
 #  id          :bigint           not null, primary key
 #  name        :string           not null
+#  slug        :string           not null
 #  tags        :jsonb
 #  updated_at  :datetime         not null
 #
 FactoryBot.define do
   factory :prompt, class: "PromptTracker::Prompt" do
-    sequence(:name) { |n| "test_prompt_#{n}" }
+    sequence(:name) { |n| "Test Prompt #{n}" }
+    sequence(:slug) { |n| "test_prompt_#{n}" }
     description { "A test prompt for #{name}" }
     created_by { "test@example.com" }
     archived_at { nil }

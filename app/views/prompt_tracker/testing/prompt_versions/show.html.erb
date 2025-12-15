@@ -14,9 +14,16 @@
           <span class="badge bg-primary">v<%= @version.version_number %></span>
           <%= status_badge(@version.status) %>
         </h1>
-        <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
-          Testing and validating prompt behavior before production
-        </p>
+        <div style="margin-top: 0.5rem;">
+          <code style="background-color: #DBEAFE; color: #1E40AF; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;">
+            prompt_slug: "<%= @prompt.slug %>"
+          </code>
+        </div>
+        <% if @version.notes.present? %>
+          <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+            <%= @version.notes %>
+          </p>
+        <% end %>
       </div>
       <div class="d-flex gap-2 align-items-start">
         <%= link_to testing_prompt_prompt_version_datasets_path(@prompt, @version), class: "btn btn-outline-primary" do %>

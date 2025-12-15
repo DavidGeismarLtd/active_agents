@@ -120,6 +120,7 @@ module PromptTracker
       system_prompt = params[:system_prompt]
       notes = params[:notes]
       prompt_name = params[:prompt_name]
+      prompt_slug = params[:prompt_slug]
       save_action = params[:save_action] # 'update' or 'new_version'
       model_config = params[:model_config] || {}
 
@@ -178,6 +179,7 @@ module PromptTracker
 
         prompt = Prompt.new(
           name: prompt_name,
+          slug: prompt_slug.presence, # Will auto-generate if blank
           description: notes
         )
 

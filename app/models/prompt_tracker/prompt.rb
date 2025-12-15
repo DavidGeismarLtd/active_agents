@@ -11,6 +11,7 @@
 #  description :text
 #  id          :bigint           not null, primary key
 #  name        :string           not null
+#  slug        :string           not null
 #  tags        :jsonb
 #  updated_at  :datetime         not null
 #
@@ -22,13 +23,14 @@ module PromptTracker
   #
   # @example Creating a new prompt
   #   prompt = Prompt.create!(
-  #     name: "customer_support_greeting",
+  #     name: "Customer Support Greeting",
+  #     slug: "customer_support_greeting",  # Auto-generated if not provided
   #     description: "Initial greeting for customer support chats",
   #     created_by: "john@example.com"
   #   )
   #
-  # @example Finding a prompt by name
-  #   prompt = Prompt.find_by!(name: "customer_support_greeting")
+  # @example Finding a prompt by slug
+  #   prompt = Prompt.find_by!(slug: "customer_support_greeting")
   #   active_version = prompt.active_version
   #
   class Prompt < ApplicationRecord
@@ -52,13 +54,17 @@ module PromptTracker
              class_name: "PromptTracker::Evaluation"
 
     # Validations
-    validates :name,
+    validates :name, presence: true
+    validates :slug,
               presence: true,
               uniqueness: { case_sensitive: false },
               format: {
                 with: /\A[a-z0-9_]+\z/,
                 message: "must contain only lowercase letters, numbers, and underscores"
               }
+
+    # Callbacks
+    before_validation :generate_slug, if: -> { slug.blank? && name.present? }
 
     # Scopes
 
@@ -129,6 +135,32 @@ module PromptTracker
     # @return [ActiveRecord::Relation<EvaluatorConfig>] evaluator configs or empty relation
     def active_evaluator_configs
       active_version&.evaluator_configs || EvaluatorConfig.none
+    end
+
+    private
+
+    # Auto-generate slug from name if not provided
+    # Converts name to lowercase, replaces spaces and special chars with underscores
+    # @return [void]
+    def generate_slug
+      return if name.blank?
+
+      # Convert to lowercase, replace spaces and non-alphanumeric chars with underscores
+      base_slug = name.downcase
+                      .gsub(/[^a-z0-9]+/, "_")  # Replace non-alphanumeric with underscore
+                      .gsub(/^_+|_+$/, "")       # Remove leading/trailing underscores
+                      .gsub(/_+/, "_")           # Collapse multiple underscores
+
+      # Ensure uniqueness by appending number if needed
+      slug_candidate = base_slug
+      counter = 1
+
+      while Prompt.where(slug: slug_candidate).where.not(id: id).exists?
+        slug_candidate = "#{base_slug}_#{counter}"
+        counter += 1
+      end
+
+      self.slug = slug_candidate
     end
   end
 end

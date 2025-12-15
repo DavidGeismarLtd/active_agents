@@ -8,35 +8,47 @@ Make sure you have:
 1. Rails console running: `bin/rails console`
 2. OpenAI API key set: `ENV['OPENAI_API_KEY']` (or other LLM provider)
 
+## Response Format Contract
+
+The block you provide to `track_llm_call` must return either:
+- **A String** (just the response text) - simplest option
+- **A Hash** with `:text` (required), `:tokens_prompt`, `:tokens_completion`, `:metadata` (optional)
+
+Provider and model are **optional** - they default to the prompt version's `model_config`.
+
 ## Quick Start (Copy & Paste)
 
 ```ruby
 # 1. Create a prompt
 prompt = PromptTracker::Prompt.create!(
-  name: "test_greeting",
+  name: "Test Greeting",
+  slug: "test_greeting",
   description: "Test greeting prompt"
 )
 
-# 2. Create an active version
+# 2. Create an active version with model_config
 version = prompt.prompt_versions.create!(
-  template: "Hello {{name}}, welcome to {{service}}!",
+  user_prompt: "Hello {{name}}, welcome to {{service}}!",
   variables_schema: [
     { "name" => "name", "type" => "string", "required" => true },
     { "name" => "service", "type" => "string", "required" => true }
   ],
-  status: "active",
-  source: "console"
+  model_config: {
+    "provider" => "openai",
+    "model" => "gpt-4",
+    "temperature" => 0.7
+  },
+  status: "active"
 )
 
-# 3. Track an LLM call (with mock response)
+# 3. Track an LLM call (simplest - just return string)
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "test_greeting",
-  variables: { name: "John", service: "PromptTracker" },
-  provider: "openai",
-  model: "gpt-4"
+  prompt_slug: "test_greeting",
+  variables: { name: "John", service: "PromptTracker" }
+  # provider/model automatically from version's model_config
 ) do |rendered_prompt|
   puts "📝 Rendered prompt: #{rendered_prompt}"
-  # Mock response (replace with actual LLM call)
+  # Just return the text (simplest)
   "Hello! Nice to meet you, John!"
 end
 
@@ -57,27 +69,50 @@ puts "  Provider: #{response.provider}"
 puts "  Model: #{response.model}"
 ```
 
-## With Real OpenAI API Call
+## With Structured Response (includes token counts)
 
 ```ruby
-# Make sure you have the ruby_llm gem configured
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "test_greeting",
-  variables: { name: "Alice", service: "PromptTracker" },
-  provider: "openai",
-  model: "gpt-4o-mini"
+  prompt_slug: "test_greeting",
+  variables: { name: "Alice", service: "PromptTracker" }
 ) do |rendered_prompt|
-  # Use the LlmClientService to make the actual call
-  response = PromptTracker::LlmClientService.call(
-    provider: "openai",
-    model: "gpt-4o-mini",
-    prompt: rendered_prompt,
-    temperature: 0.7
+  # Make actual API call
+  client = OpenAI::Client.new
+  response = client.chat(
+    parameters: {
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: rendered_prompt }]
+    }
   )
-  response[:text]  # Return just the text
+
+  # Return structured hash with token counts
+  {
+    text: response.dig("choices", 0, "message", "content"),
+    tokens_prompt: response.dig("usage", "prompt_tokens"),
+    tokens_completion: response.dig("usage", "completion_tokens"),
+    metadata: { model: response["model"], id: response["id"] }
+  }
 end
 
-puts "✅ Real LLM response: #{result[:response_text]}"
+puts "✅ Response: #{result[:response_text]}"
+puts "📊 Tokens: #{result[:llm_response].tokens_total}"
+```
+
+## Override Provider/Model (for testing)
+
+```ruby
+# Override the version's model_config to test with a different model
+result = PromptTracker::LlmCallService.track(
+  prompt_slug: "test_greeting",
+  variables: { name: "Bob", service: "PromptTracker" },
+  provider: "anthropic",  # Override
+  model: "claude-3-opus"  # Override
+) do |rendered_prompt|
+  "Hello Bob! (from Claude)"
+end
+
+puts "✅ Used provider: #{result[:llm_response].provider}"
+puts "✅ Used model: #{result[:llm_response].model}"
 ```
 
 ## With Auto-Evaluators
@@ -120,7 +155,7 @@ end
 
 ```ruby
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "test_greeting",
+  prompt_slug: "test_greeting",
   variables: { name: "Charlie", service: "PromptTracker" },
   provider: "openai",
   model: "gpt-4",
@@ -156,7 +191,7 @@ version2 = prompt.prompt_versions.create!(
 
 # Track using version 2 (not the active version)
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "test_greeting",
+  prompt_slug: "test_greeting",
   version: 2,  # Specify version number
   variables: { name: "Diana" },
   provider: "openai",
@@ -171,7 +206,7 @@ end
 
 ```ruby
 # Get all responses for a prompt
-prompt = PromptTracker::Prompt.find_by(name: "test_greeting")
+prompt = PromptTracker::Prompt.find_by(slug: "test_greeting")
 responses = PromptTracker::LlmResponse.where(prompt_version: prompt.prompt_versions)
 
 puts "\n📊 All tracked calls:"
@@ -182,13 +217,11 @@ end
 
 ## Common Patterns
 
-### Pattern 1: Simple Mock Testing
+### Pattern 1: Simple Mock Testing (String Response)
 ```ruby
 result = PromptTracker::LlmCallService.track(
-  prompt_name: "test_greeting",
-  variables: { name: "Test" },
-  provider: "openai",
-  model: "gpt-4"
+  prompt_slug: "test_greeting",
+  variables: { name: "Test" }
 ) { |prompt| "Mock response" }
 ```
 
@@ -196,12 +229,20 @@ result = PromptTracker::LlmCallService.track(
 ```ruby
 begin
   result = PromptTracker::LlmCallService.track(
-    prompt_name: "nonexistent_prompt",
-    variables: {},
-    provider: "openai",
-    model: "gpt-4"
+    prompt_slug: "nonexistent_prompt",
+    variables: {}
   ) { |prompt| "Response" }
 rescue PromptTracker::LlmCallService::PromptNotFoundError => e
+  puts "❌ Error: #{e.message}"
+end
+
+# Error if block returns invalid format
+begin
+  result = PromptTracker::LlmCallService.track(
+    prompt_slug: "test_greeting",
+    variables: { name: "Test" }
+  ) { |prompt| 123 }  # Invalid - not string or hash
+rescue PromptTracker::LlmResponseContract::InvalidResponseError => e
   puts "❌ Error: #{e.message}"
 end
 ```
@@ -210,10 +251,8 @@ end
 ```ruby
 ["Alice", "Bob", "Charlie"].each do |name|
   PromptTracker::LlmCallService.track(
-    prompt_name: "test_greeting",
-    variables: { name: name, service: "PromptTracker" },
-    provider: "openai",
-    model: "gpt-4"
+    prompt_slug: "test_greeting",
+    variables: { name: name, service: "PromptTracker" }
   ) { |prompt| "Hello #{name}!" }
 end
 
@@ -224,6 +263,5 @@ puts "✅ Created #{PromptTracker::LlmResponse.count} tracked calls"
 
 ```ruby
 # Delete all test data
-PromptTracker::Prompt.find_by(name: "test_greeting")&.destroy
+PromptTracker::Prompt.find_by(slug: "test_greeting")&.destroy
 ```
-

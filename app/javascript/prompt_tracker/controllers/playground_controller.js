@@ -21,6 +21,7 @@ export default class extends Controller {
     "alertContainer",
     "alertMessage",
     "promptNameInput",
+    "promptSlugInput",
     "charCount",
     "previewStatus",
     "modelProvider",
@@ -146,6 +147,24 @@ export default class extends Controller {
     this.updateVariableInputs()
     this.updateCharCount()
     this.updateAIButtonState()
+  }
+
+  // Action: Prompt name input - auto-generate slug
+  onPromptNameInput() {
+    if (!this.hasPromptSlugInputTarget) return
+
+    const name = this.promptNameInputTarget.value
+    const slug = this.generateSlugFromName(name)
+    this.promptSlugInputTarget.value = slug
+  }
+
+  // Generate slug from name
+  generateSlugFromName(name) {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')  // Replace non-alphanumeric with underscore
+      .replace(/^_+|_+$/g, '')       // Remove leading/trailing underscores
+      .replace(/_+/g, '_')           // Collapse multiple underscores
   }
 
   // Backward compatibility
@@ -398,8 +417,9 @@ export default class extends Controller {
       return
     }
 
-    // Validate prompt name in standalone mode
+    // Validate prompt name and slug in standalone mode
     let promptName = null
+    let promptSlug = null
     if (this.isStandaloneValue) {
       if (!this.hasPromptNameInputTarget || !this.promptNameInputTarget.value.trim()) {
         this.showAlert('Please enter a prompt name.', 'warning')
@@ -409,6 +429,11 @@ export default class extends Controller {
         return
       }
       promptName = this.promptNameInputTarget.value.trim()
+
+      // Get slug (auto-generated or manually edited)
+      if (this.hasPromptSlugInputTarget) {
+        promptSlug = this.promptSlugInputTarget.value.trim()
+      }
     }
 
     const notes = prompt('Add notes for this version (optional):')
@@ -433,6 +458,7 @@ export default class extends Controller {
 
     if (this.isStandaloneValue) {
       requestBody.prompt_name = promptName
+      requestBody.prompt_slug = promptSlug
     }
 
     try {

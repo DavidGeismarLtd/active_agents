@@ -153,6 +153,9 @@ module PromptTracker
           class_name = filename.camelize
 
           begin
+            # Require the file first to ensure it's loaded
+            require_dependency file
+
             # Constantize the class
             evaluator_class = "PromptTracker::Evaluators::#{class_name}".constantize
 
@@ -160,6 +163,8 @@ module PromptTracker
             register_evaluator_by_convention(evaluator_class)
           rescue NameError => e
             Rails.logger.warn "Failed to load evaluator class #{class_name}: #{e.message}"
+          rescue LoadError => e
+            Rails.logger.warn "Failed to load evaluator file #{file}: #{e.message}"
           end
         end
       end

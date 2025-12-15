@@ -13,6 +13,11 @@
           <span class="badge bg-primary">v<%= @version.version_number %></span>
           <%= status_badge(@version.status) %>
         </h1>
+        <div style="margin-top: 0.5rem;">
+          <code style="background-color: #D1FAE5; color: #065F46; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;">
+            prompt_slug: "<%= @prompt.slug %>"
+          </code>
+        </div>
         <p style="color: #065F46; margin: 0.5rem 0 0 0;">
           Monitoring tracked calls and evaluations for this version
         </p>

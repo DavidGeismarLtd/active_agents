@@ -27,25 +27,33 @@ module PromptTracker
         expect(prompt.errors[:name]).to include("can't be blank")
       end
 
-      it "requires unique name (case-insensitive)" do
-        Prompt.create!(valid_attributes)
-        duplicate = Prompt.new(valid_attributes)
+      it "requires unique slug (case-insensitive)" do
+        Prompt.create!(valid_attributes.merge(slug: "test_slug"))
+        duplicate = Prompt.new(valid_attributes.merge(name: "Different Name", slug: "test_slug"))
         expect(duplicate).not_to be_valid
-        expect(duplicate.errors[:name]).to include("has already been taken")
+        expect(duplicate.errors[:slug]).to include("has already been taken")
       end
 
-      it "enforces name format with lowercase letters, numbers, and underscores only" do
-        valid_names = [ "test", "test_prompt", "test123", "test_prompt_123" ]
+      it "allows any name format but enforces slug format" do
+        # Name can be anything
+        valid_names = [ "Test", "Test Prompt", "Test-Prompt", "Test.Prompt", "Test@Prompt" ]
         valid_names.each do |name|
-          prompt = Prompt.new(valid_attributes.merge(name: name))
+          prompt = Prompt.new(valid_attributes.merge(name: name, slug: "test_#{SecureRandom.hex(4)}"))
           expect(prompt).to be_valid, "Name '#{name}' should be valid"
         end
 
-        invalid_names = [ "Test", "test-prompt", "test prompt", "test.prompt", "test@prompt" ]
-        invalid_names.each do |name|
-          prompt = Prompt.new(valid_attributes.merge(name: name))
-          expect(prompt).not_to be_valid, "Name '#{name}' should be invalid"
-          expect(prompt.errors[:name]).to include("must contain only lowercase letters, numbers, and underscores")
+        # Slug must be lowercase with underscores
+        valid_slugs = [ "test", "test_prompt", "test123", "test_prompt_123" ]
+        valid_slugs.each do |slug|
+          prompt = Prompt.new(valid_attributes.merge(slug: slug))
+          expect(prompt).to be_valid, "Slug '#{slug}' should be valid"
+        end
+
+        invalid_slugs = [ "Test", "test-prompt", "test prompt", "test.prompt", "test@prompt" ]
+        invalid_slugs.each do |slug|
+          prompt = Prompt.new(valid_attributes.merge(slug: slug))
+          expect(prompt).not_to be_valid, "Slug '#{slug}' should be invalid"
+          expect(prompt.errors[:slug]).to include("must contain only lowercase letters, numbers, and underscores")
         end
       end
     end
