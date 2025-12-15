@@ -1,0 +1,90 @@
+<% dataset ||= @dataset # Support both local and instance variable %>
+<tr id="dataset-row-<%= row.id %>">
+  <td class="text-muted"><%= index %></td>
+  <% dataset.variable_names.each do |var_name| %>
+    <td>
+      <% value = row.get_variable(var_name) %>
+      <% if value.present? %>
+        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="<%= value %>">
+          <%= value %>
+        </span>
+      <% else %>
+        <span class="text-muted fst-italic">—</span>
+      <% end %>
+    </td>
+  <% end %>
+  <td>
+    <% case row.source %>
+    <% when "manual" %>
+      <span class="badge bg-secondary"><i class="bi bi-pencil"></i> Manual</span>
+    <% when "llm_generated" %>
+      <span class="badge bg-primary"><i class="bi bi-stars"></i> AI</span>
+    <% when "imported" %>
+      <span class="badge bg-info"><i class="bi bi-upload"></i> Import</span>
+    <% end %>
+  </td>
+  <td>
+    <div class="btn-group btn-group-sm">
+      <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRowModal-<%= row.id %>" title="Edit">
+        <i class="bi bi-pencil"></i>
+      </button>
+      <%= button_to testing_prompt_prompt_version_dataset_dataset_row_path(@prompt || row.dataset.prompt_version.prompt, @version || row.dataset.prompt_version, dataset, row),
+                    method: :delete,
+                    class: "btn btn-outline-danger btn-sm",
+                    data: { confirm: "Delete this row?", turbo_method: :delete },
+                    form: { data: { turbo_frame: "_top" } } do %>
+        <i class="bi bi-trash"></i>
+      <% end %>
+    </div>
+  </td>
+</tr>
+
+<!-- Edit Row Modal -->
+<div class="modal fade" id="editRowModal-<%= row.id %>" tabindex="-1" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Row #<%= index %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <%= form_with(model: row,
+                    url: testing_prompt_prompt_version_dataset_dataset_row_path(@prompt || row.dataset.prompt_version.prompt, @version || row.dataset.prompt_version, dataset, row),
+                    method: :patch) do |f| %>
+        <div class="modal-body">
+          <%= f.hidden_field :source, value: row.source %>
+
+          <% dataset.schema.each do |var_schema| %>
+            <div class="mb-3">
+              <%= label_tag "dataset_row[row_data][#{var_schema['name']}]", var_schema['name'], class: "form-label" %>
+              <% if var_schema['required'] %>
+                <span class="text-danger">*</span>
+              <% end %>
+
+              <% case var_schema['type'] %>
+              <% when 'text' %>
+                <%= text_area_tag "dataset_row[row_data][#{var_schema['name']}]",
+                                  row.get_variable(var_schema['name']),
+                                  class: "form-control",
+                                  rows: 3,
+                                  required: var_schema['required'] %>
+              <% else %>
+                <%= text_field_tag "dataset_row[row_data][#{var_schema['name']}]",
+                                   row.get_variable(var_schema['name']),
+                                   class: "form-control",
+                                   required: var_schema['required'] %>
+              <% end %>
+
+              <% if var_schema['description'].present? %>
+                <div class="form-text"><%= var_schema['description'] %></div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Update Row", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

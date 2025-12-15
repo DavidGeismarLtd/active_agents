@@ -4,16 +4,15 @@
 #
 # Table name: prompt_tracker_prompts
 #
-#  archived_at                :datetime
-#  category                   :string
-#  created_at                 :datetime         not null
-#  created_by                 :string
-#  description                :text
-#  id                         :bigint           not null, primary key
-#  name                       :string           not null
-#  score_aggregation_strategy :string           default("weighted_average")
-#  tags                       :jsonb
-#  updated_at                 :datetime         not null
+#  archived_at :datetime
+#  category    :string
+#  created_at  :datetime         not null
+#  created_by  :string
+#  description :text
+#  id          :bigint           not null, primary key
+#  name        :string           not null
+#  tags        :jsonb
+#  updated_at  :datetime         not null
 #
 module PromptTracker
   # Represents a prompt template container.
@@ -25,8 +24,6 @@ module PromptTracker
   #   prompt = Prompt.create!(
   #     name: "customer_support_greeting",
   #     description: "Initial greeting for customer support chats",
-  #     category: "support",
-  #     tags: ["customer-facing", "high-priority"],
   #     created_by: "john@example.com"
   #   )
   #
@@ -34,18 +31,7 @@ module PromptTracker
   #   prompt = Prompt.find_by!(name: "customer_support_greeting")
   #   active_version = prompt.active_version
   #
-  # @example Getting all prompts in a category
-  #   support_prompts = Prompt.in_category("support")
-  #
   class Prompt < ApplicationRecord
-    # Constants
-    AGGREGATION_STRATEGIES = %w[
-      simple_average
-      weighted_average
-      minimum
-      custom
-    ].freeze
-
     # Associations
     has_many :prompt_versions,
              class_name: "PromptTracker::PromptVersion",
@@ -54,16 +40,6 @@ module PromptTracker
 
     has_many :ab_tests,
              class_name: "PromptTracker::AbTest",
-             dependent: :destroy,
-             inverse_of: :prompt
-
-    has_many :evaluator_configs,
-             class_name: "PromptTracker::EvaluatorConfig",
-             dependent: :destroy,
-             inverse_of: :prompt
-
-    has_many :prompt_test_suites,
-             class_name: "PromptTracker::PromptTestSuite",
              dependent: :destroy,
              inverse_of: :prompt
 
@@ -84,19 +60,6 @@ module PromptTracker
                 message: "must contain only lowercase letters, numbers, and underscores"
               }
 
-    validates :category,
-              format: {
-                with: /\A[a-z0-9_]+\z/,
-                message: "must contain only lowercase letters, numbers, and underscores"
-              },
-              allow_blank: true
-
-    validates :score_aggregation_strategy,
-              inclusion: { in: AGGREGATION_STRATEGIES },
-              allow_nil: true
-
-    validate :tags_must_be_array
-
     # Scopes
 
     # Returns only active (non-archived) prompts
@@ -106,18 +69,6 @@ module PromptTracker
     # Returns only archived prompts
     # @return [ActiveRecord::Relation<Prompt>]
     scope :archived, -> { where.not(archived_at: nil) }
-
-    # Returns prompts in a specific category
-    # @param category [String] the category name
-    # @return [ActiveRecord::Relation<Prompt>]
-    scope :in_category, ->(category) { where(category: category) }
-
-    # Returns prompts with a specific tag
-    # @param tag [String] the tag to search for
-    # @return [ActiveRecord::Relation<Prompt>]
-    scope :with_tag, lambda { |tag|
-      where("tags @> ?", [tag].to_json)
-    }
 
     # Instance Methods
 
@@ -174,13 +125,10 @@ module PromptTracker
       llm_responses.average(:response_time_ms)&.to_f
     end
 
-    private
-
-    # Validates that tags is an array
-    def tags_must_be_array
-      return if tags.nil? || tags.is_a?(Array)
-
-      errors.add(:tags, "must be an array")
+    # Returns evaluator configs for the active version
+    # @return [ActiveRecord::Relation<EvaluatorConfig>] evaluator configs or empty relation
+    def active_evaluator_configs
+      active_version&.evaluator_configs || EvaluatorConfig.none
     end
   end
 end

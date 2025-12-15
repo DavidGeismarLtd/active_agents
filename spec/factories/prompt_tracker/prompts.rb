@@ -4,35 +4,22 @@
 #
 # Table name: prompt_tracker_prompts
 #
-#  archived_at                :datetime
-#  category                   :string
-#  created_at                 :datetime         not null
-#  created_by                 :string
-#  description                :text
-#  id                         :bigint           not null, primary key
-#  name                       :string           not null
-#  score_aggregation_strategy :string           default("weighted_average")
-#  tags                       :jsonb
-#  updated_at                 :datetime         not null
+#  archived_at :datetime
+#  category    :string
+#  created_at  :datetime         not null
+#  created_by  :string
+#  description :text
+#  id          :bigint           not null, primary key
+#  name        :string           not null
+#  tags        :jsonb
+#  updated_at  :datetime         not null
 #
 FactoryBot.define do
   factory :prompt, class: "PromptTracker::Prompt" do
     sequence(:name) { |n| "test_prompt_#{n}" }
     description { "A test prompt for #{name}" }
-    category { "test" }
-    tags { %w[test automated] }
     created_by { "test@example.com" }
     archived_at { nil }
-
-    trait :support do
-      category { "support" }
-      tags { %w[customer-facing support] }
-    end
-
-    trait :email do
-      category { "email" }
-      tags { %w[email automated] }
-    end
 
     trait :archived do
       archived_at { 1.day.ago }
@@ -51,4 +38,3 @@ FactoryBot.define do
     end
   end
 end
-

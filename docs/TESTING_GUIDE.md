@@ -223,36 +223,32 @@ evaluation.has_criteria_scores?  # => true
 # Test summary
 evaluation.summary  # => "Human: 4.5/5 (90.0%)"
 
-# Create an automated evaluation
-auto_eval = response.evaluations.create!(
+# Create a keyword evaluator evaluation
+keyword_eval = response.evaluations.create!(
   score: 85,
   score_min: 0,
   score_max: 100,
-  evaluator_type: "automated",
-  evaluator_id: "sentiment_analyzer_v1",
-  metadata: { "confidence" => 0.92, "processing_time_ms" => 150 }
+  evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+  metadata: { "matched_keywords" => ["help", "support"], "processing_time_ms" => 150 }
 )
 
-auto_eval.automated?  # => true
-auto_eval.score_percentage  # => 85.0
+keyword_eval.score_percentage  # => 85.0
 
 # Create an LLM judge evaluation
 llm_eval = response.evaluations.create!(
   score: 4,
   score_max: 5,
-  evaluator_type: "llm_judge",
-  evaluator_id: "gpt-4",
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
   feedback: "The response is helpful and accurate, but could be more empathetic.",
   metadata: { "reasoning" => "Good factual content, tone could be warmer" }
 )
 
-llm_eval.llm_judge?  # => true
-
 # Test scopes
-PromptTracker::Evaluation.by_humans  # => [evaluation]
-PromptTracker::Evaluation.automated  # => [auto_eval]
-PromptTracker::Evaluation.by_llm_judge  # => [llm_eval]
+PromptTracker::Evaluation.by_evaluator("PromptTracker::Evaluators::KeywordEvaluator")  # => [keyword_eval]
+PromptTracker::Evaluation.by_evaluator("PromptTracker::Evaluators::LlmJudgeEvaluator")  # => [llm_eval]
 PromptTracker::Evaluation.above_score(4.0)  # => [evaluation, llm_eval]
+PromptTracker::Evaluation.tracked  # => evaluations from tracked_call context
+PromptTracker::Evaluation.from_tests  # => evaluations from test_run context
 ```
 
 ### Test Associations and Metrics
@@ -367,4 +363,3 @@ After verifying Phase 1 works correctly:
 5. ✅ Metrics calculate correctly
 
 You're ready to move on to **Phase 2: File-Based Prompt System**!
-

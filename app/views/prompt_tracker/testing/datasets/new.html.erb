@@ -1,0 +1,46 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to @prompt.name, testing_prompt_prompt_version_path(@prompt, @version) %></li>
+  <li class="breadcrumb-item"><%= link_to "Datasets", testing_prompt_prompt_version_datasets_path(@prompt, @version) %></li>
+  <li class="breadcrumb-item active">New Dataset</li>
+<% end %>
+
+<div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
+  <h1 style="color: #1E40AF; margin: 0;">
+    <i class="bi bi-database"></i> New Dataset
+    <span class="badge bg-primary">v<%= @version.version_number %></span>
+  </h1>
+  <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+    Create a new test data collection for <%= @prompt.name %>
+  </p>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <%= render "form",
+                   dataset: @dataset,
+                   url: testing_prompt_prompt_version_datasets_path(@prompt, @version),
+                   method: :post,
+                   submit_text: "Create Dataset",
+                   cancel_path: testing_prompt_prompt_version_datasets_path(@prompt, @version) %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips</h6>
+      </div>
+      <div class="card-body">
+        <ul class="small mb-0">
+          <li>After creating the dataset, you can add rows manually or generate them with AI</li>
+          <li>Each row must match the prompt version's variable schema</li>
+          <li>Datasets are version-specific and become invalid if the schema changes</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+

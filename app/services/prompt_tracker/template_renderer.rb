@@ -1,17 +1,16 @@
 # frozen_string_literal: true
 
-require 'liquid'
+require "liquid"
 
 module PromptTracker
-  # Service for rendering prompt templates with variable substitution.
-  # Supports both Liquid templates and legacy Mustache-style {{variable}} syntax.
+  # Service for rendering prompt templates with variable substitution using Liquid.
   #
   # @example Render with Liquid
   #   renderer = TemplateRenderer.new("Hello {{ name | upcase }}!")
   #   renderer.render(name: "john")
   #   # => "Hello JOHN!"
   #
-  # @example Render with Mustache fallback
+  # @example Simple variable substitution
   #   renderer = TemplateRenderer.new("Hello {{name}}!")
   #   renderer.render(name: "John")
   #   # => "Hello John!"
@@ -26,13 +25,19 @@ module PromptTracker
       @errors = []
     end
 
-    # Render the template with the given variables
+    # Render the template with the given variables using Liquid
     #
     # @param variables [Hash] the variables to substitute
-    # @param engine [Symbol] the template engine to use (:liquid or :mustache)
+    # @param engine [Symbol] optional engine selection (:liquid or :mustache) - deprecated, always uses Liquid
     # @return [String] the rendered template
     # @raise [Liquid::SyntaxError] if Liquid template has syntax errors
-    def render(variables = {}, engine: :auto)
+    # @raise [ArgumentError] if unknown engine specified
+    def render(variables = {}, engine: nil)
+      # Validate engine parameter if provided
+      if engine && ![ :liquid, :mustache ].include?(engine)
+        raise ArgumentError, "Unknown template engine: #{engine}. Supported engines: :liquid, :mustache"
+      end
+
       # Ensure we have a hash with indifferent access
       variables = if variables.is_a?(Hash)
         variables.with_indifferent_access
@@ -40,21 +45,21 @@ module PromptTracker
         {}
       end
 
-      case engine
-      when :liquid
-        render_with_liquid(variables)
-      when :mustache
-        render_with_mustache(variables)
-      when :auto
-        # Auto-detect: use Liquid if template contains Liquid syntax, otherwise Mustache
-        if liquid_template?
-          render_with_liquid(variables)
-        else
-          render_with_mustache(variables)
-        end
-      else
-        raise ArgumentError, "Unknown template engine: #{engine}"
-      end
+      render_with_liquid(variables)
+    end
+
+    # Check if template uses Liquid-specific syntax
+    # Returns false for simple Mustache-style {{variable}} templates
+    #
+    # @return [Boolean] true if template uses Liquid features
+    def liquid_template?
+      # Check for Liquid-specific features:
+      # - Filters: {{ variable | filter }}
+      # - Tags: {% tag %}
+      # - Object notation: {{ object.property }}
+      template_string.match?(/\{\{[^}]*\|[^}]*\}\}/) ||  # Filters
+        template_string.match?(/\{%.*%\}/) ||             # Tags
+        template_string.match?(/\{\{\s*\w+\.\w+/)         # Object notation
     end
 
     # Check if the template is valid
@@ -73,19 +78,6 @@ module PromptTracker
       end
     end
 
-    # Check if template contains Liquid-specific syntax
-    #
-    # @return [Boolean] true if template uses Liquid syntax
-    def liquid_template?
-      # Check for Liquid-specific patterns:
-      # - Filters: {{ variable | filter }}
-      # - Tags: {% if %}, {% for %}, etc.
-      # - Objects with dot notation: {{ user.name }}
-      template_string.match?(/\{\{.*\|.*\}\}/) ||
-        template_string.match?(/\{%.*%\}/) ||
-        template_string.match?(/\{\{.*\..*\}\}/)
-    end
-
     private
 
     # Render template using Liquid engine
@@ -97,19 +89,6 @@ module PromptTracker
       template.render(stringify_keys(variables))
     rescue Liquid::SyntaxError => e
       raise Liquid::SyntaxError, "Liquid template error: #{e.message}"
-    end
-
-    # Render template using simple Mustache-style substitution
-    # This is the legacy method for backward compatibility
-    #
-    # @param variables [Hash] the variables to substitute
-    # @return [String] the rendered template
-    def render_with_mustache(variables)
-      rendered = template_string.dup
-      variables.each do |key, value|
-        rendered.gsub!("{{#{key}}}", value.to_s)
-      end
-      rendered
     end
 
     # Convert hash keys to strings for Liquid compatibility

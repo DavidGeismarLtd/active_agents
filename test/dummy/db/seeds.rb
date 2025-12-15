@@ -26,15 +26,14 @@ support_greeting = PromptTracker::Prompt.create!(
   name: "customer_support_greeting",
   description: "Initial greeting for customer support interactions",
   category: "support",
-  tags: ["customer-facing", "greeting", "high-priority"],
+  tags: [ "customer-facing", "greeting", "high-priority" ],
   created_by: "support-team@example.com"
 )
 
 # Version 1 - Original
 support_greeting_v1 = support_greeting.prompt_versions.create!(
-  template: "Hello {{customer_name}}! Thank you for contacting support. How can I help you with {{issue_category}} today?",
+  user_prompt: "Hello {{customer_name}}! Thank you for contacting support. How can I help you with {{issue_category}} today?",
   status: "deprecated",
-  source: "file",
   variables_schema: [
     { "name" => "customer_name", "type" => "string", "required" => true },
     { "name" => "issue_category", "type" => "string", "required" => false }
@@ -46,9 +45,8 @@ support_greeting_v1 = support_greeting.prompt_versions.create!(
 
 # Version 2 - More casual
 support_greeting_v2 = support_greeting.prompt_versions.create!(
-  template: "Hi {{customer_name}}! 👋 Thanks for reaching out. What can I help you with today?",
+  user_prompt: "Hi {{customer_name}}! 👋 Thanks for reaching out. What can I help you with today?",
   status: "deprecated",
-  source: "web_ui",
   variables_schema: [
     { "name" => "customer_name", "type" => "string", "required" => true }
   ],
@@ -59,9 +57,8 @@ support_greeting_v2 = support_greeting.prompt_versions.create!(
 
 # Version 3 - Current active version
 support_greeting_v3 = support_greeting.prompt_versions.create!(
-  template: "Hi {{customer_name}}! Thanks for contacting us. I'm here to help with your {{issue_category}} question. What's going on?",
+  user_prompt: "Hi {{customer_name}}! Thanks for contacting us. I'm here to help with your {{issue_category}} question. What's going on?",
   status: "active",
-  source: "file",
   variables_schema: [
     { "name" => "customer_name", "type" => "string", "required" => true },
     { "name" => "issue_category", "type" => "string", "required" => true }
@@ -73,9 +70,8 @@ support_greeting_v3 = support_greeting.prompt_versions.create!(
 
 # Version 4 - Draft: Even shorter version for testing
 support_greeting_v4 = support_greeting.prompt_versions.create!(
-  template: "Hey {{customer_name}}! What's up with {{issue_category}}?",
+  user_prompt: "Hey {{customer_name}}! What's up with {{issue_category}}?",
   status: "draft",
-  source: "web_ui",
   variables_schema: [
     { "name" => "customer_name", "type" => "string", "required" => true },
     { "name" => "issue_category", "type" => "string", "required" => true }
@@ -87,9 +83,8 @@ support_greeting_v4 = support_greeting.prompt_versions.create!(
 
 # Version 5 - Draft: More empathetic version
 support_greeting_v5 = support_greeting.prompt_versions.create!(
-  template: "Hi {{customer_name}}, I understand you're having an issue with {{issue_category}}. I'm here to help you resolve this. Can you tell me more about what's happening?",
+  user_prompt: "Hi {{customer_name}}, I understand you're having an issue with {{issue_category}}. I'm here to help you resolve this. Can you tell me more about what's happening?",
   status: "draft",
-  source: "web_ui",
   variables_schema: [
     { "name" => "customer_name", "type" => "string", "required" => true },
     { "name" => "issue_category", "type" => "string", "required" => true }
@@ -109,14 +104,13 @@ email_summary = PromptTracker::Prompt.create!(
   name: "email_summary_generator",
   description: "Generates concise summaries of long email threads",
   category: "email",
-  tags: ["productivity", "summarization"],
+  tags: [ "productivity", "summarization" ],
   created_by: "product-team@example.com"
 )
 
 email_summary_v1 = email_summary.prompt_versions.create!(
-  template: "Summarize the following email thread in 2-3 sentences:\n\n{{email_thread}}",
+  user_prompt: "Summarize the following email thread in 2-3 sentences:\n\n{{email_thread}}",
   status: "active",
-  source: "file",
   variables_schema: [
     { "name" => "email_thread", "type" => "string", "required" => true }
   ],
@@ -126,9 +120,8 @@ email_summary_v1 = email_summary.prompt_versions.create!(
 
 # Version 2 - Draft: Bullet point format
 email_summary_v2 = email_summary.prompt_versions.create!(
-  template: "Summarize the following email thread as bullet points (3-5 key points):\n\n{{email_thread}}",
+  user_prompt: "Summarize the following email thread as bullet points (3-5 key points):\n\n{{email_thread}}",
   status: "draft",
-  source: "web_ui",
   variables_schema: [
     { "name" => "email_thread", "type" => "string", "required" => true }
   ],
@@ -147,12 +140,12 @@ code_review = PromptTracker::Prompt.create!(
   name: "code_review_assistant",
   description: "Provides constructive code review feedback",
   category: "development",
-  tags: ["code-quality", "engineering"],
+  tags: [ "code-quality", "engineering" ],
   created_by: "engineering@example.com"
 )
 
 code_review_v1 = code_review.prompt_versions.create!(
-  template: <<~TEMPLATE,
+  user_prompt: <<~TEMPLATE,
     Review the following {{language}} code and provide constructive feedback:
 
     ```{{language}}
@@ -168,7 +161,6 @@ code_review_v1 = code_review.prompt_versions.create!(
     Be constructive and specific.
   TEMPLATE
   status: "active",
-  source: "file",
   variables_schema: [
     { "name" => "language", "type" => "string", "required" => true },
     { "name" => "code", "type" => "string", "required" => true }
@@ -187,68 +179,82 @@ puts "  Creating sample tests..."
 test_greeting_premium = support_greeting_v3.prompt_tests.create!(
   name: "Premium Customer Greeting",
   description: "Test greeting for premium customers with billing issues",
-  template_variables: { "customer_name" => "John Smith", "issue_category" => "billing" },
-  expected_patterns: ["John Smith", "billing"],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 0,
-      "config" => { "min_length" => 10, "max_length" => 500 }
-    }
-  ],
-  tags: ["premium", "billing"],
+  tags: [ "premium", "billing" ],
+  enabled: true
+)
+
+# Add pattern match evaluator
+test_greeting_premium.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: { patterns: [ "John Smith", "billing" ], match_all: true }
+)
+
+# Create evaluator config for this test
+test_greeting_premium.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+  config: { "min_length" => 10, "max_length" => 500 },
   enabled: true
 )
 
 test_greeting_technical = support_greeting_v3.prompt_tests.create!(
   name: "Technical Support Greeting",
   description: "Test greeting for technical support inquiries",
-  template_variables: { "customer_name" => "Sarah Johnson", "issue_category" => "technical" },
-  expected_patterns: ["Sarah Johnson", "technical"],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 0,
-      "config" => { "min_length" => 10, "max_length" => 500 }
-    }
-  ],
-  tags: ["technical"],
+  tags: [ "technical" ],
+  enabled: true
+)
+
+test_greeting_technical.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: { patterns: [ "Sarah Johnson", "technical" ], match_all: true }
+)
+
+test_greeting_technical.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+  config: { "min_length" => 10, "max_length" => 500 },
   enabled: true
 )
 
 test_greeting_account = support_greeting_v3.prompt_tests.create!(
   name: "Account Issue Greeting",
   description: "Test greeting for account-related questions",
-  template_variables: { "customer_name" => "Mike Davis", "issue_category" => "account" },
-  expected_patterns: ["Mike Davis", "account"],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 0,
-      "config" => { "min_length" => 10, "max_length" => 500 }
-    }
-  ],
-  tags: ["account"],
+  tags: [ "account" ],
+  enabled: true
+)
+
+test_greeting_account.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: { patterns: [ "Mike Davis", "account" ], match_all: true }
+)
+
+test_greeting_account.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+  config: { "min_length" => 10, "max_length" => 500 },
   enabled: true
 )
 
 test_greeting_general = support_greeting_v3.prompt_tests.create!(
   name: "General Inquiry Greeting",
   description: "Test greeting for general customer inquiries",
-  template_variables: { "customer_name" => "Emily Chen", "issue_category" => "general" },
-  expected_patterns: ["Emily Chen", "general"],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 0,
-      "config" => { "min_length" => 10, "max_length" => 500 }
-    }
-  ],
-  tags: ["general"],
+  tags: [ "general" ],
+  enabled: true
+)
+
+test_greeting_general.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: { patterns: [ "Emily Chen", "general" ], match_all: true }
+)
+
+test_greeting_general.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+  config: { "min_length" => 10, "max_length" => 500 },
   enabled: true
 )
 
@@ -256,12 +262,15 @@ test_greeting_general = support_greeting_v3.prompt_tests.create!(
 test_greeting_edge = support_greeting_v3.prompt_tests.create!(
   name: "Edge Case - Very Long Name",
   description: "Test greeting with unusually long customer name",
-  template_variables: { "customer_name" => "Alexander Maximilian Christopher Wellington III", "issue_category" => "billing" },
-  expected_patterns: ["Alexander", "billing"],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [],
-  tags: ["edge-case"],
+  tags: [ "edge-case" ],
   enabled: false
+)
+
+test_greeting_edge.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: { patterns: [ "Alexander", "billing" ], match_all: true }
 )
 
 # ============================================================================
@@ -274,50 +283,54 @@ puts "  Creating advanced tests with multiple evaluators..."
 test_comprehensive_quality = support_greeting_v3.prompt_tests.create!(
   name: "Comprehensive Quality Check",
   description: "Tests greeting quality with multiple evaluators including LLM judge, length, and keyword checks",
-  template_variables: { "customer_name" => "Jennifer Martinez", "issue_category" => "refund request" },
-  expected_patterns: [
-    "Jennifer",
-    "refund",
-    "\\b(help|assist|support)\\b",  # Must contain help/assist/support
-    "^Hi\\s+\\w+"  # Must start with "Hi" followed by a name
-  ],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 80,
-      "weight" => 0.2,
-      "config" => {
-        "min_length" => 50,
-        "max_length" => 200,
-        "ideal_min" => 80,
-        "ideal_max" => 150
-      }
-    },
-    {
-      "evaluator_key" => "keyword_check",
-      "threshold" => 90,
-      "weight" => 0.3,
-      "config" => {
-        "required_keywords" => ["help", "refund"],
-        "forbidden_keywords" => ["unfortunately", "cannot", "unable"],
-        "case_sensitive" => false
-      }
-    },
-    {
-      "evaluator_key" => "gpt4_judge",
-      "threshold" => 85,
-      "weight" => 0.5,
-      "config" => {
-        "judge_model" => "gpt-4o",
-        "criteria" => ["helpfulness", "professionalism", "clarity", "tone"],
-        "custom_instructions" => "Evaluate if the greeting is warm, professional, and acknowledges the customer's refund request appropriately.",
-        "score_min" => 0,
-        "score_max" => 100
-      }
-    }
-  ],
-  tags: ["comprehensive", "quality", "critical"],
+  tags: [ "comprehensive", "quality", "critical" ],
+  enabled: true
+)
+
+# Add pattern match evaluator (binary mode)
+test_comprehensive_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: {
+    patterns: [
+      "Jennifer",
+      "refund",
+      "\\b(help|assist|support)\\b",  # Must contain help/assist/support
+      "^Hi\\s+\\w+"  # Must start with "Hi" followed by a name
+    ],
+    match_all: true
+  }
+)
+
+test_comprehensive_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+
+  config: {
+    "min_length" => 50,
+    "max_length" => 200
+  },
+  enabled: true
+)
+
+test_comprehensive_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+
+  config: {
+    "required_keywords" => [ "help", "refund" ],
+    "forbidden_keywords" => [ "unfortunately", "cannot", "unable" ],
+    "case_sensitive" => false
+  },
+  enabled: true
+)
+
+test_comprehensive_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+
+  config: {
+    "judge_model" => "gpt-4o",
+    "custom_instructions" => "Evaluate if the greeting is warm, professional, and acknowledges the customer's refund request appropriately. Consider helpfulness, professionalism, clarity, and tone."
+  },
   enabled: true
 )
 
@@ -325,53 +338,54 @@ test_comprehensive_quality = support_greeting_v3.prompt_tests.create!(
 test_email_format = email_summary_v1.prompt_tests.create!(
   name: "Email Summary Format Validation",
   description: "Validates email summary format with complex regex patterns",
-  template_variables: {
-    "email_thread" => "From: john@example.com\nSubject: Q4 Planning\n\nHi team, let's discuss Q4 goals..."
-  },
-  expected_patterns: [
-    "\\b(discuss|planning|goals?)\\b",  # Must mention discussion/planning/goals
-    "\\b(Q4|quarter|fourth quarter)\\b",  # Must reference Q4
-    "^[A-Z]",  # Must start with capital letter
-    "\\.$",  # Must end with period
-    "\\b\\d{1,2}\\s+(sentences?|points?)\\b"  # Should mention number of sentences/points
-  ],
-  expected_output: nil,
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.3 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 75,
-      "weight" => 0.25,
-      "config" => {
-        "min_length" => 100,
-        "max_length" => 400,
-        "ideal_min" => 150,
-        "ideal_max" => 300
-      }
-    },
-    {
-      "evaluator_key" => "format_check",
-      "threshold" => 80,
-      "weight" => 0.25,
-      "config" => {
-        "expected_format" => "plain",
-        "strict" => false
-      }
-    },
-    {
-      "evaluator_key" => "gpt4_judge",
-      "threshold" => 80,
-      "weight" => 0.5,
-      "config" => {
-        "judge_model" => "gpt-4o",
-        "criteria" => ["accuracy", "conciseness", "completeness"],
-        "custom_instructions" => "Evaluate if the summary captures the key points of the email thread concisely and accurately.",
-        "score_min" => 0,
-        "score_max" => 100
-      }
-    }
-  ],
-  tags: ["format", "validation", "email"],
+  tags: [ "format", "validation", "email" ],
+  enabled: true
+)
+
+# Add pattern match evaluator (binary mode)
+test_email_format.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: {
+    patterns: [
+      "\\b(discuss|planning|goals?)\\b",  # Must mention discussion/planning/goals
+      "\\b(Q4|quarter|fourth quarter)\\b",  # Must reference Q4
+      "^[A-Z]",  # Must start with capital letter
+      "\\.$",  # Must end with period
+      "\\b\\d{1,2}\\s+(sentences?|points?)\\b"  # Should mention number of sentences/points
+    ],
+    match_all: true
+  }
+)
+
+test_email_format.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+
+  config: {
+    "min_length" => 100,
+    "max_length" => 400
+  },
+  enabled: true
+)
+
+test_email_format.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FormatEvaluator",
+
+  config: {
+    "expected_format" => "plain",
+    "strict" => false
+  },
+  enabled: true
+)
+
+test_email_format.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+
+  config: {
+    "judge_model" => "gpt-4o",
+    "custom_instructions" => "Evaluate if the summary captures the key points of the email thread concisely and accurately. Consider accuracy, conciseness, and completeness."
+  },
   enabled: true
 )
 
@@ -379,54 +393,55 @@ test_email_format = email_summary_v1.prompt_tests.create!(
 test_code_review_quality = code_review_v1.prompt_tests.create!(
   name: "Code Review Quality Assessment",
   description: "Tests code review feedback quality with LLM judge and keyword validation",
-  template_variables: {
-    "language" => "ruby",
-    "code" => "def calculate_total(items)\n  items.map { |i| i[:price] }.sum\nend"
-  },
-  expected_patterns: [
-    "\\b(quality|readability|performance|best practice)\\b",  # Must mention quality aspects
-    "\\b(bug|edge case|error|exception)\\b",  # Must mention potential issues
-    "\\b(consider|suggest|recommend|improve)\\b",  # Must provide suggestions
-    "```ruby",  # Must include code block
-    "\\bsum\\b"  # Must reference the sum method
-  ],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.4 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 70,
-      "weight" => 0.15,
-      "config" => {
-        "min_length" => 200,
-        "max_length" => 1000,
-        "ideal_min" => 300,
-        "ideal_max" => 700
-      }
-    },
-    {
-      "evaluator_key" => "keyword_check",
-      "threshold" => 85,
-      "weight" => 0.25,
-      "config" => {
-        "required_keywords" => ["code", "quality", "readability"],
-        "forbidden_keywords" => ["terrible", "awful", "stupid"],
-        "case_sensitive" => false
-      }
-    },
-    {
-      "evaluator_key" => "gpt4_judge",
-      "threshold" => 90,
-      "weight" => 0.6,
-      "config" => {
-        "judge_model" => "gpt-4o",
-        "criteria" => ["helpfulness", "technical_accuracy", "professionalism", "completeness"],
-        "custom_instructions" => "Evaluate if the code review is constructive, technically accurate, and provides actionable feedback. The review should identify potential issues and suggest improvements.",
-        "score_min" => 0,
-        "score_max" => 100
-      }
-    }
-  ],
-  tags: ["code-review", "quality", "technical"],
+  tags: [ "code-review", "quality", "technical" ],
+  enabled: true
+)
+
+# Add pattern match evaluator (binary mode)
+test_code_review_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: {
+    patterns: [
+      "\\b(quality|readability|performance|best practice)\\b",  # Must mention quality aspects
+      "\\b(bug|edge case|error|exception)\\b",  # Must mention potential issues
+      "\\b(consider|suggest|recommend|improve)\\b",  # Must provide suggestions
+      "```ruby",  # Must include code block
+      "\\bsum\\b"  # Must reference the sum method
+    ],
+    match_all: true
+  }
+)
+
+test_code_review_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+
+  config: {
+    "min_length" => 200,
+    "max_length" => 1000
+  },
+  enabled: true
+)
+
+test_code_review_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+
+  config: {
+    "required_keywords" => [ "code", "quality", "readability" ],
+    "forbidden_keywords" => [ "terrible", "awful", "stupid" ],
+    "case_sensitive" => false
+  },
+  enabled: true
+)
+
+test_code_review_quality.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+
+  config: {
+    "judge_model" => "gpt-4o",
+    "custom_instructions" => "Evaluate if the code review is constructive, technically accurate, and provides actionable feedback. The review should identify potential issues and suggest improvements. Consider helpfulness, technical accuracy, professionalism, and completeness."
+  },
   enabled: true
 )
 
@@ -434,40 +449,53 @@ test_code_review_quality = code_review_v1.prompt_tests.create!(
 test_exact_match = support_greeting_v3.prompt_tests.create!(
   name: "Exact Output Validation",
   description: "Tests for exact expected output with additional quality checks",
-  template_variables: { "customer_name" => "Alice", "issue_category" => "password reset" },
-  expected_output: "Hi Alice! Thanks for contacting us. I'm here to help with your password reset question. What's going on?",
-  expected_patterns: [
-    "^Hi Alice!",
-    "password reset",
-    "What's going on\\?$"
-  ],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 90,
-      "weight" => 0.3,
-      "config" => {
-        "min_length" => 50,
-        "max_length" => 150,
-        "ideal_min" => 80,
-        "ideal_max" => 120
-      }
-    },
-    {
-      "evaluator_key" => "gpt4_judge",
-      "threshold" => 95,
-      "weight" => 0.7,
-      "config" => {
-        "judge_model" => "gpt-4o",
-        "criteria" => ["accuracy", "tone", "clarity"],
-        "custom_instructions" => "Evaluate if the greeting matches the expected format and tone for a password reset inquiry.",
-        "score_min" => 0,
-        "score_max" => 100
-      }
-    }
-  ],
-  tags: ["exact-match", "critical", "smoke"],
+  tags: [ "exact-match", "critical", "smoke" ],
+  enabled: true
+)
+
+# Add exact match evaluator (binary mode)
+test_exact_match.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::ExactMatchEvaluator",
+  enabled: true,
+  config: {
+    expected_text: "Hi Alice! Thanks for contacting us. I'm here to help with your password reset question. What's going on?",
+    case_sensitive: false,
+    trim_whitespace: true
+  }
+)
+
+# Add pattern match evaluator (binary mode)
+test_exact_match.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: {
+    patterns: [
+      "^Hi Alice!",
+      "password reset",
+      "What's going on\\?$"
+    ],
+    match_all: true
+  }
+)
+
+test_exact_match.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+
+  config: {
+    "min_length" => 50,
+    "max_length" => 150
+  },
+  enabled: true
+)
+
+test_exact_match.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+
+  config: {
+    "judge_model" => "gpt-4o",
+    "custom_instructions" => "Evaluate if the greeting matches the expected format and tone for a password reset inquiry. Consider accuracy, tone, and clarity."
+  },
   enabled: true
 )
 
@@ -475,68 +503,70 @@ test_exact_match = support_greeting_v3.prompt_tests.create!(
 test_technical_patterns = code_review_v1.prompt_tests.create!(
   name: "Technical Content Pattern Validation",
   description: "Validates technical content with complex regex patterns for code snippets, technical terms, and formatting",
-  template_variables: {
-    "language" => "python",
-    "code" => "def process_data(data):\n    return [x * 2 for x in data if x > 0]"
-  },
-  expected_patterns: [
-    "```python[\\s\\S]*```",  # Must contain Python code block
-    "\\b(list comprehension|comprehension)\\b",  # Must mention list comprehension
-    "\\b(filter|filtering|condition)\\b",  # Must mention filtering
-    "\\b(performance|efficiency|optimization)\\b",  # Must discuss performance
-    "\\b(edge case|edge-case|boundary)\\b",  # Must mention edge cases
-    "\\b(empty|None|null|zero)\\b",  # Must consider empty/null cases
-    "(?i)\\b(test|testing|unit test)\\b",  # Must mention testing (case insensitive)
-    "\\b[A-Z][a-z]+\\s+[a-z]+\\s+[a-z]+",  # Must have proper sentences
-    "\\d+",  # Must contain at least one number
-    "\\b(could|should|might|consider|recommend)\\b"  # Must use suggestive language
-  ],
   model_config: { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.4 },
-  evaluator_configs: [
-    {
-      "evaluator_key" => "length_check",
-      "threshold" => 75,
-      "weight" => 0.2,
-      "config" => {
-        "min_length" => 250,
-        "max_length" => 1200,
-        "ideal_min" => 400,
-        "ideal_max" => 800
-      }
-    },
-    {
-      "evaluator_key" => "keyword_check",
-      "threshold" => 80,
-      "weight" => 0.2,
-      "config" => {
-        "required_keywords" => ["comprehension", "performance", "edge case"],
-        "forbidden_keywords" => [],
-        "case_sensitive" => false
-      }
-    },
-    {
-      "evaluator_key" => "format_check",
-      "threshold" => 85,
-      "weight" => 0.1,
-      "config" => {
-        "expected_format" => "markdown",
-        "strict" => false
-      }
-    },
-    {
-      "evaluator_key" => "gpt4_judge",
-      "threshold" => 88,
-      "weight" => 0.5,
-      "config" => {
-        "judge_model" => "gpt-4o",
-        "criteria" => ["technical_accuracy", "completeness", "helpfulness", "professionalism"],
-        "custom_instructions" => "Evaluate the technical accuracy and completeness of the code review. It should identify the list comprehension, discuss performance implications, mention edge cases, and suggest testing.",
-        "score_min" => 0,
-        "score_max" => 100
-      }
-    }
-  ],
-  tags: ["technical", "complex-patterns", "code-review"],
+  tags: [ "technical", "complex-patterns", "code-review" ],
+  enabled: true
+)
+
+# Add pattern match evaluator (binary mode)
+test_technical_patterns.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::PatternMatchEvaluator",
+  enabled: true,
+  config: {
+    patterns: [
+      "```python[\\s\\S]*```",  # Must contain Python code block
+      "\\b(list comprehension|comprehension)\\b",  # Must mention list comprehension
+      "\\b(filter|filtering|condition)\\b",  # Must mention filtering
+      "\\b(performance|efficiency|optimization)\\b",  # Must discuss performance
+      "\\b(edge case|edge-case|boundary)\\b",  # Must mention edge cases
+      "\\b(empty|None|null|zero)\\b",  # Must consider empty/null cases
+      "(?i)\\b(test|testing|unit test)\\b",  # Must mention testing (case insensitive)
+      "\\b[A-Z][a-z]+\\s+[a-z]+\\s+[a-z]+",  # Must have proper sentences
+      "\\d+",  # Must contain at least one number
+      "\\b(could|should|might|consider|recommend)\\b"  # Must use suggestive language
+    ],
+    match_all: true
+  }
+)
+
+test_technical_patterns.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
+
+  config: {
+    "min_length" => 250,
+    "max_length" => 1200
+  },
+  enabled: true
+)
+
+test_technical_patterns.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+
+  config: {
+    "required_keywords" => [ "comprehension", "performance", "edge case" ],
+    "forbidden_keywords" => [],
+    "case_sensitive" => false
+  },
+  enabled: true
+)
+
+test_technical_patterns.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FormatEvaluator",
+
+  config: {
+    "expected_format" => "markdown",
+    "strict" => false
+  },
+  enabled: true
+)
+
+test_technical_patterns.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+
+  config: {
+    "judge_model" => "gpt-4o",
+    "custom_instructions" => "Evaluate the technical accuracy and completeness of the code review. It should identify the list comprehension, discuss performance implications, mention edge cases, and suggest testing. Consider technical accuracy, completeness, helpfulness, and professionalism."
+  },
   enabled: true
 )
 
@@ -650,46 +680,47 @@ puts "  Creating sample evaluations..."
 successful_responses = PromptTracker::LlmResponse.successful.limit(5)
 
 successful_responses.each_with_index do |response, i|
-  # Human evaluation
+  # Keyword evaluation
+  score = rand(70..100)
   response.evaluations.create!(
-    score: rand(3.5..5.0).round(1),
-    score_max: 5,
-    criteria_scores: {
-      "helpfulness" => rand(4..5),
-      "tone" => rand(3..5),
-      "accuracy" => rand(4..5),
-      "conciseness" => rand(3..5)
-    },
-    evaluator_type: "human",
-    evaluator_id: "manager@example.com",
-    feedback: ["Great response!", "Very helpful", "Could be more concise", "Perfect tone"][i % 4]
+    score: score,
+    score_max: 100,
+    passed: score >= 80,
+    evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+    feedback: [ "Great response!", "Very helpful", "Could be more concise", "Perfect tone" ][i % 4],
+    metadata: {
+      "required_found" => rand(2..3),
+      "forbidden_found" => 0,
+      "total_keywords" => 3
+    }
   )
 
-  # Automated evaluation
+  # Length evaluation
+  score = rand(70..95)
   response.evaluations.create!(
-    score: rand(70..95),
+    score: score,
     score_max: 100,
-    evaluator_type: "automated",
-    evaluator_id: "sentiment_analyzer_v1",
+    passed: score >= 80,
+    evaluator_type: "PromptTracker::Evaluators::LengthEvaluator",
     metadata: {
-      "confidence" => rand(0.8..0.99).round(2),
-      "processing_time_ms" => rand(50..200)
+      "actual_length" => rand(80..150),
+      "min_length" => 50,
+      "max_length" => 200
     }
   )
 
   # LLM judge evaluation (for some responses)
   if i.even?
+    score = rand(70..95)
     response.evaluations.create!(
-      score: rand(3.5..4.8).round(1),
-      score_max: 5,
-      criteria_scores: {
-        "helpfulness" => rand(4..5),
-        "professionalism" => rand(4..5)
-      },
-      evaluator_type: "llm_judge",
-      evaluator_id: "gpt-4o",
+      score: score,
+      score_max: 100,
+      passed: score >= 80,
+      evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
       feedback: "The response is helpful and maintains a professional yet friendly tone.",
       metadata: {
+        "judge_model" => "gpt-4o",
+        "custom_instructions" => "Evaluate helpfulness and professionalism",
         "reasoning" => "Good balance of professionalism and warmth",
         "evaluation_cost_usd" => 0.0002
       }
@@ -747,8 +778,8 @@ puts "  Creating A/B test responses..."
 # Variant A responses (current version)
 15.times do |i|
   response = support_greeting_v3.llm_responses.create!(
-    rendered_prompt: "Hi #{['Alice', 'Bob', 'Charlie'][i % 3]}! Thanks for contacting us. I'm here to help with your billing question. What's going on?",
-    variables_used: { "customer_name" => ['Alice', 'Bob', 'Charlie'][i % 3], "issue_category" => "billing" },
+    rendered_prompt: "Hi #{[ 'Alice', 'Bob', 'Charlie' ][i % 3]}! Thanks for contacting us. I'm here to help with your billing question. What's going on?",
+    variables_used: { "customer_name" => [ "Alice", "Bob", "Charlie" ][i % 3], "issue_category" => "billing" },
     provider: "openai",
     model: "gpt-4o",
     user_id: "ab_test_user_a_#{i + 1}",
@@ -770,18 +801,19 @@ puts "  Creating A/B test responses..."
 
   # Add evaluation
   response.evaluations.create!(
-    score: rand(4.0..4.8).round(1),
-    score_max: 5,
-    evaluator_type: "human",
-    evaluator_id: "evaluator@example.com"
+    score: rand(80..95),
+    score_max: 100,
+    passed: rand > 0.2,  # 80% pass rate
+    evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+    metadata: { "judge_model" => "gpt-4o" }
   )
 end
 
 # Variant B responses (casual version)
 8.times do |i|
   response = support_greeting_v4.llm_responses.create!(
-    rendered_prompt: "Hey #{['Dave', 'Eve', 'Frank'][i % 3]}! What's up with billing?",
-    variables_used: { "customer_name" => ['Dave', 'Eve', 'Frank'][i % 3], "issue_category" => "billing" },
+    rendered_prompt: "Hey #{[ 'Dave', 'Eve', 'Frank' ][i % 3]}! What's up with billing?",
+    variables_used: { "customer_name" => [ "Dave", "Eve", "Frank" ][i % 3], "issue_category" => "billing" },
     provider: "openai",
     model: "gpt-4o",
     user_id: "ab_test_user_b_#{i + 1}",
@@ -803,10 +835,11 @@ end
 
   # Add evaluation
   response.evaluations.create!(
-    score: rand(3.8..4.5).round(1),
-    score_max: 5,
-    evaluator_type: "human",
-    evaluator_id: "evaluator@example.com"
+    score: rand(75..90),
+    score_max: 100,
+    passed: rand > 0.3,  # 70% pass rate
+    evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+    metadata: { "judge_model" => "gpt-4o" }
   )
 end
 
@@ -856,9 +889,12 @@ puts "  - #{PromptTracker::LlmResponse.count} LLM responses"
 puts "    - #{PromptTracker::LlmResponse.successful.count} successful"
 puts "    - #{PromptTracker::LlmResponse.failed.count} failed"
 puts "  - #{PromptTracker::Evaluation.count} evaluations"
-puts "    - #{PromptTracker::Evaluation.by_humans.count} human"
-puts "    - #{PromptTracker::Evaluation.automated.count} automated"
-puts "    - #{PromptTracker::Evaluation.by_llm_judge.count} LLM judge"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%LlmJudgeEvaluator").count} LLM judge"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%KeywordEvaluator").count} keyword"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%LengthEvaluator").count} length"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%PatternMatchEvaluator").count} pattern match"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%ExactMatchEvaluator").count} exact match"
+puts "    - #{PromptTracker::Evaluation.where("evaluator_type LIKE ?", "%FormatEvaluator").count} format"
 puts "  - #{PromptTracker::AbTest.count} A/B tests"
 puts "    - #{PromptTracker::AbTest.draft.count} draft"
 puts "    - #{PromptTracker::AbTest.running.count} running"

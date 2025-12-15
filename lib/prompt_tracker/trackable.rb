@@ -66,12 +66,17 @@ module PromptTracker
     # @raise [LlmCallService::NoBlockGivenError] if no block provided
     #
     # @example Basic usage
-    #   result = track_llm_call(
-    #     "greeting",
-    #     variables: { name: "John" },
-    #     provider: "openai",
-    #     model: "gpt-4"
-    #   ) { |prompt| call_openai(prompt) }
+    # result = track_llm_call(
+    #   "commercial_agent",
+    #   variables: { product_description: "Amazon Echo", message: "Can I order on amazon with this ?"},
+    #   provider: "openai",
+    #   model: "gpt-4"
+    # ) do
+    #   |prompt|
+    #   OpenAI::Client.new.chat(
+    #     messages: [{ role: "user", content: prompt }]
+    #   )
+    # end
     #
     # @example With user context
     #   result = track_llm_call(
@@ -83,6 +88,21 @@ module PromptTracker
     #     session_id: session.id
     #   ) { |prompt| call_openai(prompt) }
     #
+    # example :
+    # result = PromptTracker::LlmCallService.track(
+    #   prompt_name: "customer_success",
+    #   variables: { product_description: "Amazon Echo", message: "Can I order on amazon with this ?" },
+    #   provider: "openai",
+    #   model: "gpt-4"
+    # ) do |prompt|
+    #   response = PromptTracker::LlmClientService.call(
+    #     provider: "openai",
+    #     model: "gpt-4",
+    #     prompt: prompt,
+    #     temperature: 0.7
+    #   )
+    #   response[:text]  # Just return the text string
+    # end
     def track_llm_call(prompt_name, variables: {}, provider:, model:, version: nil,
                        user_id: nil, session_id: nil, environment: nil, metadata: nil, &block)
       LlmCallService.track(
@@ -100,4 +120,3 @@ module PromptTracker
     end
   end
 end
-

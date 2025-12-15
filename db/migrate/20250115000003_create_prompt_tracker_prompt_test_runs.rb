@@ -35,6 +35,6 @@ class CreatePromptTrackerPromptTestRuns < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_test_runs, :status
     add_index :prompt_tracker_prompt_test_runs, :passed
     add_index :prompt_tracker_prompt_test_runs, :created_at
-    add_index :prompt_tracker_prompt_test_runs, [:prompt_test_id, :created_at]
+    add_index :prompt_tracker_prompt_test_runs, [ :prompt_test_id, :created_at ]
   end
 end

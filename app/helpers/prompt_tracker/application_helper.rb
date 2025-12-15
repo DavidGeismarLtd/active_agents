@@ -55,15 +55,15 @@ module PromptTracker
     #   status_badge("active") # => "<span class='badge badge-success'>active</span>"
     def status_badge(status)
       color = case status.to_s
-              when "active" then "success"
-              when "deprecated" then "warning"
-              when "draft" then "secondary"
-              when "archived" then "dark"
-              when "pending" then "info"
-              when "completed" then "success"
-              when "failed" then "danger"
-              else "secondary"
-              end
+      when "active" then "success"
+      when "deprecated" then "warning"
+      when "draft" then "secondary"
+      when "archived" then "dark"
+      when "pending" then "info"
+      when "completed" then "success"
+      when "failed" then "danger"
+      else "secondary"
+      end
 
       content_tag(:span, status, class: "badge badge-#{color}")
     end
@@ -82,13 +82,13 @@ module PromptTracker
       percentage = ((score - min) / (max - min) * 100).round
       color = if percentage >= 80
                 "success"
-              elsif percentage >= 60
+      elsif percentage >= 60
                 "primary"
-              elsif percentage >= 40
+      elsif percentage >= 40
                 "warning"
-              else
+      else
                 "danger"
-              end
+      end
 
       content_tag(:span, score.round(2), class: "badge badge-#{color}")
     end
@@ -109,29 +109,7 @@ module PromptTracker
       end
     end
 
-    # Get badge for source
-    #
-    # @param source [String] the source value (file/web_ui/api)
-    # @return [String] HTML badge
-    # @example
-    #   source_badge("file") # => "<span class='badge badge-primary'>📄 file</span>"
-    def source_badge(source)
-      icon = case source.to_s
-             when "file" then "📄"
-             when "web_ui" then "🌐"
-             when "api" then "🔌"
-             else "❓"
-             end
 
-      color = case source.to_s
-              when "file" then "primary"
-              when "web_ui" then "info"
-              when "api" then "secondary"
-              else "secondary"
-              end
-
-      content_tag(:span, "#{icon} #{source}", class: "badge badge-#{color}")
-    end
 
     # Format percentage
     #
@@ -192,6 +170,102 @@ module PromptTracker
       return "N/A" if time.nil?
 
       time_ago_in_words(time) + " ago"
+    end
+
+    # Check if a provider has an API key configured
+    #
+    # @param provider [String] the provider name (openai, anthropic, google, azure)
+    # @return [Boolean] true if API key is present
+    # @example
+    #   provider_api_key_present?("openai") # => true
+    def provider_api_key_present?(provider)
+      case provider.to_s.downcase
+      when "openai"
+        ENV["OPENAI_API_KEY"].present?
+      when "anthropic"
+        ENV["ANTHROPIC_API_KEY"].present?
+      when "google"
+        ENV["GOOGLE_API_KEY"].present?
+      when "azure"
+        ENV["AZURE_OPENAI_API_KEY"].present?
+      else
+        false
+      end
+    end
+
+    # Get list of available providers (those with API keys configured)
+    #
+    # @return [Array<String>] list of provider names
+    # @example
+    #   available_providers # => ["openai", "anthropic"]
+    def available_providers
+      %w[openai anthropic google azure].select { |provider| provider_api_key_present?(provider) }
+    end
+
+    # Get models for a specific provider
+    #
+    # @param provider [String] the provider name
+    # @return [Hash] hash of model_value => model_label
+    # @example
+    #   models_for_provider("openai") # => {"gpt-4" => "GPT-4", ...}
+    def models_for_provider(provider)
+      case provider.to_s.downcase
+      when "openai"
+        {
+          "gpt-4" => "GPT-4",
+          "gpt-4-turbo" => "GPT-4 Turbo",
+          "gpt-3.5-turbo" => "GPT-3.5 Turbo"
+        }
+      when "anthropic"
+        {
+          "claude-3-opus" => "Claude 3 Opus",
+          "claude-3-sonnet" => "Claude 3 Sonnet",
+          "claude-3-haiku" => "Claude 3 Haiku"
+        }
+      when "google"
+        {
+          "gemini-pro" => "Gemini Pro",
+          "gemini-ultra" => "Gemini Ultra"
+        }
+      when "azure"
+        {
+          "gpt-4" => "GPT-4",
+          "gpt-35-turbo" => "GPT-3.5 Turbo"
+        }
+      else
+        {}
+      end
+    end
+
+    # Highlight variable values in rendered prompt
+    #
+    # @param rendered_prompt [String] the rendered prompt text
+    # @param variables_used [Hash] the variables that were used
+    # @return [String] HTML with highlighted variables
+    # @example
+    #   highlight_variables("Hello John", { "name" => "John" })
+    #   # => "Hello <mark>John</mark>"
+    def highlight_variables(rendered_prompt, variables_used)
+      return rendered_prompt if variables_used.blank?
+
+      result = rendered_prompt.dup
+
+      # Sort variables by value length (longest first) to avoid partial replacements
+      sorted_vars = variables_used.sort_by { |_k, v| -v.to_s.length }
+
+      sorted_vars.each do |_key, value|
+        next if value.blank?
+
+        # Escape the value for regex and HTML
+        escaped_value = Regexp.escape(value.to_s)
+
+        # Replace all occurrences with highlighted version
+        result = result.gsub(/#{escaped_value}/) do |match|
+          "<mark style='background-color: #FEF3C7; padding: 2px 4px; border-radius: 3px; font-weight: 500;'>#{ERB::Util.html_escape(match)}</mark>"
+        end
+      end
+
+      result.html_safe
     end
   end
 end

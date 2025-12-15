@@ -131,7 +131,8 @@ module PromptTracker
 
         # Create new version
         version = prompt.prompt_versions.create!(
-          template: prompt_file.template,
+          system_prompt: prompt_file.system_prompt,
+          user_prompt: prompt_file.user_prompt,
           variables_schema: prompt_file.variables,
           model_config: prompt_file.model_config,
           notes: prompt_file.notes,
@@ -227,8 +228,11 @@ module PromptTracker
       active_version = prompt.active_version
       return true if active_version.nil?
 
-      # Check if template has changed
-      template_changed = active_version.template != prompt_file.template
+      # Check if user_prompt has changed
+      user_prompt_changed = active_version.user_prompt != prompt_file.user_prompt
+
+      # Check if system_prompt has changed
+      system_prompt_changed = active_version.system_prompt != prompt_file.system_prompt
 
       # Check if variables schema has changed
       variables_changed = active_version.variables_schema != prompt_file.variables
@@ -237,7 +241,7 @@ module PromptTracker
       config_changed = active_version.model_config != prompt_file.model_config
 
       # Create new version if any of these changed
-      template_changed || variables_changed || config_changed
+      user_prompt_changed || system_prompt_changed || variables_changed || config_changed
     end
   end
 end

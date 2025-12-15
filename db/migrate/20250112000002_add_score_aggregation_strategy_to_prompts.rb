@@ -2,18 +2,9 @@
 
 # Migration to add score aggregation strategy to prompts.
 #
-# This allows each prompt to define how multiple evaluation scores
-# should be combined into an overall score.
+# NOTE: This column is deprecated and no longer used.
+# Evaluations now use simple pass/fail logic instead of aggregated scores.
 #
-# Supported strategies:
-# - simple_average: Average all evaluation scores equally
-# - weighted_average: Use weights from evaluator_configs (default)
-# - minimum: Take the lowest score (all must pass)
-# - custom: Use custom business logic defined in the application
-#
-# Example:
-#   prompt.update!(score_aggregation_strategy: "weighted_average")
-#   # Now response.overall_score uses weighted average based on config weights
 class AddScoreAggregationStrategyToPrompts < ActiveRecord::Migration[7.2]
   def change
     add_column :prompt_tracker_prompts,
@@ -27,4 +18,3 @@ class AddScoreAggregationStrategyToPrompts < ActiveRecord::Migration[7.2]
               name: "index_prompts_on_aggregation_strategy"
   end
 end
-

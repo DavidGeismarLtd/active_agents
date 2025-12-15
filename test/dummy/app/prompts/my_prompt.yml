@@ -1,5 +1,5 @@
 name: my_prompt
-template: "Hello {{name}}!"
+user_prompt: "Hello {{name}}!"
 variables:
   - name: name
     type: string

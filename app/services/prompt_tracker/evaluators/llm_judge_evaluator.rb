@@ -5,19 +5,18 @@ module PromptTracker
     # Uses an LLM to evaluate another LLM's response.
     #
     # This evaluator sends the original prompt and response to a "judge" LLM
-    # and asks it to score the response based on specified criteria.
+    # and asks it to score the response based on custom instructions.
     #
-    # @example Evaluate with default criteria
+    # @example Evaluate with custom instructions
     #   evaluator = LlmJudgeEvaluator.new(llm_response, {
     #     judge_model: "gpt-4o",
-    #     criteria: ["accuracy", "helpfulness", "tone"]
+    #     custom_instructions: "Evaluate if the response is helpful and professional"
     #   })
     #   evaluation = evaluator.evaluate  # Uses RubyLLM with structured outputs
     #
-    # @example Custom evaluation prompt
+    # @example Custom evaluation with specific focus
     #   evaluator = LlmJudgeEvaluator.new(llm_response, {
     #     judge_model: "claude-3-5-sonnet-20241022",
-    #     criteria: ["technical_accuracy"],
     #     custom_instructions: "Focus on technical correctness for a senior developer audience"
     #   })
     #   evaluation = evaluator.evaluate
@@ -30,21 +29,33 @@ module PromptTracker
       # gpt-4 (non-turbo) does NOT support structured outputs
       DEFAULT_CONFIG = {
         judge_model: "gpt-4o",
-        criteria: %w[accuracy helpfulness tone],
-        score_min: 0,
-        score_max: 5,
-        custom_instructions: nil
+        custom_instructions: "Evaluate the quality and appropriateness of the response"
       }.freeze
 
-      # Default evaluation criteria descriptions
-      CRITERIA_DESCRIPTIONS = {
-        "accuracy" => "Is the response factually correct and accurate?",
-        "helpfulness" => "Is the response helpful and addresses the user's needs?",
-        "tone" => "Is the tone appropriate and professional?",
-        "clarity" => "Is the response clear and easy to understand?",
-        "completeness" => "Does the response fully address the question?",
-        "conciseness" => "Is the response concise without unnecessary information?"
-      }.freeze
+      # Parameter schema for form processing
+      def self.param_schema
+        {
+          judge_model: { type: :string },
+          custom_instructions: { type: :string },
+          threshold_score: { type: :integer }
+        }
+      end
+
+      # Process raw parameters from form based on schema
+      # Delegates to BaseEvaluator for consistency
+      def self.process_params(raw_params)
+        BaseEvaluator.process_params_with_schema(raw_params, param_schema)
+      end
+
+      # Metadata for registry auto-discovery
+      def self.metadata
+        {
+          name: "LLM Judge",
+          description: "Uses an LLM to evaluate response quality based on custom instructions",
+          icon: "robot",
+          default_config: DEFAULT_CONFIG
+        }
+      end
 
       def initialize(llm_response, config = {})
         @llm_response = llm_response
@@ -84,22 +95,31 @@ module PromptTracker
           parsed = response.content.with_indifferent_access
         end
 
+        # Calculate if passed (score >= threshold, default 70)
+        score = parsed[:overall_score]
+        threshold = config[:threshold_score] || 70
+        passed = score >= threshold
+
         # Create the evaluation
-        EvaluationService.create_llm_judge(
+        Evaluation.create!(
           llm_response: llm_response,
-          judge_model: config[:judge_model],
-          score: parsed[:overall_score],
-          score_min: config[:score_min],
-          score_max: config[:score_max],
-          criteria_scores: parsed[:criteria_scores],
+          evaluator_type: self.class.name,
+          evaluator_config_id: config[:evaluator_config_id],
+          score: score,
+          score_min: 0,
+          score_max: 100,
+          passed: passed,
           feedback: parsed[:feedback],
+          evaluation_context: config[:evaluation_context] || "tracked_call",
+          prompt_test_run_id: config[:prompt_test_run_id],
           metadata: {
             judge_model: config[:judge_model],
-            criteria: config[:criteria],
+            custom_instructions: config[:custom_instructions],
             judge_prompt: judge_prompt,
             raw_judge_response: use_mock_mode? ? "MOCK_RESPONSE" : response.raw.to_s,
             used_structured_output: true,
-            mock_mode: use_mock_mode?
+            mock_mode: use_mock_mode?,
+            threshold_score: threshold
           }
         )
       end
@@ -110,28 +130,13 @@ module PromptTracker
       #
       # @return [Class] a RubyLLM::Schema subclass
       def build_schema
-        LlmJudgeSchema.for_criteria(
-          criteria: config[:criteria],
-          score_min: config[:score_min],
-          score_max: config[:score_max]
-        )
+        LlmJudgeSchema.simple_schema
       end
 
       # Build the prompt to send to the judge LLM
       #
       # @return [String] the evaluation prompt
       def build_judge_prompt
-        criteria_list = config[:criteria].map do |criterion|
-          description = CRITERIA_DESCRIPTIONS[criterion] || "Evaluate #{criterion}"
-          "- #{criterion.capitalize}: #{description}"
-        end.join("\n")
-
-        custom_section = if config[:custom_instructions]
-          "\n\nAdditional Instructions:\n#{config[:custom_instructions]}"
-        else
-          ""
-        end
-
         <<~PROMPT
           You are an expert evaluator of AI-generated responses. Please evaluate the following LLM response.
 
@@ -141,14 +146,12 @@ module PromptTracker
           LLM RESPONSE TO EVALUATE:
           #{llm_response.response_text}
 
-          EVALUATION CRITERIA:
-          #{criteria_list}
-          #{custom_section}
+          EVALUATION INSTRUCTIONS:
+          #{config[:custom_instructions]}
 
           Please provide your evaluation with:
-          - overall_score: A number from #{config[:score_min]} to #{config[:score_max]}
-          - criteria_scores: A score for each criterion (#{config[:criteria].join(', ')})
-          - feedback: Detailed explanation of your scores
+          - overall_score: A number from 0 to 100
+          - feedback: Detailed explanation of your score
 
           Your response will be automatically structured as JSON.
         PROMPT
@@ -165,18 +168,11 @@ module PromptTracker
       #
       # @return [Hash] mock evaluation data
       def generate_mock_evaluation
-        # Generate realistic mock scores
-        overall_score = rand(config[:score_min]..config[:score_max])
-
-        # Generate criteria scores
-        criteria_scores = {}
-        config[:criteria].each do |criterion|
-          criteria_scores[criterion.to_sym] = rand(config[:score_min]..config[:score_max])
-        end
+        # Generate realistic mock scores (0-100)
+        overall_score = rand(0..100)
 
         {
           overall_score: overall_score,
-          criteria_scores: criteria_scores,
           feedback: "MOCK EVALUATION: This is a simulated evaluation. In production, this would be generated by #{config[:judge_model]}."
         }
       end

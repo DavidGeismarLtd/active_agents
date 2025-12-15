@@ -1,0 +1,147 @@
+<!-- Model Configuration Card -->
+<div class="card mb-3">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-gear"></i>
+      Model Configuration
+    </h5>
+  </div>
+  <div class="card-body">
+    <div class="mb-3">
+      <label for="model-provider" class="form-label">Provider</label>
+      <select
+        id="model-provider"
+        class="form-select"
+        data-playground-target="modelProvider"
+        data-action="change->playground#onModelConfigChange"
+      >
+        <option value="openai" <%= 'selected' if @version&.model_config&.dig('provider') == 'openai' || @version&.model_config&.dig('provider').nil? %>>OpenAI</option>
+        <option value="anthropic" <%= 'selected' if @version&.model_config&.dig('provider') == 'anthropic' %>>Anthropic</option>
+        <option value="google" <%= 'selected' if @version&.model_config&.dig('provider') == 'google' %>>Google</option>
+      </select>
+      <div class="form-text">LLM provider to use for API calls</div>
+    </div>
+
+    <div class="mb-3">
+      <label for="model-name" class="form-label">Model</label>
+      <input
+        type="text"
+        id="model-name"
+        class="form-control"
+        placeholder="e.g., gpt-4, claude-3-opus-20240229"
+        value="<%= @version&.model_config&.dig('model') || 'gpt-4' %>"
+        data-playground-target="modelName"
+        data-action="input->playground#onModelConfigChange"
+      >
+      <div class="form-text">
+        Model name (e.g., gpt-4, gpt-3.5-turbo, claude-3-opus-20240229)
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="model-temperature" class="form-label">
+        Temperature
+        <span class="badge bg-secondary" data-playground-target="temperatureBadge">
+          <%= @version&.model_config&.dig('temperature') || 0.7 %>
+        </span>
+      </label>
+      <input
+        type="range"
+        id="model-temperature"
+        class="form-range"
+        min="0"
+        max="2"
+        step="0.1"
+        value="<%= @version&.model_config&.dig('temperature') || 0.7 %>"
+        data-playground-target="modelTemperature"
+        data-action="input->playground#onModelConfigChange"
+      >
+      <div class="form-text">
+        Controls randomness (0 = deterministic, 2 = very random)
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="model-max-tokens" class="form-label">Max Tokens (Optional)</label>
+      <input
+        type="number"
+        id="model-max-tokens"
+        class="form-control"
+        placeholder="Leave empty for default"
+        value="<%= @version&.model_config&.dig('max_tokens') %>"
+        data-playground-target="modelMaxTokens"
+        data-action="input->playground#onModelConfigChange"
+      >
+      <div class="form-text">
+        Maximum tokens to generate (leave empty for provider default)
+      </div>
+    </div>
+
+    <!-- Collapsible advanced options -->
+    <div class="accordion" id="advancedModelConfig">
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedOptions">
+            <i class="bi bi-sliders me-2"></i>
+            Advanced Options
+          </button>
+        </h2>
+        <div id="advancedOptions" class="accordion-collapse collapse" data-bs-parent="#advancedModelConfig">
+          <div class="accordion-body">
+            <div class="mb-3">
+              <label for="model-top-p" class="form-label">Top P (Optional)</label>
+              <input
+                type="number"
+                id="model-top-p"
+                class="form-control"
+                placeholder="e.g., 0.9"
+                step="0.1"
+                min="0"
+                max="1"
+                value="<%= @version&.model_config&.dig('top_p') %>"
+                data-playground-target="modelTopP"
+                data-action="input->playground#onModelConfigChange"
+              >
+              <div class="form-text">Nucleus sampling parameter</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="model-frequency-penalty" class="form-label">Frequency Penalty (Optional)</label>
+              <input
+                type="number"
+                id="model-frequency-penalty"
+                class="form-control"
+                placeholder="e.g., 0.5"
+                step="0.1"
+                min="-2"
+                max="2"
+                value="<%= @version&.model_config&.dig('frequency_penalty') %>"
+                data-playground-target="modelFrequencyPenalty"
+                data-action="input->playground#onModelConfigChange"
+              >
+              <div class="form-text">Penalize repeated tokens</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="model-presence-penalty" class="form-label">Presence Penalty (Optional)</label>
+              <input
+                type="number"
+                id="model-presence-penalty"
+                class="form-control"
+                placeholder="e.g., 0.5"
+                step="0.1"
+                min="-2"
+                max="2"
+                value="<%= @version&.model_config&.dig('presence_penalty') %>"
+                data-playground-target="modelPresencePenalty"
+                data-action="input->playground#onModelConfigChange"
+              >
+              <div class="form-text">Penalize new topics</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

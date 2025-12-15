@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PromptTracker - LLM Prompt Management & Analytics</title>
+  <title>PromptTracker - LLM Prompt Management & Testing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Bootstrap CSS and Icons from asset pipeline -->
-  <%= stylesheet_link_tag "bootstrap.min", media: "all" %>
-  <%= stylesheet_link_tag "bootstrap-icons", media: "all" %>
+  <!-- Bootstrap CSS and Icons from CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
 
   <%= stylesheet_link_tag "prompt_tracker/application", media: "all" %>
@@ -35,6 +35,19 @@
       const savedTheme = localStorage.getItem('pt-theme') || 'light';
       document.documentElement.setAttribute('data-theme', savedTheme);
     })();
+
+    // Chart.js instance registry for cleanup on Turbo navigation
+    window.chartInstances = window.chartInstances || {};
+
+    // Destroy all charts before Turbo cache
+    document.addEventListener('turbo:before-cache', function() {
+      Object.values(window.chartInstances).forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') {
+          chart.destroy();
+        }
+      });
+      window.chartInstances = {};
+    });
 
     // Set Chart.js defaults to match PromptTracker design system
     document.addEventListener('DOMContentLoaded', function() {
@@ -106,7 +119,7 @@
   <!-- Navigation -->
   <nav class="navbar navbar-expand-lg navbar-dark pt-navbar">
     <div class="container-fluid">
-      <%= link_to main_app.prompt_tracker_path, class: "navbar-brand pt-brand" do %>
+      <%= link_to root_path, class: "navbar-brand pt-brand" do %>
         <span class="pt-logo-cursor">&gt;</span>
         <span class="pt-logo-prompt">Prompt</span><span class="pt-logo-tracker">Tracker</span>
       <% end %>
@@ -117,30 +130,25 @@
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
+          <!-- Testing Section (Blue) -->
           <li class="nav-item">
-            <%= link_to "Prompts", prompts_path, class: "nav-link #{'active' if controller_name == 'prompts'}" %>
-          </li>
-          <li class="nav-item">
-            <%= link_to playground_path, class: "nav-link #{'active' if controller_name == 'playground'}" do %>
-              <i class="bi bi-play-circle"></i> Playground
+            <%= link_to testing_root_path, class: "nav-link #{'active' if controller_path.start_with?('prompt_tracker/testing')}" do %>
+              <i class="bi bi-check2-square"></i> Testing
             <% end %>
           </li>
+
+          <!-- Monitoring Section (Green) -->
           <li class="nav-item">
-            <%= link_to "Responses", llm_responses_path, class: "nav-link #{'active' if controller_name == 'llm_responses'}" %>
+            <%= link_to monitoring_root_path, class: "nav-link #{'active' if controller_path.start_with?('prompt_tracker/monitoring')} pt-nav-monitoring" do %>
+              <i class="bi bi-activity"></i> Monitoring
+            <% end %>
           </li>
-          <li class="nav-item">
-            <%= link_to "Evaluations", evaluations_path, class: "nav-link #{'active' if controller_name == 'evaluations'}" %>
-          </li>
-          <li class="nav-item">
-            <%= link_to "A/B Tests", ab_tests_path, class: "nav-link #{'active' if controller_name == 'ab_tests'}" %>
-          </li>
-          <li class="nav-item">
-            <%= link_to "Analytics", analytics_root_path, class: "nav-link #{'active' if controller_path.start_with?('analytics')}" %>
-          </li>
+
+
         </ul>
 
         <!-- Search form -->
-        <form class="d-flex" role="search" action="<%= prompts_path %>" method="get">
+        <form class="d-flex" role="search" action="<%= testing_root_path %>" method="get">
           <input class="form-control me-2" type="search" name="q" placeholder="Search prompts..." value="<%= params[:q] %>">
           <button class="btn btn-outline-primary" type="submit">
             <i class="bi bi-search"></i>
@@ -161,7 +169,13 @@
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <%= link_to "Home", main_app.prompt_tracker_path %>
+            <% if request.path.start_with?("/prompt_tracker/testing") %>
+              <%= link_to "Testing", testing_root_path %>
+            <% elsif request.path.start_with?("/prompt_tracker/monitoring") %>
+              <%= link_to "Monitoring", monitoring_root_path %>
+            <% else %>
+              <%= link_to "Home", root_path %>
+            <% end %>
           </li>
           <%= yield :breadcrumbs %>
         </ol>
@@ -170,7 +184,7 @@
   <% end %>
 
   <!-- Flash messages -->
-  <div class="container-fluid mt-3">
+  <div class="container-fluid mt-3" id="flash-messages">
     <% flash.each do |type, message| %>
       <div class="alert alert-<%= type == 'notice' ? 'success' : 'danger' %> alert-dismissible fade show" role="alert">
         <%= message %>
@@ -193,7 +207,7 @@
             <span class="pt-footer-brand">
               <span class="pt-logo-prompt">Prompt</span><span class="pt-logo-tracker">Tracker</span>
             </span>
-            <span class="pt-footer-tagline">Developer tool meets analytics lab</span>
+            <span class="pt-footer-tagline">LLM Prompt Testing & Monitoring</span>
           </p>
         </div>
         <div class="col-md-6 text-end">

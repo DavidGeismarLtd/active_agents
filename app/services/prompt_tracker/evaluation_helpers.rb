@@ -212,7 +212,7 @@ module PromptTracker
       distribution = Hash.new(0)
 
       normalized_scores.each do |score|
-        bucket_index = [(score / bucket_size).floor, buckets - 1].min
+        bucket_index = [ (score / bucket_size).floor, buckets - 1 ].min
         bucket_min = (bucket_index * bucket_size).round(1)
         bucket_max = ((bucket_index + 1) * bucket_size).round(1)
         bucket_key = "#{bucket_min}-#{bucket_max}"
@@ -241,4 +241,3 @@ module PromptTracker
     private_class_method :calculate_median
   end
 end
-

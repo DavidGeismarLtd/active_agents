@@ -1,0 +1,64 @@
+<!-- Evaluator Config Modals with z-index fix -->
+<% if test.evaluator_configs.any? %>
+  <div data-controller="modal-fix">
+    <div class="modal fade" id="evaluator-configs-modal-<%= test.id %>" tabindex="-1" aria-labelledby="evaluator-configs-modal-label-<%= test.id %>" aria-hidden="true" data-modal-fix-target="modal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="evaluator-configs-modal-label-<%= test.id %>">
+              <i class="bi bi-gear-fill"></i>
+              Evaluator Configurations for "<%= test.name %>"
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <% if test.evaluator_configs.any? %>
+              <% test.evaluator_configs.each_with_index do |evaluator_config, index| %>
+                <% template_name = evaluator_config.evaluator_key.to_s %>
+                <% template_path = "prompt_tracker/evaluator_configs/templates/#{template_name}" %>
+                
+                <div class="<%= 'mb-4 pb-3 border-bottom' if index < test.evaluator_configs.count - 1 %>">
+                  <% if lookup_context.exists?(template_path, [], true) %>
+                    <%= render partial: template_path, locals: { config: evaluator_config.config } %>
+                  <% else %>
+                    <!-- Fallback: Generic Config Display -->
+                    <div class="evaluator-display">
+                      <h6 class="mb-2">
+                        <i class="bi bi-gear"></i>
+                        <%= evaluator_config.evaluator_key.to_s.titleize %>
+                      </h6>
+                      <% if evaluator_config.config.present? && evaluator_config.config.any? %>
+                        <% evaluator_config.config.each do |key, value| %>
+                          <div class="mb-2">
+                            <strong><%= key.to_s.titleize %>:</strong>
+                            <div class="mt-1 p-2 bg-light rounded">
+                              <% if value.is_a?(Array) %>
+                                <% value.each do |item| %>
+                                  <span class="badge bg-secondary me-1"><%= item %></span>
+                                <% end %>
+                              <% else %>
+                                <%= value %>
+                              <% end %>
+                            </div>
+                          </div>
+                        <% end %>
+                      <% else %>
+                        <p class="text-muted mb-0">No configuration parameters</p>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="text-muted">No evaluator configurations for this test.</p>
+            <% end %>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+

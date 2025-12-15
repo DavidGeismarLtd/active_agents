@@ -1,0 +1,224 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item">Documentation</li>
+  <li class="breadcrumb-item active" aria-current="page">Tracking LLM Calls</li>
+<% end %>
+
+<div class="docs-tracking">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
+    <h1 style="color: #1E40AF; margin: 0;">
+      <i class="bi bi-book"></i> How to Track LLM Calls
+    </h1>
+    <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+      Learn how to integrate PromptTracker into your Ruby code to monitor production LLM calls
+    </p>
+  </div>
+
+  <%= render "prompt_tracker/shared/tracking_code_example", prompt: @prompt, version: @version %>
+
+  <!-- General Documentation -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="mb-0"><i class="bi bi-1-circle"></i> Basic Usage</h3>
+    </div>
+    <div class="card-body">
+      <p>The <code>PromptTracker::LlmCallService.track</code> method wraps your LLM API calls and automatically logs them for monitoring and evaluation.</p>
+
+      <pre><code class="language-ruby">result = PromptTracker::LlmCallService.track(
+  prompt_name: "your_prompt_name",  # Required: matches the prompt in PromptTracker
+  variables: { name: "John" },      # Required: variables for template rendering
+  provider: "openai",               # Required: "openai", "anthropic", "google", etc.
+  model: "gpt-4o"                   # Required: model identifier
+) do |rendered_prompt|
+  # Your LLM API call goes here
+  # Return the response text
+  your_llm_client.call(rendered_prompt)
+end
+
+# Access the results
+result[:response_text]  # The LLM's response
+result[:tracking_id]    # Unique tracking ID
+result[:llm_response]   # Full LlmResponse record
+</code></pre>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="mb-0"><i class="bi bi-2-circle"></i> Optional Parameters</h3>
+    </div>
+    <div class="card-body">
+      <pre><code class="language-ruby">result = PromptTracker::LlmCallService.track(
+  prompt_name: "customer_support",
+  variables: { query: "How do I reset my password?" },
+  provider: "openai",
+  model: "gpt-4o",
+
+  # Optional parameters:
+  user_id: current_user.id,           # Track which user made the request
+  session_id: session.id,             # Track the session
+  environment: Rails.env.to_s,        # "production", "staging", "development"
+  version: 2,                         # Use specific version (default: active version)
+  metadata: {                         # Custom metadata
+    ip_address: request.remote_ip,
+    user_agent: request.user_agent,
+    feature_flag: "new_ui_v2"
+  }
+) do |rendered_prompt|
+  # Your LLM call
+end
+</code></pre>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="mb-0"><i class="bi bi-3-circle"></i> With Auto-Evaluators</h3>
+    </div>
+    <div class="card-body">
+      <p>If you've configured auto-evaluators for your prompt version (in the Monitoring section), they will automatically run when you track a call:</p>
+
+      <pre><code class="language-ruby">result = PromptTracker::LlmCallService.track(
+  prompt_name: "customer_support",
+  variables: { query: "refund request" },
+  provider: "openai",
+  model: "gpt-4o"
+) do |rendered_prompt|
+  # Your LLM call
+  client.chat(rendered_prompt)
+end
+
+# Check evaluation results
+response = result[:llm_response]
+response.evaluations.each do |evaluation|
+  puts "#{evaluation.evaluator_type}: #{evaluation.score}/100"
+  puts "Passed: #{evaluation.passed?}"
+end
+</code></pre>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="mb-0"><i class="bi bi-4-circle"></i> Error Handling</h3>
+    </div>
+    <div class="card-body">
+      <pre><code class="language-ruby">begin
+  result = PromptTracker::LlmCallService.track(
+    prompt_name: "customer_support",
+    variables: { query: "help" },
+    provider: "openai",
+    model: "gpt-4o"
+  ) do |rendered_prompt|
+    # Your LLM call that might fail
+    client.chat(rendered_prompt)
+  end
+rescue PromptTracker::LlmCallService::PromptNotFoundError => e
+  # Prompt doesn't exist in PromptTracker
+  Rails.logger.error("Prompt not found: #{e.message}")
+  "Sorry, I'm having trouble processing your request."
+rescue PromptTracker::LlmCallService::TemplateRenderError => e
+  # Template rendering failed (missing variables, syntax error, etc.)
+  Rails.logger.error("Template error: #{e.message}")
+  "Sorry, I'm having trouble processing your request."
+rescue StandardError => e
+  # LLM API call failed
+  Rails.logger.error("LLM call failed: #{e.message}")
+  "Sorry, I'm having trouble processing your request."
+end
+</code></pre>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="mb-0"><i class="bi bi-5-circle"></i> Common Patterns</h3>
+    </div>
+    <div class="card-body">
+      <h5>Pattern 1: Controller Action</h5>
+      <pre><code class="language-ruby">class SupportController < ApplicationController
+  def ask
+    result = PromptTracker::LlmCallService.track(
+      prompt_name: "customer_support",
+      variables: { query: params[:query] },
+      provider: "openai",
+      model: "gpt-4o",
+      user_id: current_user&.id,
+      environment: Rails.env.to_s
+    ) do |rendered_prompt|
+      openai_client.chat(rendered_prompt)
+    end
+
+    render json: { answer: result[:response_text] }
+  end
+end
+</code></pre>
+
+      <h5 class="mt-4">Pattern 2: Background Job</h5>
+      <pre><code class="language-ruby">class GenerateReportJob < ApplicationJob
+  def perform(user_id, data)
+    result = PromptTracker::LlmCallService.track(
+      prompt_name: "report_generator",
+      variables: { data: data.to_json },
+      provider: "openai",
+      model: "gpt-4o",
+      user_id: user_id,
+      environment: Rails.env.to_s,
+      metadata: { job_id: job_id }
+    ) do |rendered_prompt|
+      openai_client.chat(rendered_prompt)
+    end
+
+    # Save the report
+    Report.create!(user_id: user_id, content: result[:response_text])
+  end
+end
+</code></pre>
+
+      <h5 class="mt-4">Pattern 3: Service Object</h5>
+      <pre><code class="language-ruby">class CustomerSupportService
+  def initialize(user)
+    @user = user
+  end
+
+  def answer_query(query)
+    result = PromptTracker::LlmCallService.track(
+      prompt_name: "customer_support",
+      variables: {
+        query: query,
+        user_name: @user.name,
+        account_type: @user.account_type
+      },
+      provider: "openai",
+      model: "gpt-4o",
+      user_id: @user.id,
+      environment: Rails.env.to_s
+    ) do |rendered_prompt|
+      llm_client.chat(rendered_prompt)
+    end
+
+    result[:response_text]
+  end
+end
+</code></pre>
+    </div>
+  </div>
+
+  <div class="alert alert-success">
+    <h5><i class="bi bi-check-circle"></i> Next Steps</h5>
+    <ul class="mb-0">
+      <li>Configure auto-evaluators in the Monitoring section to automatically evaluate production calls</li>
+      <li>View tracked calls and their evaluations in the Monitoring dashboard</li>
+      <li>Set up alerts for failed evaluations or errors</li>
+      <li>Use the Analytics section to analyze trends and performance</li>
+    </ul>
+  </div>
+
+  <% if @prompt && @version %>
+    <div class="text-center mt-4">
+      <%= link_to monitoring_prompt_prompt_version_path(@prompt, @version), class: "btn btn-primary" do %>
+        <i class="bi bi-arrow-left"></i> Back to Monitoring
+      <% end %>
+    </div>
+  <% end %>
+</div>

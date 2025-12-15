@@ -1,0 +1,99 @@
+/* Pattern Match Form Styles */
+
+/* Pattern textarea with syntax-like styling */
+[data-pattern-match-form-target="patternsInput"] {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: #f8f9fa;
+}
+
+[data-pattern-match-form-target="patternsInput"]:focus {
+  background-color: #ffffff;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+/* Pattern count badge animation */
+[data-pattern-match-form-target="patternCount"] {
+  transition: all 0.3s ease;
+  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* Quick pattern buttons */
+#patternHelpers .btn {
+  transition: all 0.2s ease;
+}
+
+#patternHelpers .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#patternHelpers .btn:active {
+  transform: translateY(0);
+}
+
+/* Validation feedback animations */
+[data-pattern-match-form-target="validationFeedback"] .alert {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Collapsible sections */
+.collapse {
+  transition: height 0.3s ease;
+}
+
+/* Pattern helper card */
+#patternHelpers .card-body {
+  border-left: 3px solid #0d6efd;
+}
+
+/* Examples section */
+#patternExamples .card-body {
+  border-left: 3px solid #6c757d;
+}
+
+#patternExamples code {
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* Match all checkbox card */
+.form-check-input:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.form-check-input:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  #patternHelpers .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  [data-pattern-match-form-target="patternCount"] {
+    min-width: 70px;
+    font-size: 0.8rem;
+  }
+}
+

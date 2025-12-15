@@ -1,0 +1,54 @@
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0" style="color: #374151;">
+      <i class="bi bi-robot"></i> LLM Judge Evaluation Feedback
+    </h5>
+  </div>
+  <div class="card-body">
+    <% metadata = evaluation.metadata || {} %>
+
+    <!-- Judge Model Info -->
+    <div class="mb-3">
+      <p class="mb-1" style="color: #6B7280; font-size: 0.875rem;"><strong>Judge Model:</strong></p>
+      <code style="background-color: #F3F4F6; padding: 0.25rem 0.5rem; border-radius: 4px; color: #374151;"><%= metadata['judge_model'] || 'Unknown' %></code>
+      <% if metadata['mock_mode'] %>
+        <span class="badge bg-warning text-dark ms-2">MOCK MODE</span>
+      <% end %>
+    </div>
+
+    <!-- Custom Instructions -->
+    <% if metadata['custom_instructions'].present? %>
+      <div class="mb-3">
+        <p class="mb-1" style="color: #6B7280; font-size: 0.875rem;"><strong>Evaluation Instructions:</strong></p>
+        <div style="background-color: #F9FAFB; border-left: 4px solid #3B82F6; padding: 0.75rem 1rem; border-radius: 4px;">
+          <div style="color: #374151; font-size: 0.9rem;">
+            <%= simple_format(metadata['custom_instructions']) %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Judge Feedback -->
+    <% if evaluation.feedback.present? %>
+      <h6 style="color: #374151; margin-bottom: 1rem;">
+        <i class="bi bi-chat-left-text"></i> Detailed Feedback
+      </h6>
+      <div style="background-color: #FFFBEB; border: 1px solid #FCD34D; border-radius: 6px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="color: #78350F; line-height: 1.6;">
+          <%= simple_format(evaluation.feedback) %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if metadata['judge_prompt'].present? %>
+      <details class="mt-3">
+        <summary class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-code"></i> View Judge Prompt
+        </summary>
+        <div class="mt-2">
+          <pre class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;"><code><%= metadata['judge_prompt'] %></code></pre>
+        </div>
+      </details>
+    <% end %>
+  </div>
+</div>

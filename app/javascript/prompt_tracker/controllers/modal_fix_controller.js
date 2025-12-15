@@ -2,10 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Modal Fix Stimulus Controller
- * 
+ *
  * Fixes Bootstrap modal z-index issues by ensuring modals appear above backdrops.
  * Bootstrap creates backdrop AFTER modal in DOM, which can cause z-index conflicts.
- * 
+ *
  * Solution: Move modals to end of body and ensure proper DOM ordering.
  */
 export default class extends Controller {
@@ -63,4 +63,3 @@ export default class extends Controller {
     })
   }
 }
-

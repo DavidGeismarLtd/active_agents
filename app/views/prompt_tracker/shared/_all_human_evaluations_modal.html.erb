@@ -1,0 +1,53 @@
+<%# Reusable Modal to display all human evaluations %>
+<%# Parameters:
+  - record: The record with human evaluations (PromptTestRun or LlmResponse)
+  - context: 'testing' or 'monitoring' (for color scheme)
+  - title: Optional custom title
+%>
+
+<%
+  # Determine color scheme based on context
+  if context == 'testing'
+    header_bg = '#DBEAFE'
+    header_border = '#3B82F6'
+  else # monitoring
+    header_bg = '#D1FAE5'
+    header_border = '#10B981'
+  end
+  
+  # Determine title
+  if local_assigns[:title].present?
+    modal_title = title
+  elsif record.is_a?(PromptTracker::PromptTestRun)
+    modal_title = "All Human Evaluations for Test Run ##{record.id}"
+  else # LlmResponse
+    modal_title = "All Human Evaluations for Tracked Call ##{record.id}"
+  end
+%>
+
+<div class="modal fade"
+     id="all-human-evals-modal-<%= record.id %>"
+     tabindex="-1"
+     aria-labelledby="allHumanEvalsModalLabel-<%= record.id %>"
+     aria-hidden="true"
+     data-controller="modal-fix"
+     data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background-color: <%= header_bg %>; border-bottom: 2px solid <%= header_border %>;">
+        <h5 class="modal-title" id="allHumanEvalsModalLabel-<%= record.id %>">
+          <i class="bi bi-people-fill"></i>
+          <%= modal_title %>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="all-human-evals-modal-body-<%= record.id %>">
+        <%= render "prompt_tracker/shared/all_human_evaluations_modal_body", record: record, context: context %>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+

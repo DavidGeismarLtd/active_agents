@@ -662,7 +662,7 @@ end
 
 **Acceptance Criteria:**
 - Can run individual test
-- Can run entire test suite
+- Can run all tests for a prompt version
 - See real-time progress
 - View detailed results
 
@@ -685,9 +685,6 @@ bundle exec rails prompt_tracker:test:run PROMPT=customer_support_greeting
 
 # Run specific test
 bundle exec rails prompt_tracker:test:run TEST=greeting_premium_user
-
-# Run test suite
-bundle exec rails prompt_tracker:test:suite SUITE=smoke_tests
 
 # Run tests in CI
 bundle exec rails prompt_tracker:test:ci --format=junit --output=test-results/

@@ -1,0 +1,135 @@
+<!-- Template Examples Modal -->
+<div class="modal fade" id="templateExamplesModal" tabindex="-1" aria-labelledby="templateExamplesModalLabel" aria-hidden="true" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="templateExamplesModalLabel">
+          <i class="bi bi-lightbulb"></i> Template Examples
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="accordion" id="examplesAccordion">
+          <!-- Simple Variable Substitution Example -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example1">
+                Simple Variable Substitution
+              </button>
+            </h2>
+            <div id="example1" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+              <div class="accordion-body">
+                <pre class="bg-light p-3 rounded mb-2"><code>Hello {{ name }}! Welcome to {{ company }}.</code></pre>
+                <p class="mb-2"><strong>Variables:</strong> <code>name</code>, <code>company</code></p>
+                <button class="btn btn-sm btn-primary use-example-btn" data-template="Hello {{ name }}! Welcome to {{ company }}.">
+                  Use This Template
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Liquid Filters Example -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example2">
+                Text Formatting with Liquid Filters
+              </button>
+            </h2>
+            <div id="example2" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+              <div class="accordion-body">
+                <pre class="bg-light p-3 rounded mb-2"><code>Dear {{ customer_name | capitalize }},
+
+Thank you for contacting {{ company_name | upcase }} support.
+
+Issue: {{ issue_description | truncate: 100 }}</code></pre>
+                <p class="mb-2"><strong>Variables:</strong> <code>customer_name</code>, <code>company_name</code>, <code>issue_description</code></p>
+                <button class="btn btn-sm btn-primary use-example-btn" data-template="Dear {{ customer_name | capitalize }},&#10;&#10;Thank you for contacting {{ company_name | upcase }} support.&#10;&#10;Issue: {{ issue_description | truncate: 100 }}">
+                  Use This Template
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conditional Example -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example3">
+                Conditional Content (Liquid)
+              </button>
+            </h2>
+            <div id="example3" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+              <div class="accordion-body">
+                <pre class="bg-light p-3 rounded mb-2"><code>Hello {{ name }}!
+
+{% if premium %}
+You're a premium member - enjoy exclusive benefits!
+{% else %}
+Upgrade to premium for more features.
+{% endif %}
+
+Best regards,
+The Team</code></pre>
+                <p class="mb-2"><strong>Variables:</strong> <code>name</code>, <code>premium</code> (boolean)</p>
+                <button class="btn btn-sm btn-primary use-example-btn" data-template="Hello {{ name }}!&#10;&#10;{% if premium %}&#10;You're a premium member - enjoy exclusive benefits!&#10;{% else %}&#10;Upgrade to premium for more features.&#10;{% endif %}&#10;&#10;Best regards,&#10;The Team">
+                  Use This Template
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Loop Example -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example4">
+                Loops (Liquid)
+              </button>
+            </h2>
+            <div id="example4" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+              <div class="accordion-body">
+                <pre class="bg-light p-3 rounded mb-2"><code>Order Summary for {{ customer_name }}:
+
+{% for item in items %}
+- {{ item }}
+{% endfor %}
+
+Total items: {{ items.size }}</code></pre>
+                <p class="mb-2"><strong>Variables:</strong> <code>customer_name</code>, <code>items</code> (array)</p>
+                <button class="btn btn-sm btn-primary use-example-btn" data-template="Order Summary for {{ customer_name }}:&#10;&#10;{% for item in items %}&#10;- {{ item }}&#10;{% endfor %}&#10;&#10;Total items: {{ items.size }}">
+                  Use This Template
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Structured Prompt with Sections Example -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#example5">
+                Structured Prompt with Sections
+              </button>
+            </h2>
+            <div id="example5" class="accordion-collapse collapse" data-bs-parent="#examplesAccordion">
+              <div class="accordion-body">
+                <pre class="bg-light p-3 rounded mb-2"><code>#role
+You are an expert {{ domain }} consultant with deep knowledge in {{ specialty }}.
+
+#goal
+Help the user {{ task_description }}.
+
+#tone and style
+Be professional, clear, and {{ tone_preference }}.
+
+#format
+Provide your response as {{ output_format }}.</code></pre>
+                <p class="mb-2"><strong>Variables:</strong> <code>domain</code>, <code>specialty</code>, <code>task_description</code>, <code>tone_preference</code>, <code>output_format</code></p>
+                <button class="btn btn-sm btn-primary use-example-btn" data-template="#role&#10;You are an expert {{ domain }} consultant with deep knowledge in {{ specialty }}.&#10;&#10;#goal&#10;Help the user {{ task_description }}.&#10;&#10;#tone and style&#10;Be professional, clear, and {{ tone_preference }}.&#10;&#10;#format&#10;Provide your response as {{ output_format }}.">
+                  Use This Template
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

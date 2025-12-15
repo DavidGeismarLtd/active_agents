@@ -1,0 +1,29 @@
+<%# Stub form for custom_eval evaluator used in tests %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'custom_eval' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-gear"></i>
+  <strong>Custom Evaluator</strong>
+  <p class="mb-0 mt-1">Custom evaluator for testing purposes.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+<!-- Custom Config -->
+<div class="mb-3">
+  <label class="form-label">Custom Configuration</label>
+  <textarea name="<%= namespace %>[custom_config]"
+            class="form-control"
+            rows="3"
+            placeholder="Enter custom configuration..."><%= config['custom_config'] || config[:custom_config] || '' %></textarea>
+  <small class="form-text text-muted">
+    Custom configuration for the evaluator.
+  </small>
+</div>
+

@@ -29,7 +29,6 @@ module PromptTracker
   # Records all details about test execution including:
   # - Pass/fail status
   # - Evaluator results
-  # - Assertion results
   # - Performance metrics
   # - Error details
   #
@@ -45,7 +44,12 @@ module PromptTracker
     belongs_to :prompt_test, touch: true
     belongs_to :prompt_version
     belongs_to :llm_response, optional: true
-    belongs_to :prompt_test_suite_run, optional: true
+    belongs_to :dataset, optional: true, class_name: "PromptTracker::Dataset"
+    belongs_to :dataset_row, optional: true, class_name: "PromptTracker::DatasetRow"
+    has_many :evaluations, class_name: "PromptTracker::Evaluation", foreign_key: :prompt_test_run_id, dependent: :destroy
+    has_many :human_evaluations,
+             class_name: "PromptTracker::HumanEvaluation",
+             dependent: :destroy
 
     # Validations
     validates :status, presence: true
@@ -54,9 +58,9 @@ module PromptTracker
     # Scopes
     scope :passed, -> { where(passed: true) }
     scope :failed, -> { where(passed: false) }
-    scope :pending, -> { where(status: 'pending') }
-    scope :running, -> { where(status: 'running') }
-    scope :completed, -> { where(status: ['passed', 'failed', 'error']) }
+    scope :pending, -> { where(status: "pending") }
+    scope :running, -> { where(status: "running") }
+    scope :completed, -> { where(status: [ "passed", "failed", "error" ]) }
     scope :recent, -> { order(created_at: :desc) }
 
 
@@ -65,11 +69,11 @@ module PromptTracker
 
     # Status helpers
     def pending?
-      status == 'pending'
+      status == "pending"
     end
 
     def running?
-      status == 'running'
+      status == "running"
     end
 
     def completed?
@@ -77,11 +81,11 @@ module PromptTracker
     end
 
     def error?
-      status == 'error'
+      status == "error"
     end
 
     def skipped?
-      status == 'skipped'
+      status == "skipped"
     end
 
     # Get evaluator pass rate
@@ -92,39 +96,18 @@ module PromptTracker
       (passed_evaluators.to_f / total_evaluators * 100).round(2)
     end
 
-    # Get failed evaluator details
+    # Get failed evaluations
     #
-    # @return [Array<Hash>] array of failed evaluator results
-    def failed_evaluator_details
-      (evaluator_results || []).select { |r| !r['passed'] }
+    # @return [ActiveRecord::Relation] evaluations that failed
+    def failed_evaluations
+      evaluations.where(passed: false)
     end
 
-    # Get passed evaluator details
+    # Get passed evaluations
     #
-    # @return [Array<Hash>] array of passed evaluator results
-    def passed_evaluator_details
-      (evaluator_results || []).select { |r| r['passed'] }
-    end
-
-    # Get assertion failures
-    #
-    # @return [Array<String>] array of failed assertion messages
-    def assertion_failures
-      (assertion_results || {}).select { |_k, v| !v }.keys
-    end
-
-    # Get assertion successes
-    #
-    # @return [Array<String>] array of passed assertion names
-    def assertion_successes
-      (assertion_results || {}).select { |_k, v| v }.keys
-    end
-
-    # Check if all assertions passed
-    #
-    # @return [Boolean]
-    def all_assertions_passed?
-      assertion_failures.empty? && assertion_results.present?
+    # @return [ActiveRecord::Relation] evaluations that passed
+    def passed_evaluations
+      evaluations.where(passed: true)
     end
 
     # Check if all evaluators passed
@@ -132,6 +115,16 @@ module PromptTracker
     # @return [Boolean]
     def all_evaluators_passed?
       failed_evaluators.zero? && total_evaluators.positive?
+    end
+
+    # Calculate average score from all evaluations
+    # All scores are 0-100, so just average them
+    #
+    # @return [Float, nil] average score (0-100) or nil if no evaluations
+    def avg_score
+      return nil if evaluations.empty?
+
+      evaluations.average(:score)&.round(2)
     end
 
     private
@@ -142,11 +135,19 @@ module PromptTracker
     version = prompt_version
     prompt = version.prompt
 
+    # If this is the first run, remove the placeholder row
+    if test.prompt_test_runs.count == 1
+      broadcast_remove(
+        stream: "prompt_test_#{prompt_test_id}",
+        target: "no_runs_placeholder"
+      )
+    end
+
     # Update the recent runs table on the PromptTest#show page
     broadcast_prepend(
       stream: "prompt_test_#{prompt_test_id}",
       target: "recent_runs_tbody",
-      partial: "prompt_tracker/prompt_tests/test_run_row",
+      partial: "prompt_tracker/testing/prompt_tests/test_run_row",
       locals: { run: self }
     )
 
@@ -154,7 +155,7 @@ module PromptTracker
     broadcast_replace(
       stream: "prompt_test_#{prompt_test_id}",
       target: "test_status_card",
-      partial: "prompt_tracker/prompt_tests/test_status_card",
+      partial: "prompt_tracker/testing/prompt_tests/test_status_card",
       locals: { test: test }
     )
 
@@ -162,16 +163,32 @@ module PromptTracker
     broadcast_replace(
       stream: "prompt_version_#{version.id}",
       target: "test_row_#{test.id}",
-      partial: "prompt_tracker/prompt_tests/test_row",
+      partial: "prompt_tracker/testing/prompt_tests/test_row",
       locals: { test: test, prompt: prompt, version: version }
     )
 
-    # Update the overall status card on tests index page
+    # Update the accordion content (preserves open/closed state)
+    broadcast_replace(
+      stream: "prompt_version_#{version.id}",
+      target: "test-runs-content-#{test.id}",
+      partial: "prompt_tracker/testing/prompt_tests/test_runs_accordion_content",
+      locals: { test: test }
+    )
+
+    # Update the modals container to include new evaluation modals
     all_tests = version.prompt_tests.includes(:prompt_test_runs).order(created_at: :desc)
     broadcast_replace(
       stream: "prompt_version_#{version.id}",
+      target: "test-modals",
+      partial: "prompt_tracker/testing/prompt_versions/test_modals",
+      locals: { tests: all_tests, prompt: prompt, version: version }
+    )
+
+    # Update the overall status card on tests index page
+    broadcast_replace(
+      stream: "prompt_version_#{version.id}",
       target: "overall_status_card",
-      partial: "prompt_tracker/prompt_tests/overall_status_card",
+      partial: "prompt_tracker/testing/prompt_tests/overall_status_card",
       locals: { tests: all_tests }
     )
   end
@@ -186,7 +203,7 @@ module PromptTracker
     broadcast_replace(
       stream: "prompt_test_#{prompt_test_id}",
       target: "test_run_row_#{id}",
-      partial: "prompt_tracker/prompt_tests/test_run_row",
+      partial: "prompt_tracker/testing/prompt_tests/test_run_row",
       locals: { run: self }
     )
 
@@ -194,7 +211,7 @@ module PromptTracker
     broadcast_replace(
       stream: "prompt_test_#{prompt_test_id}",
       target: "test_status_card",
-      partial: "prompt_tracker/prompt_tests/test_status_card",
+      partial: "prompt_tracker/testing/prompt_tests/test_status_card",
       locals: { test: test }
     )
 
@@ -202,16 +219,40 @@ module PromptTracker
     broadcast_replace(
       stream: "prompt_version_#{version.id}",
       target: "test_row_#{test.id}",
-      partial: "prompt_tracker/prompt_tests/test_row",
+      partial: "prompt_tracker/testing/prompt_tests/test_row",
       locals: { test: test, prompt: prompt, version: version }
     )
 
-    # 4) Update the overall status card on tests index page
+    # 3b) Update the individual test run row on the prompt version page
+    broadcast_replace(
+      stream: "prompt_version_#{version.id}",
+      target: "test_run_row_#{id}",
+      partial: "prompt_tracker/testing/prompt_tests/test_run_row",
+      locals: { run: self }
+    )
+
+    # 4) Update the accordion content (preserves open/closed state)
+    broadcast_replace(
+      stream: "prompt_version_#{version.id}",
+      target: "test-runs-content-#{test.id}",
+      partial: "prompt_tracker/testing/prompt_tests/test_runs_accordion_content",
+      locals: { test: test }
+    )
+
+    # 5) Update the modals container to include updated evaluation modals
     all_tests = version.prompt_tests.includes(:prompt_test_runs).order(created_at: :desc)
     broadcast_replace(
       stream: "prompt_version_#{version.id}",
+      target: "test-modals",
+      partial: "prompt_tracker/testing/prompt_versions/test_modals",
+      locals: { tests: all_tests, prompt: prompt, version: version }
+    )
+
+    # 6) Update the overall status card on tests index page
+    broadcast_replace(
+      stream: "prompt_version_#{version.id}",
       target: "overall_status_card",
-      partial: "prompt_tracker/prompt_tests/overall_status_card",
+      partial: "prompt_tracker/testing/prompt_tests/overall_status_card",
       locals: { tests: all_tests }
     )
   end
@@ -239,6 +280,14 @@ module PromptTracker
       stream,
       target: target,
       html: html
+    )
+  end
+
+  # Helper method to broadcast remove action
+  def broadcast_remove(stream:, target:)
+    Turbo::StreamsChannel.broadcast_remove_to(
+      stream,
+      target: target
     )
   end
   end

@@ -1,0 +1,101 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item active">Prompts</li>
+<% end %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1>
+      <i class="bi bi-file-text"></i> Prompts
+      <span class="badge bg-secondary"><%= @prompts.total_count %></span>
+    </h1>
+    <p class="text-muted">Browse and search all LLM prompts</p>
+  </div>
+  <div class="col-auto">
+    <%= link_to testing_playground_path, class: "btn btn-primary" do %>
+      <i class="bi bi-play-circle"></i> New Prompt in Playground
+    <% end %>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+  <div class="card-body">
+    <%= form_with url: testing_prompts_path, method: :get, local: true, class: "row g-3" do |f| %>
+      <div class="col-md-5">
+        <%= f.label :q, "Search", class: "form-label" %>
+        <%= f.text_field :q, value: params[:q], class: "form-control", placeholder: "Search by name or description..." %>
+      </div>
+
+      <div class="col-md-3">
+        <%= f.label :status, "Status", class: "form-label" %>
+        <%= f.select :status, options_for_select([["All", ""], ["Active", "active"], ["Archived", "archived"]], params[:status]), {}, class: "form-select" %>
+      </div>
+
+      <div class="col-md-4">
+        <%= f.label :sort, "Sort By", class: "form-label" %>
+        <%= f.select :sort, options_for_select([["Recent", ""], ["Name", "name"]], params[:sort]), {}, class: "form-select" %>
+      </div>
+
+      <div class="col-12">
+        <%= f.submit "Apply Filters", class: "btn btn-primary" %>
+        <%= link_to "Clear", testing_prompts_path, class: "btn btn-outline-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Prompts Table -->
+<div class="card">
+  <div class="card-body">
+    <% if @prompts.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Active Version</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @prompts.each do |prompt| %>
+              <tr>
+                <td>
+                  <strong><%= link_to prompt.name, testing_prompt_path(prompt) %></strong>
+                  <% if prompt.archived_at.present? %>
+                    <span class="badge bg-dark ms-2">Archived</span>
+                  <% end %>
+                </td>
+                <td><%= truncate_text(prompt.description, 80) %></td>
+                <td>
+                  <% if prompt.active_version %>
+                    v<%= prompt.active_version.version_number %>
+                  <% else %>
+                    <span class="text-muted">None</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to "View", testing_prompt_path(prompt), class: "btn btn-sm btn-outline-primary" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="mt-3">
+        <%= paginate @prompts %>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">No prompts found</p>
+        <% if params[:q].present? %>
+          <%= link_to "Clear filters", testing_prompts_path, class: "btn btn-outline-primary" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -10,3 +10,10 @@ Rails.application.config.assets.version = "1.0"
 # application.js, application.css, and all non-JS/CSS in the app/assets
 # folder are already added.
 # Rails.application.config.assets.precompile += %w[ admin.js admin.css ]
+
+# Add Stimulus controllers to precompile list (even though they're served via importmap)
+# This prevents Sprockets from complaining in test environment
+Rails.application.config.assets.precompile += %w[
+  prompt_tracker/controllers/evaluator_form_controller.js
+  prompt_tracker/controllers/evaluator_config_form_controller.js
+]

@@ -1,7 +1,7 @@
 <% content_for :breadcrumbs do %>
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Prompts", prompts_path %></li>
+      <li class="breadcrumb-item"><%= link_to "Prompts", testing_prompts_path %></li>
       <li class="breadcrumb-item active" aria-current="page">Evaluations</li>
     </ol>
   </nav>
@@ -145,24 +145,18 @@
               <tr>
                 <td><code>#<%= evaluation.id %></code></td>
                 <td>
-                  <%= link_to llm_response_path(response) do %>
-                    <code>#<%= response.id %></code>
-                  <% end %>
+                  <code>#<%= response.id %></code>
                 </td>
                 <td>
-                  <%= link_to prompt.name, prompt_path(prompt) %>
+                  <%= link_to prompt.name, testing_prompt_path(prompt) %>
                   <br>
                   <small class="text-muted">v<%= response.prompt_version.version_number %></small>
                 </td>
                 <td>
-                  <span class="badge bg-secondary"><%= evaluation.evaluator_type %></span>
+                  <span class="badge bg-secondary"><%= evaluation.evaluator_name %></span>
                 </td>
                 <td>
-                  <% if evaluation.evaluator_id.present? %>
-                    <%= evaluation.evaluator_id %>
-                  <% else %>
-                    <span class="text-muted">—</span>
-                  <% end %>
+                  <code class="text-muted small"><%= evaluation.evaluator_type %></code>
                 </td>
                 <td class="text-end">
                   <%= score_badge(normalized_score) %>

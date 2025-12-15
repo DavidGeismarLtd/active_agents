@@ -1,0 +1,76 @@
+<%# Shared evaluations table for displaying evaluation results
+  Expects:
+  - evaluations: collection of Evaluation records
+  - Optional: title (default: "Evaluations")
+  - Optional: monitoring_context (default: false) - if true, uses monitoring namespace paths
+%>
+<% evaluations ||= [] %>
+<% title ||= "Evaluations" %>
+<% monitoring_context ||= false %>
+
+<% if evaluations.any? %>
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0"><%= title %></h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Evaluator</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th>Feedback</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% evaluations.each do |evaluation| %>
+              <%
+                evaluator_meta = PromptTracker::EvaluatorRegistry.get(evaluation.evaluator_key)
+                evaluator_name = evaluator_meta ? evaluator_meta[:name] : evaluation.evaluator_name
+                evaluator_icon = evaluator_meta ? evaluator_meta[:icon] : "gear"
+                evaluator_description = evaluator_meta ? evaluator_meta[:description] : ""
+              %>
+              <tr>
+                <td>
+                  <%= link_to (monitoring_context ? monitoring_evaluation_path(evaluation) : evaluation_path(evaluation)), class: "text-decoration-none" do %>
+                    <strong>
+                      <i class="bi bi-<%= evaluator_icon %>"></i>
+                      <%= evaluator_name %>
+                    </strong>
+                  <% end %>
+                  <% if evaluator_description.present? %>
+                    <br>
+                    <small class="text-muted"><%= evaluator_description %></small>
+                  <% end %>
+                </td>
+                <td>
+                  <% if evaluation.score %>
+                    <strong><%= number_with_precision(evaluation.score, precision: 2) %></strong>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if evaluation.passed %>
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Passed</span>
+                  <% else %>
+                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if evaluation.feedback.present? %>
+                    <%= truncate(evaluation.feedback, length: 150) %>
+                  <% else %>
+                    <span class="text-muted">No feedback</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -3,7 +3,7 @@
 module PromptTracker
   # Controller for viewing test run results.
   class PromptTestRunsController < ApplicationController
-    before_action :set_test_run, only: [:show]
+    before_action :set_test_run, only: [ :show ]
 
     # GET /test-runs
     def index
@@ -37,4 +37,3 @@ module PromptTracker
     end
   end
 end
-

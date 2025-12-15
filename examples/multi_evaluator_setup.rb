@@ -19,9 +19,6 @@ puts "=" * 80
 puts "\n📝 Step 1: Creating prompt..."
 prompt = PromptTracker::Prompt.find_or_create_by!(name: "customer_support_greeting") do |p|
   p.description = "Greeting message for customer support"
-  p.category = "support"
-  p.tags = ["customer-facing", "high-priority"]
-  p.score_aggregation_strategy = "weighted_average"
 end
 puts "✅ Prompt created: #{prompt.name}"
 
@@ -42,28 +39,26 @@ prompt.evaluator_configs.destroy_all
 
 # Tier 1: Basic validation (sync, fast, no dependencies)
 length_config = prompt.evaluator_configs.create!(
-  evaluator_key: :length_check,
+  evaluator_key: :length,
   enabled: true,
   run_mode: "sync",
   priority: 1,
   weight: 0.15,
   config: {
     min_length: 10,
-    max_length: 200,
-    ideal_min: 30,
-    ideal_max: 100
+    max_length: 200
   }
 )
 puts "  ✅ Length Check configured (weight: 15%, sync, priority: 1)"
 
 keyword_config = prompt.evaluator_configs.create!(
-  evaluator_key: :keyword_check,
+  evaluator_key: :keyword,
   enabled: true,
   run_mode: "sync",
   priority: 2,
   weight: 0.30,
   config: {
-    required_keywords: ["hello", "help"],
+    required_keywords: [ "hello", "help" ],
     forbidden_keywords: [],
     case_sensitive: false
   }
@@ -72,37 +67,36 @@ puts "  ✅ Keyword Check configured (weight: 30%, sync, priority: 2)"
 
 # Tier 2: Format validation (depends on length check)
 format_config = prompt.evaluator_configs.create!(
-  evaluator_key: :format_check,
+  evaluator_key: :format,
   enabled: true,
   run_mode: "sync",
   priority: 3,
   weight: 0.25,
-  depends_on: "length_check",
+  depends_on: "length",
   min_dependency_score: 50,
   config: {
     expected_format: "plain",
     strict: false
   }
 )
-puts "  ✅ Format Check configured (weight: 25%, sync, priority: 3, depends on: length_check >= 50)"
+puts "  ✅ Format Check configured (weight: 25%, sync, priority: 3, depends on: length >= 50)"
 
 # Tier 3: LLM Judge (depends on keyword check)
 # Note: This will be scheduled as async job
 judge_config = prompt.evaluator_configs.create!(
-  evaluator_key: :gpt4_judge,
+  evaluator_key: :llm_judge,
   enabled: false, # Disabled for now since we don't have LLM API configured
   run_mode: "async",
   priority: 4,
   weight: 0.30,
-  depends_on: "keyword_check",
+  depends_on: "keyword",
   min_dependency_score: 80,
   config: {
-    judge_model: "gpt-4",
-    criteria: ["helpfulness", "professionalism", "clarity"],
-    custom_instructions: "Evaluate as a customer support manager"
+    judge_model: "gpt-4o",
+    custom_instructions: "Evaluate as a customer support manager. Consider helpfulness, professionalism, and clarity."
   }
 )
-puts "  ⚠️  GPT-4 Judge configured but DISABLED (weight: 30%, async, priority: 4, depends on: keyword_check >= 80)"
+puts "  ⚠️  GPT-4 Judge configured but DISABLED (weight: 30%, async, priority: 4, depends on: keyword >= 80)"
 
 puts "\n📊 Total weight: #{prompt.evaluator_configs.enabled.sum(:weight)} (should be close to 1.0 for weighted average)"
 
@@ -135,9 +129,10 @@ puts "-" * 80
 response.reload
 
 if response.evaluations.any?
-  puts "\n🎯 Overall Score: #{response.overall_score}/100"
-  puts "   Strategy: #{prompt.score_aggregation_strategy}"
-  puts "   Based on #{response.evaluations.count} evaluation(s)"
+  puts "\n📊 Evaluation Results:"
+  puts "   Total evaluations: #{response.evaluations.count}"
+  puts "   Passed: #{response.evaluations.where(passed: true).count}"
+  puts "   Failed: #{response.evaluations.where(passed: false).count}"
 
   puts "\n📋 Individual Evaluations:"
   response.evaluation_breakdown.each do |eval|
@@ -147,13 +142,6 @@ if response.evaluations.any?
     puts "     Weight: #{(eval[:normalized_weight] * 100).round(1)}%"
     puts "     Type: #{eval[:evaluator_type]}"
     puts "     Feedback: #{eval[:feedback]}" if eval[:feedback]
-
-    if eval[:criteria_scores].present?
-      puts "     Criteria:"
-      eval[:criteria_scores].each do |criterion, score|
-        puts "       - #{criterion}: #{score}"
-      end
-    end
   end
 
   # Check if response passes threshold

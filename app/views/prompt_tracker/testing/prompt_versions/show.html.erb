@@ -1,0 +1,185 @@
+<%= turbo_stream_from "prompt_version_#{@version.id}" %>
+
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item active"><%= @prompt.name %>-v<%= @version.version_number %></li>
+<% end %>
+
+<div class="testing-prompt-version-show">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 style="color: #1E40AF; margin: 0;">
+          <i class="bi bi-flask"></i> <%= @prompt.name %>
+          <span class="badge bg-primary">v<%= @version.version_number %></span>
+          <%= status_badge(@version.status) %>
+        </h1>
+        <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+          Testing and validating prompt behavior before production
+        </p>
+      </div>
+      <div class="d-flex gap-2 align-items-start">
+        <%= link_to testing_prompt_prompt_version_datasets_path(@prompt, @version), class: "btn btn-outline-primary" do %>
+          <i class="bi bi-database"></i> Datasets
+        <% end %>
+        <%= link_to monitoring_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-success" do %>
+          <i class="bi bi-activity"></i> View in Monitoring
+        <% end %>
+        <% unless @version.active? %>
+          <%= button_to activate_testing_prompt_prompt_version_path(@prompt, @version), method: :post, class: "btn btn-success", data: { confirm: "Activate this version? This will deprecate all other versions." } do %>
+            <i class="bi bi-check-circle"></i> Activate Version
+          <% end %>
+        <% end %>
+        <%= link_to testing_prompt_prompt_version_playground_path(@prompt, @version), class: "btn btn-primary" do %>
+          <i class="bi bi-pencil-square"></i> Edit in Playground
+        <% end %>
+        <%= link_to compare_testing_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-info" do %>
+          <i class="bi bi-arrow-left-right"></i> Compare Versions
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Total Tests</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= @total_tests %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Passing</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @tests_passing %></div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+        <% if @total_tests > 0 %>
+          <%= ((@tests_passing.to_f / @total_tests) * 100).round(1) %>% pass rate
+        <% end %>
+      </div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #FEE2E2; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Failing</div>
+      <div style="color: #EF4444; font-size: 1.5rem; font-weight: bold;"><%= @tests_failing %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Test Cost</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= format_cost(@total_cost) %></div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">From test runs</div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Avg Response Time</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= format_duration(@avg_response_time) %></div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">Test runs average</div>
+    </div>
+  </div>
+</div>
+
+<!-- Prompts & Model Config -->
+<div class="row mb-4">
+  <div class="col-md-<%= @version.model_config.present? && @version.model_config.any? ? '8' : '12' %>">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-file-text"></i> Prompts</h6>
+        <span class="badge bg-secondary"><%= (@version.system_prompt.to_s.length + @version.user_prompt.length) %> chars</span>
+      </div>
+      <div class="card-body">
+        <% if @version.system_prompt.present? %>
+          <div class="mb-3">
+            <div class="badge bg-secondary mb-2">System Prompt</div>
+            <pre class="mb-0 border-start border-3 border-secondary ps-3" style="max-height: 150px; overflow-y: auto;"><code><%= @version.system_prompt %></code></pre>
+          </div>
+        <% end %>
+        <div>
+          <div class="badge bg-primary mb-2">User Prompt</div>
+          <pre class="mb-0 border-start border-3 border-primary ps-3" style="max-height: 150px; overflow-y: auto;"><code><%= @version.user_prompt %></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% if @version.model_config.present? && @version.model_config.any? %>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-gear"></i> Model Config</h6>
+        </div>
+        <div class="card-body">
+          <% @version.model_config.each do |key, value| %>
+            <div class="mb-2">
+              <small class="text-muted d-block"><%= key.to_s.titleize %></small>
+              <strong><%= value %></strong>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Tests -->
+<div class="card mb-4" id="tests" style="border: 2px solid #DBEAFE;" data-controller="column-visibility">
+  <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #EFF6FF; border-bottom: 2px solid #DBEAFE;">
+    <div>
+      <h5 class="mb-0" style="color: #1E40AF;">
+        <i class="bi bi-flask"></i> Tests
+      </h5>
+      <small class="text-muted">
+        Validate prompt behavior with test cases before deploying to production
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <% if @tests.any? %>
+        <%= render "prompt_tracker/testing/prompt_versions/column_visibility_dropdown" %>
+        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllTestsModal">
+          <i class="bi bi-play-circle"></i> Run All
+        </button>
+      <% end %>
+      <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#new-test-modal">
+        <i class="bi bi-plus-circle"></i> New Test
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <!-- Info Alert -->
+    <div class="alert alert-info mb-3">
+      <h6 class="alert-heading"><i class="bi bi-info-circle"></i> How Tests Work</h6>
+      <ul class="mb-0">
+        <li><strong>Manual execution:</strong> Tests run on-demand when you click "Run" or "Run All" to validate prompt behavior</li>
+        <li><strong>Test environment only:</strong> Tests use the <code>is_test_run: true</code> flag and don't affect production metrics</li>
+        <li><strong>Quality assurance:</strong> Validate prompts with specific inputs and expected outputs before deploying to production</li>
+      </ul>
+    </div>
+
+    <% if @tests.any? %>
+      <%= render "prompt_tracker/testing/prompt_versions/tests_table", tests: @tests, prompt: @prompt, version: @version %>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-flask text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3">No tests yet for this version</p>
+        <p class="text-muted">Tests help you validate prompt behavior before deploying to production.</p>
+        <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#new-test-modal">
+          <i class="bi bi-plus-circle"></i> Create Your First Test
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= render "test_modals", tests: @tests, prompt: @prompt, version: @version %>
+
+<!-- New Test Modal -->
+<div class="modal fade" id="new-test-modal" tabindex="-1" aria-labelledby="new-test-modal-label" aria-hidden="true" data-controller="modal-fix" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="new-test-modal-label">
+          <i class="bi bi-plus-circle"></i> Create New Test
+          <span class="badge bg-primary">v<%= @version.version_number %></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <%= render "prompt_tracker/testing/prompt_tests/form", prompt: @prompt, version: @version, test: PromptTracker::PromptTest.new(prompt_version: @version, enabled: true), in_modal: true %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= render "prompt_tracker/testing/prompt_versions/run_all_tests_modal" %>

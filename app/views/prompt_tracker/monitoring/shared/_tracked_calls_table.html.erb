@@ -1,0 +1,249 @@
+<%
+  # Local variables expected:
+  # - tracked_calls: collection of LlmResponse records
+  # - show_column_visibility: boolean (default: true) - whether to show column visibility dropdown
+  # - show_pagination: boolean (default: true) - whether to show pagination
+  # - title: string (default: "Tracked Calls") - table title
+  # - empty_message: string (default: "No tracked calls found") - message when no calls
+  # - show_evaluations_column: boolean (default: true) - whether to show evaluations column
+  # - show_prompt_column: boolean (default: false) - whether to show prompt name/version column
+  # - prompt: Prompt object (optional) - for showing tracking code example in empty state
+  # - version: PromptVersion object (optional) - for showing tracking code example in empty state
+
+  show_column_visibility = local_assigns.fetch(:show_column_visibility, true)
+  show_pagination = local_assigns.fetch(:show_pagination, true)
+  title = local_assigns.fetch(:title, "Tracked Calls")
+  empty_message = local_assigns.fetch(:empty_message, "No tracked calls found")
+  show_evaluations_column = local_assigns.fetch(:show_evaluations_column, true)
+  show_prompt_column = local_assigns.fetch(:show_prompt_column, false)
+  prompt = local_assigns[:prompt]
+  version = local_assigns[:version]
+%>
+
+<% if tracked_calls.any? %>
+  <div style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;" data-controller="column-visibility">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 style="color: #065F46; margin: 0;">
+        <i class="bi bi-list-ul"></i> <%= title %>
+      </h3>
+      <% if show_column_visibility %>
+        <%= render "prompt_tracker/monitoring/shared/tracked_calls_column_visibility_dropdown" %>
+      <% end %>
+    </div>
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #D1FAE5;">
+            <% if show_prompt_column %>
+              <th data-column="prompt" style="text-align: left; padding: 0.75rem; color: #64748B;"></th>
+            <% end %>
+            <th data-column="environment" style="text-align: left; padding: 0.75rem; color: #64748B;">Environment</th>
+            <th data-column="user_id" style="text-align: left; padding: 0.75rem; color: #64748B;">User ID</th>
+            <th data-column="status" style="text-align: left; padding: 0.75rem; color: #64748B;">Status</th>
+            <th data-column="tokens_cost" style="text-align: left; padding: 0.75rem; color: #64748B;">Tokens / Cost</th>
+            <th data-column="rendered_prompt" style="text-align: left; padding: 0.75rem; color: #64748B;">Rendered Prompt</th>
+            <th data-column="response_text" style="text-align: left; padding: 0.75rem; color: #64748B;">Response</th>
+            <% if show_evaluations_column %>
+              <th data-column="evaluations" style="text-align: left; padding: 0.75rem; color: #64748B;">Evaluations</th>
+            <% end %>
+            <th data-column="human_evaluations" style="text-align: left; padding: 0.75rem; color: #64748B;">Human Evaluations</th>
+            <th data-column="actions" style="text-align: left; padding: 0.75rem; color: #64748B;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tracked_calls.each do |call| %>
+            <%# Subscribe to Turbo Stream updates for this specific call %>
+            <%= turbo_stream_from "llm_response_#{call.id}" %>
+            <tr style="border-bottom: 1px solid #F1F5F9;">
+              <% if show_prompt_column %>
+                <td data-column="prompt" style="padding: 0.75rem; vertical-align: top;">
+                  <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 0.25rem;">
+                    <%= call.created_at.strftime("%Y-%m-%d %H:%M:%S") %>
+                    <% if call.response_time_ms.present? %>
+                      <span style="margin-left: 0.5rem; color: #059669;">⚡ <%= call.response_time_ms %>ms</span>
+                    <% end %>
+                  </div>
+                  <%= link_to monitoring_prompt_prompt_version_path(call.prompt_version.prompt, call.prompt_version), style: "color: #10B981; text-decoration: none; font-weight: 500;" do %>
+                    <%= call.prompt_version.prompt.name %>
+                    <small style="color: #64748B;">-v<%= call.prompt_version.version_number %></small>
+                  <% end %>
+                  <div style="margin-top: 0.25rem; font-size: 0.75rem; color: #64748B;">
+                    <strong><%= call.provider %></strong> / <%= call.model %>
+                  </div>
+                </td>
+              <% end %>
+              <td data-column="environment" style="padding: 0.75rem; vertical-align: top;">
+                <% if call.environment.present? %>
+                  <span class="badge bg-info"><%= call.environment %></span>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td data-column="user_id" style="padding: 0.75rem; vertical-align: top;">
+                <div style="font-size: 0.875rem; color: #374151;">
+                  <%= call.user_id.present? ? call.user_id : "-" %>
+                </div>
+              </td>
+              <td data-column="status" style="padding: 0.75rem; vertical-align: top;">
+                <% if call.status == "success" %>
+                  <span class="badge bg-success">Success</span>
+                <% elsif call.status == "error" %>
+                  <span class="badge bg-danger">Error</span>
+                <% else %>
+                  <span class="badge bg-secondary"><%= call.status %></span>
+                <% end %>
+              </td>
+              <td data-column="tokens_cost" style="padding: 0.75rem; vertical-align: top;">
+                <div style="font-size: 0.875rem; color: #374151;">
+                  <% if call.tokens_total.present? %>
+                    <strong><%= call.tokens_total %></strong> total
+                    <br>
+                    <small style="color: #64748B;">
+                      <%= call.tokens_prompt || 0 %> prompt / <%= call.tokens_completion || 0 %> completion
+                    </small>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                  <% if call.cost_usd.present? %>
+                    <br>
+                    <strong style="color: #059669;">$<%= call.cost_usd.round(4) %></strong>
+                  <% end %>
+                </div>
+              </td>
+              <td data-column="rendered_prompt" style="padding: 0.75rem; vertical-align: top;">
+                <% if call.rendered_prompt.present? %>
+                  <% prompt_id = "prompt-#{call.id}" %>
+                  <% highlighted_prompt = highlight_variables(call.rendered_prompt, call.variables_used) %>
+                  <div class="expandable-text">
+                    <div id="<%= prompt_id %>-truncated">
+                      <small class="text-muted"><%= truncate(highlighted_prompt, length: 100, escape: false) %></small>
+                      <% if call.rendered_prompt.length > 100 %>
+                        <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= prompt_id %>-truncated').style.display='none'; document.getElementById('<%= prompt_id %>-full').style.display='block';">
+                          <i class="bi bi-chevron-down"></i>
+                        </button>
+                      <% end %>
+                    </div>
+                    <div id="<%= prompt_id %>-full" style="display: none;">
+                      <small class="text-muted" style="white-space: pre-wrap;"><%= highlighted_prompt %></small>
+                      <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= prompt_id %>-full').style.display='none'; document.getElementById('<%= prompt_id %>-truncated').style.display='block';">
+                        <i class="bi bi-chevron-up"></i>
+                      </button>
+                    </div>
+                  </div>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td data-column="response_text" style="padding: 0.75rem; vertical-align: top;">
+                <% if call.response_text.present? %>
+                  <% response_id = "response-#{call.id}" %>
+                  <div class="expandable-text">
+                    <div id="<%= response_id %>-truncated">
+                      <small class="text-muted"><%= truncate(call.response_text, length: 100) %></small>
+                      <% if call.response_text.length > 100 %>
+                        <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= response_id %>-truncated').style.display='none'; document.getElementById('<%= response_id %>-full').style.display='block';">
+                          <i class="bi bi-chevron-down"></i>
+                        </button>
+                      <% end %>
+                    </div>
+                    <div id="<%= response_id %>-full" style="display: none;">
+                      <small class="text-muted" style="white-space: pre-wrap;"><%= call.response_text %></small>
+                      <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= response_id %>-full').style.display='none'; document.getElementById('<%= response_id %>-truncated').style.display='block';">
+                        <i class="bi bi-chevron-up"></i>
+                      </button>
+                    </div>
+                  </div>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <% if show_evaluations_column %>
+                <td data-column="evaluations" style="padding: 0.75rem; vertical-align: top;">
+                  <% if call.evaluations.any? %>
+                    <% call.evaluations.each do |evaluation| %>
+                      <div class="mb-1">
+                        <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#evaluation-modal-<%= evaluation.id %>">
+                          <% if evaluation.passed? %>
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                          <% else %>
+                            <i class="bi bi-x-circle-fill text-danger"></i>
+                          <% end %>
+                          <small><%= evaluation.evaluator_key.to_s.titleize %></small>
+                          <span class="badge bg-secondary ms-1"><%= number_with_precision(evaluation.score, precision: 0) %></span>
+                        </a>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <span class="text-muted">No evaluations</span>
+                  <% end %>
+                </td>
+              <% end %>
+              <td data-column="human_evaluations" id="human_evaluations_cell_<%= call.id %>" style="padding: 0.75rem; vertical-align: top;">
+                <%= render "prompt_tracker/shared/human_evaluations_cell", record: call, context: 'monitoring' %>
+              </td>
+              <td data-column="actions" style="padding: 0.75rem; vertical-align: top;">
+                <button type="button"
+                        class="btn btn-sm btn-success"
+                        data-bs-toggle="modal"
+                        data-bs-target="#human-evaluation-modal-<%= call.id %>"
+                        title="Add Human Evaluation">
+                  <i class="bi bi-person-check"></i> Evaluate
+                </button>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <% if show_pagination && tracked_calls.respond_to?(:total_pages) && tracked_calls.total_pages > 1 %>
+      <div style="margin-top: 1.5rem; text-align: center;">
+        <%= paginate tracked_calls %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Human Evaluation Modals -->
+  <% tracked_calls.each do |call| %>
+    <%= render "prompt_tracker/monitoring/shared/human_evaluation_modal", call: call %>
+    <%= render "prompt_tracker/shared/all_human_evaluations_modal", record: call, context: 'monitoring' %>
+  <% end %>
+<% else %>
+  <div style="background: white; border: 2px solid #E5E7EB; border-radius: 8px; padding: 3rem; text-align: center;">
+    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+    <p style="color: #64748B; margin-top: 1rem;"><%= empty_message %></p>
+    <% if prompt && version %>
+      <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#trackFirstCallModal">
+        <i class="bi bi-code-square"></i> Track My First Call
+      </button>
+    <% end %>
+  </div>
+
+  <!-- Track First Call Modal -->
+  <% if prompt && version %>
+    <div class="modal fade" id="trackFirstCallModal" tabindex="-1" aria-labelledby="trackFirstCallModalLabel" aria-hidden="true" data-controller="modal-fix" data-modal-fix-target="modal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="trackFirstCallModalLabel">
+              <i class="bi bi-code-square"></i> Track Your First Call
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <%= render "prompt_tracker/shared/tracking_code_example", prompt: prompt, version: version %>
+            <div class="alert alert-info mt-3">
+              <i class="bi bi-info-circle"></i>
+              <strong>Need more help?</strong>
+              <%= link_to "View full documentation", docs_tracking_path(prompt_id: prompt.id, version_id: version.id), target: "_blank", class: "alert-link" %>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>

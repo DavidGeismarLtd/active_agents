@@ -1,0 +1,55 @@
+<%# Reusable Human Evaluations Cell Content %>
+<%# Parameters:
+  - record: The record with human evaluations (PromptTestRun or LlmResponse)
+  - context: 'testing' or 'monitoring' (for color scheme)
+%>
+
+<%
+  # Determine color scheme based on context
+  if context == 'testing'
+    icon_color = 'text-primary'
+    badge_color = 'bg-primary'
+    link_color = 'text-primary'
+  else # monitoring
+    icon_color = 'text-success'
+    badge_color = 'bg-success'
+    link_color = 'text-success'
+  end
+%>
+
+<% human_evals = record.human_evaluations.recent.limit(3) %>
+<% if human_evals.any? %>
+  <div class="d-flex flex-column gap-1">
+    <% human_evals.each do |human_eval| %>
+      <div class="d-flex align-items-center gap-1">
+        <i class="bi bi-person-check-fill <%= icon_color %>"></i>
+        <span class="badge <%= badge_color %>">
+          <%= number_with_precision(human_eval.score, precision: 0) %>
+        </span>
+        <small class="text-muted text-truncate" style="max-width: 120px;" title="<%= human_eval.feedback %>">
+          <%= truncate(human_eval.feedback, length: 25) %>
+        </small>
+      </div>
+    <% end %>
+
+    <% if record.human_evaluations.count > 3 %>
+      <button type="button"
+              class="btn btn-link btn-sm p-0 text-start"
+              data-bs-toggle="modal"
+              data-bs-target="#all-human-evals-modal-<%= record.id %>"
+              title="View all human evaluations">
+        <small class="<%= link_color %>"><i class="bi bi-plus-circle"></i> <%= record.human_evaluations.count - 3 %> more...</small>
+      </button>
+    <% elsif record.human_evaluations.count >= 1 %>
+      <button type="button"
+              class="btn btn-link btn-sm p-0 text-start"
+              data-bs-toggle="modal"
+              data-bs-target="#all-human-evals-modal-<%= record.id %>"
+              title="View all human evaluations">
+        <small class="<%= link_color %>"><i class="bi bi-eye"></i> View all (<%= record.human_evaluations.count %>)</small>
+      </button>
+    <% end %>
+  </div>
+<% else %>
+  <span class="text-muted">-</span>
+<% end %>

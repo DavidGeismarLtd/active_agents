@@ -75,7 +75,7 @@
                   <% end %>
                 </td>
                 <td>
-                  <%= link_to ab_test.prompt.name, prompt_path(ab_test.prompt) %>
+                  <%= ab_test.prompt.name %>
                 </td>
                 <td>
                   <% case ab_test.status %>
@@ -129,7 +129,7 @@
                     <%= link_to ab_test_path(ab_test), class: "btn btn-outline-primary", title: "View" do %>
                       <i class="bi bi-eye"></i>
                     <% end %>
-                    
+
                     <% if ab_test.draft? %>
                       <%= link_to edit_ab_test_path(ab_test), class: "btn btn-outline-secondary", title: "Edit" do %>
                         <i class="bi bi-pencil"></i>
@@ -173,4 +173,3 @@
     <% end %>
   </div>
 </div>
-

@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
   let(:prompt) { create(:prompt) }
-  let(:version) { create(:prompt_version, prompt: prompt, template: "Hello {{name}}") }
+  let(:version) { create(:prompt_version, prompt: prompt, user_prompt: "Hello {{name}}") }
   let(:llm_response) do
     create(:llm_response,
            prompt_version: version,
@@ -12,19 +12,15 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
   end
 
   let(:test) do
-    create(:prompt_test,
-           prompt_version: version,
-           template_variables: { name: "John" },
-           evaluator_configs: [
-             {
-               evaluator_key: "keyword_check",
-               threshold: 1,
-               config: {
-                 required_keywords: [ "Hello", "help" ]
-               }
-             }
-           ],
-           expected_patterns: [ "Hello.*help" ])
+    test = create(:prompt_test,
+                  prompt_version: version)
+    create(:evaluator_config,
+           configurable: test,
+           evaluator_key: "keyword",
+           config: {
+             required_keywords: [ "Hello", "help" ]
+           })
+    test
   end
 
   let(:test_run) do
@@ -42,8 +38,7 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
       test_run.reload
       expect(test_run.status).to eq("passed")
       expect(test_run.passed).to be true
-      expect(test_run.evaluator_results).to be_present
-      expect(test_run.assertion_results).to be_present
+      expect(test_run.evaluations).to be_present
     end
 
     it "sets evaluator counts" do
@@ -55,27 +50,29 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
       expect(test_run.failed_evaluators).to eq(0)
     end
 
-    it "checks assertions" do
-      described_class.new.perform(test_run.id)
+    it "creates Evaluation records" do
+      expect {
+        described_class.new.perform(test_run.id)
+      }.to change { PromptTracker::Evaluation.count }.by(1)
 
       test_run.reload
-      expect(test_run.assertion_results).to include("pattern_1" => true)
+      evaluation = test_run.evaluations.first
+      expect(evaluation.evaluator_type).to eq("PromptTracker::Evaluators::KeywordEvaluator")
+      expect(evaluation.evaluation_context).to eq("test_run")
+      expect(evaluation.passed).to be true
     end
 
     context "when evaluators fail" do
       let(:test) do
-        create(:prompt_test,
-               prompt_version: version,
-               template_variables: { name: "John" },
-               evaluator_configs: [
-                 {
-                   evaluator_key: "keyword_check",
-                   threshold: 2,
-                   config: {
-                     required_keywords: [ "goodbye", "farewell" ]
-                   }
-                 }
-               ])
+        test = create(:prompt_test,
+                      prompt_version: version)
+        create(:evaluator_config,
+               configurable: test,
+               evaluator_key: "keyword",
+               config: {
+                 required_keywords: [ "goodbye", "farewell" ]
+               })
+        test
       end
 
       it "marks test as failed" do
@@ -90,11 +87,16 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
 
     context "when assertions fail" do
       let(:test) do
-        create(:prompt_test,
-               prompt_version: version,
-               template_variables: { name: "John" },
-               evaluator_configs: [],
-               expected_output: "Goodbye!")
+        test = create(:prompt_test,
+                      prompt_version: version)
+        # Create an evaluator that will fail
+        create(:evaluator_config,
+               configurable: test,
+               evaluator_key: "exact_match",
+               config: {
+                 expected_text: "Goodbye!"
+               })
+        test
       end
 
       it "marks test as failed" do
@@ -103,7 +105,6 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
         test_run.reload
         expect(test_run.status).to eq("failed")
         expect(test_run.passed).to be false
-        expect(test_run.assertion_results["expected_output"]).to be false
       end
     end
 
@@ -146,19 +147,16 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
 
     context "with LLM judge evaluator" do
       let(:test) do
-        create(:prompt_test,
-               prompt_version: version,
-               template_variables: { name: "John" },
-               evaluator_configs: [
-                 {
-                   evaluator_key: "gpt4_judge",
-                   threshold: 7,
-                   config: {
-                     criteria: [ "helpfulness", "clarity" ],
-                     score_max: 10
-                   }
-                 }
-               ])
+        test = create(:prompt_test,
+                      prompt_version: version)
+        create(:evaluator_config,
+               configurable: test,
+               evaluator_key: "llm_judge",
+               config: {
+                 judge_model: "gpt-4o",
+                 custom_instructions: "Evaluate helpfulness and clarity"
+               })
+        test
       end
 
       # Mock RubyLLM responses
@@ -168,8 +166,7 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
         double(
           "RubyLLM::Response",
           content: {
-            overall_score: 8.0,
-            criteria_scores: { helpfulness: 8.0, clarity: 8.0 },
+            overall_score: 80,
             feedback: "Good response"
           },
           raw: double("raw response")
@@ -186,17 +183,24 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
         described_class.new.perform(test_run.id)
 
         test_run.reload
-        # evaluator_results are stored as JSON, so keys are strings
-        expect(test_run.evaluator_results.first["evaluator_key"]).to eq("gpt4_judge")
-        expect(test_run.evaluator_results.first["score"]).to be_present
-        expect(test_run.evaluator_results.first["feedback"]).to be_present
+        evaluation = test_run.evaluations.first
+        expect(evaluation.evaluator_type).to eq("PromptTracker::Evaluators::LlmJudgeEvaluator")
+        expect(evaluation.score).to be_present
+        expect(evaluation.feedback).to be_present
       end
 
       context "with real LLM enabled" do
+        around do |example|
+          original_env = ENV["PROMPT_TRACKER_USE_REAL_LLM"]
+          ENV["PROMPT_TRACKER_USE_REAL_LLM"] = "true"
+          example.run
+          ENV["PROMPT_TRACKER_USE_REAL_LLM"] = original_env
+        end
+
         it "calls RubyLLM.chat with the judge model" do
           described_class.new.perform(test_run.id)
 
-          expect(RubyLLM).to have_received(:chat).with(model: "gpt-4")
+          expect(RubyLLM).to have_received(:chat).with(model: "gpt-4o")
         end
 
         it "uses structured output with schema" do

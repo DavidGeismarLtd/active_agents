@@ -6,9 +6,8 @@ module PromptTracker
   # Executes a test by:
   # 1. Rendering the prompt with test variables
   # 2. Calling the LLM API (via provided block)
-  # 3. Running configured evaluators
-  # 4. Checking assertions (expected patterns, expected output)
-  # 5. Recording the result
+  # 3. Running configured evaluators (both binary and scored)
+  # 4. Recording the result
   #
   # @example Run a test with a block
   #   runner = PromptTestRunner.new(test, version)
@@ -50,7 +49,7 @@ module PromptTracker
       @test_run = PromptTestRun.create!(
         prompt_test: prompt_test,
         prompt_version: prompt_version,
-        status: 'running',
+        status: "running",
         metadata: metadata
       )
 
@@ -60,18 +59,14 @@ module PromptTracker
       # Run evaluators
       evaluator_results = run_evaluators(llm_response)
 
-      # Check assertions
-      assertion_results = check_assertions(llm_response)
-
       # Calculate pass/fail
-      passed = determine_pass_fail(evaluator_results, assertion_results)
+      passed = determine_pass_fail(evaluator_results)
 
       # Update test run
       execution_time = ((Time.current - start_time) * 1000).to_i
       update_test_run_success(
         llm_response: llm_response,
         evaluator_results: evaluator_results,
-        assertion_results: assertion_results,
         passed: passed,
         execution_time_ms: execution_time
       )
@@ -98,7 +93,7 @@ module PromptTracker
       @test_run = PromptTestRun.create!(
         prompt_test: prompt_test,
         prompt_version: prompt_version,
-        status: 'running',
+        status: "running",
         metadata: metadata.merge(async: true, started_at: start_time.iso8601)
       )
 
@@ -131,8 +126,8 @@ module PromptTracker
 
       # Get model config from test
       model_config = prompt_test.model_config.with_indifferent_access
-      provider = model_config[:provider] || 'openai'
-      model = model_config[:model] || 'gpt-4'
+      provider = model_config[:provider] || "openai"
+      model = model_config[:model] || "gpt-4"
 
       # If block provided, use it; otherwise use LlmCallService
       if block_given?
@@ -176,17 +171,17 @@ module PromptTracker
     # @param llm_response [LlmResponse] the LLM response to evaluate
     # @return [Array<Hash>] array of evaluator results
     def run_evaluators(llm_response)
-      evaluator_configs = prompt_test.evaluator_configs || []
+      # Get evaluator configs, ordered by priority
+      evaluator_configs = prompt_test.evaluator_configs.enabled.order(priority: :desc)
       results = []
 
       evaluator_configs.each do |config|
-        config = config.with_indifferent_access
-        evaluator_key = config[:evaluator_key].to_sym
-        threshold = config[:threshold] || 0
-        evaluator_config = config[:config] || {}
+        evaluator_type = config.evaluator_type
+        evaluator_config = config.config || {}
 
-        # Build and run evaluator
-        evaluator = EvaluatorRegistry.build(evaluator_key, llm_response, evaluator_config)
+        # Build evaluator from class name
+        evaluator_class = evaluator_type.constantize
+        evaluator = evaluator_class.new(llm_response, evaluator_config)
 
         # Check if this is an LLM judge evaluator that needs a block
         evaluation = if evaluator.is_a?(PromptTracker::Evaluators::LlmJudgeEvaluator)
@@ -205,13 +200,12 @@ module PromptTracker
           evaluator.evaluate
         end
 
-        # Check if score meets threshold
-        passed = evaluation.score >= threshold
+        # Get passed status from evaluation
+        passed = evaluation.passed
 
         results << {
-          evaluator_key: evaluator_key.to_s,
+          evaluator_type: evaluator_type,
           score: evaluation.score,
-          threshold: threshold,
           passed: passed,
           feedback: evaluation.feedback
         }
@@ -220,61 +214,34 @@ module PromptTracker
       results
     end
 
-    # Check assertions (expected patterns and expected output)
-    #
-    # @param llm_response [LlmResponse] the LLM response to check
-    # @return [Hash] hash of assertion name => passed (boolean)
-    def check_assertions(llm_response)
-      results = {}
-      response_text = llm_response.response_text || ''
-
-      # Check expected output (exact match)
-      if prompt_test.expected_output.present?
-        results['expected_output'] = response_text.strip == prompt_test.expected_output.strip
-      end
-
-      # Check expected patterns (regex)
-      expected_patterns = prompt_test.expected_patterns || []
-      expected_patterns.each_with_index do |pattern_str, index|
-        pattern = Regexp.new(pattern_str)
-        results["pattern_#{index + 1}"] = response_text.match?(pattern)
-      end
-
-      results
-    end
-
     # Determine if test passed
     #
+    # All evaluators (both binary and scored) must pass for the test to pass.
+    # Binary evaluators are checked first (higher priority) and always run.
+    # Scored evaluators must meet their threshold.
+    #
     # @param evaluator_results [Array<Hash>] evaluator results
-    # @param assertion_results [Hash] assertion results
     # @return [Boolean] true if test passed
-    def determine_pass_fail(evaluator_results, assertion_results)
-      # All evaluators must pass their thresholds
-      evaluators_passed = evaluator_results.all? { |r| r[:passed] }
-
-      # All assertions must pass
-      assertions_passed = assertion_results.values.all? { |v| v == true }
-
-      evaluators_passed && assertions_passed
+    def determine_pass_fail(evaluator_results)
+      # All evaluators must pass (both binary and scored)
+      evaluator_results.all? { |r| r[:passed] }
     end
 
     # Update test run with success
     #
     # @param llm_response [LlmResponse] the LLM response
     # @param evaluator_results [Array<Hash>] evaluator results
-    # @param assertion_results [Hash] assertion results
     # @param passed [Boolean] whether test passed
     # @param execution_time_ms [Integer] execution time in milliseconds
-    def update_test_run_success(llm_response:, evaluator_results:, assertion_results:, passed:, execution_time_ms:)
+    def update_test_run_success(llm_response:, evaluator_results:, passed:, execution_time_ms:)
       passed_evaluators = evaluator_results.count { |r| r[:passed] }
       failed_evaluators = evaluator_results.count { |r| !r[:passed] }
 
-    @test_run.update!(
+      @test_run.update!(
         llm_response: llm_response,
-        status: passed ? 'passed' : 'failed',
+        status: passed ? "passed" : "failed",
         passed: passed,
         evaluator_results: evaluator_results,
-        assertion_results: assertion_results,
         passed_evaluators: passed_evaluators,
         failed_evaluators: failed_evaluators,
         total_evaluators: evaluator_results.length,
@@ -289,7 +256,7 @@ module PromptTracker
     # @param execution_time_ms [Integer] execution time in milliseconds
     def update_test_run_error(error, execution_time_ms)
       @test_run.update!(
-        status: 'error',
+        status: "error",
         passed: false,
         error_message: "#{error.class}: #{error.message}",
         execution_time_ms: execution_time_ms
@@ -339,7 +306,7 @@ module PromptTracker
     # @param evaluator_config [Hash] the evaluator configuration
     # @return [String] mock judge response with scores
     def generate_mock_judge_response(judge_prompt, evaluator_config)
-      criteria = evaluator_config["criteria"] || evaluator_config[:criteria] || ["overall"]
+      criteria = evaluator_config["criteria"] || evaluator_config[:criteria] || [ "overall" ]
       score_max = evaluator_config["score_max"] || evaluator_config[:score_max] || 100
 
       # Generate mock scores for each criterion (80-95% of max)
@@ -378,7 +345,7 @@ module PromptTracker
         llm_api_response.content
       elsif llm_api_response.respond_to?(:dig)
         # OpenAI format
-        llm_api_response.dig('choices', 0, 'message', 'content') ||
+        llm_api_response.dig("choices", 0, "message", "content") ||
           llm_api_response.dig(:choices, 0, :message, :content) ||
           llm_api_response.to_s
       else
@@ -404,9 +371,9 @@ module PromptTracker
 
       # OpenAI format
       {
-        prompt: llm_api_response.dig('usage', 'prompt_tokens') || llm_api_response.dig(:usage, :prompt_tokens),
-        completion: llm_api_response.dig('usage', 'completion_tokens') || llm_api_response.dig(:usage, :completion_tokens),
-        total: llm_api_response.dig('usage', 'total_tokens') || llm_api_response.dig(:usage, :total_tokens)
+        prompt: llm_api_response.dig("usage", "prompt_tokens") || llm_api_response.dig(:usage, :prompt_tokens),
+        completion: llm_api_response.dig("usage", "completion_tokens") || llm_api_response.dig(:usage, :completion_tokens),
+        total: llm_api_response.dig("usage", "total_tokens") || llm_api_response.dig(:usage, :total_tokens)
       }
     end
 
@@ -422,7 +389,7 @@ module PromptTracker
 
       # Pricing per 1M tokens (as of 2024)
       pricing = case provider.to_s.downcase
-      when 'openai'
+      when "openai"
         case model.to_s.downcase
         when /gpt-4o/
           { prompt: 2.50, completion: 10.00 }  # GPT-4o: $2.50/$10 per 1M tokens
@@ -437,7 +404,7 @@ module PromptTracker
         else
           nil
         end
-      when 'anthropic'
+      when "anthropic"
         case model.to_s.downcase
         when /claude-3-opus/
           { prompt: 15.00, completion: 75.00 }  # Claude 3 Opus: $15/$75 per 1M tokens

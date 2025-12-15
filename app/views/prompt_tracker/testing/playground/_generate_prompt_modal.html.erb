@@ -1,0 +1,47 @@
+<div class="modal fade" id="generatePromptModal" tabindex="-1" data-modal-fix-target="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-stars me-2"></i>
+          Generate New Prompt
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-info mb-3">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Tip:</strong> Briefly describe what you want your prompt to do. The AI will generate a complete prompt with system instructions, user template, and suggested variables.
+        </div>
+
+        <div class="mb-3">
+          <label for="generateDescription" class="form-label">
+            What should your prompt do?
+          </label>
+          <textarea
+            class="form-control"
+            id="generateDescription"
+            rows="4"
+            placeholder="Example: A customer support chatbot that helps users troubleshoot technical issues with empathy and clear step-by-step instructions"></textarea>
+          <div class="form-text">
+            Be specific about the purpose, tone, and any special requirements.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          id="generatePromptButton">
+          <i class="bi bi-stars me-1"></i>
+          Generate Prompt
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

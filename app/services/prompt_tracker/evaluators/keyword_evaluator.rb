@@ -28,6 +28,25 @@ module PromptTracker
         case_sensitive: false    # Whether to match case-sensitively
       }.freeze
 
+      # Parameter schema for form processing
+      def self.param_schema
+        {
+          required_keywords: { type: :array },
+          forbidden_keywords: { type: :array },
+          case_sensitive: { type: :boolean }
+        }
+      end
+
+      # Metadata for registry auto-discovery
+      def self.metadata
+        {
+          name: "Keyword Checker",
+          description: "Checks for required and forbidden keywords in the response",
+          icon: "search",
+          default_config: DEFAULT_CONFIG
+        }
+      end
+
       def initialize(llm_response, config = {})
         super(llm_response, DEFAULT_CONFIG.merge(config.deep_symbolize_keys))
       end
@@ -70,28 +89,6 @@ module PromptTracker
         end
       end
 
-      def evaluate_criteria
-        required = config[:required_keywords] || []
-        forbidden = config[:forbidden_keywords] || []
-        text = config[:case_sensitive] ? response_text : response_text.downcase
-
-        criteria = {}
-
-        # Check each required keyword
-        required.each do |keyword|
-          search_keyword = config[:case_sensitive] ? keyword : keyword.downcase
-          criteria["required_#{keyword}"] = text.include?(search_keyword) ? 100 : 0
-        end
-
-        # Check each forbidden keyword
-        forbidden.each do |keyword|
-          search_keyword = config[:case_sensitive] ? keyword : keyword.downcase
-          criteria["forbidden_#{keyword}"] = text.include?(search_keyword) ? 0 : 100
-        end
-
-        criteria
-      end
-
       def generate_feedback
         required = config[:required_keywords] || []
         forbidden = config[:forbidden_keywords] || []
@@ -124,16 +121,33 @@ module PromptTracker
         end
       end
 
-      def evaluator_id
-        "keyword_evaluator_v1"
-      end
-
       def metadata
         super.merge(
           required_keywords: config[:required_keywords],
           forbidden_keywords: config[:forbidden_keywords],
           case_sensitive: config[:case_sensitive]
         )
+      end
+
+      # Pass if all required keywords present and no forbidden keywords found
+      def passed?
+        required = config[:required_keywords] || []
+        forbidden = config[:forbidden_keywords] || []
+        text = config[:case_sensitive] ? response_text : response_text.downcase
+
+        # Check all required keywords are present
+        all_required_present = required.all? do |keyword|
+          search_keyword = config[:case_sensitive] ? keyword : keyword.downcase
+          text.include?(search_keyword)
+        end
+
+        # Check no forbidden keywords are present
+        no_forbidden_present = forbidden.none? do |keyword|
+          search_keyword = config[:case_sensitive] ? keyword : keyword.downcase
+          text.include?(search_keyword)
+        end
+
+        all_required_present && no_forbidden_present
       end
     end
   end

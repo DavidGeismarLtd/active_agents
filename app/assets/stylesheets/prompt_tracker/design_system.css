@@ -114,7 +114,7 @@ body {
 }
 
 /* ============================================
-   NAVIGATION
+   NAVIGATION - v2.0 (Green monitoring nav)
    ============================================ */
 .pt-navbar {
   background: var(--pt-bg-secondary);
@@ -181,6 +181,18 @@ body {
 .navbar-nav .nav-link:hover {
   background: rgba(0, 123, 255, 0.1);
   color: var(--pt-electric-blue) !important;
+}
+
+/* Monitoring nav link - green when active (must come before general .active) */
+.navbar-nav .nav-link.pt-nav-monitoring:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: #10B981 !important;
+}
+
+.navbar-nav .nav-link.pt-nav-monitoring.active {
+  background: #10B981 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
 }
 
 .navbar-nav .nav-link.active {

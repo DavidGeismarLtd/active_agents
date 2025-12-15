@@ -7,7 +7,9 @@ import { Modal, Collapse } from "bootstrap"
  */
 export default class extends Controller {
   static targets = [
-    "templateEditor",
+    "systemPromptEditor",
+    "userPromptEditor",
+    "templateEditor", // Keep for backward compatibility during migration
     "variablesContainer",
     "previewContainer",
     "previewError",
@@ -20,7 +22,18 @@ export default class extends Controller {
     "alertMessage",
     "promptNameInput",
     "charCount",
-    "previewStatus"
+    "previewStatus",
+    "modelProvider",
+    "modelName",
+    "modelTemperature",
+    "modelMaxTokens",
+    "modelTopP",
+    "modelFrequencyPenalty",
+    "modelPresencePenalty",
+    "temperatureBadge",
+    "aiButton",
+    "aiButtonText",
+    "aiButtonIcon"
   ]
 
   static values = {
@@ -29,6 +42,7 @@ export default class extends Controller {
     versionHasResponses: Boolean,
     previewUrl: String,
     saveUrl: String,
+    generateUrl: String,
     isStandalone: Boolean
   }
 
@@ -37,7 +51,9 @@ export default class extends Controller {
     this.debounceDelay = 500 // ms
 
     this.attachEventListeners()
+    this.attachModalEventListeners() // Attach listeners for modals that get moved by modal-fix
     this.updatePreview() // Initial preview
+    this.updateAIButtonState() // Update button text based on content
   }
 
   disconnect() {
@@ -47,25 +63,44 @@ export default class extends Controller {
   }
 
   attachEventListeners() {
-    // Tab key in template editor (insert 2 spaces)
-    this.templateEditorTarget.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        const start = this.templateEditorTarget.selectionStart
-        const end = this.templateEditorTarget.selectionEnd
-        const value = this.templateEditorTarget.value
-        this.templateEditorTarget.value = value.substring(0, start) + '  ' + value.substring(end)
-        this.templateEditorTarget.selectionStart = this.templateEditorTarget.selectionEnd = start + 2
-        this.templateEditorTarget.dispatchEvent(new Event('input'))
-      }
-    })
+    // Tab key in user prompt editor (insert 2 spaces)
+    if (this.hasUserPromptEditorTarget) {
+      this.userPromptEditorTarget.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault()
+          const start = this.userPromptEditorTarget.selectionStart
+          const end = this.userPromptEditorTarget.selectionEnd
+          const value = this.userPromptEditorTarget.value
+          this.userPromptEditorTarget.value = value.substring(0, start) + '  ' + value.substring(end)
+          this.userPromptEditorTarget.selectionStart = this.userPromptEditorTarget.selectionEnd = start + 2
+          this.userPromptEditorTarget.dispatchEvent(new Event('input'))
+        }
+      })
+    }
+
+    // Tab key in system prompt editor (insert 2 spaces)
+    if (this.hasSystemPromptEditorTarget) {
+      this.systemPromptEditorTarget.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault()
+          const start = this.systemPromptEditorTarget.selectionStart
+          const end = this.systemPromptEditorTarget.selectionEnd
+          const value = this.systemPromptEditorTarget.value
+          this.systemPromptEditorTarget.value = value.substring(0, start) + '  ' + value.substring(end)
+          this.systemPromptEditorTarget.selectionStart = this.systemPromptEditorTarget.selectionEnd = start + 2
+          this.systemPromptEditorTarget.dispatchEvent(new Event('input'))
+        }
+      })
+    }
 
     // Example template buttons
     document.querySelectorAll('.use-example-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const template = btn.dataset.template
-        this.templateEditorTarget.value = template
-        this.templateEditorTarget.dispatchEvent(new Event('input'))
+        if (this.hasUserPromptEditorTarget) {
+          this.userPromptEditorTarget.value = template
+          this.userPromptEditorTarget.dispatchEvent(new Event('input'))
+        }
         // Close modal
         const modal = Modal.getInstance(document.getElementById('templateExamplesModal'))
         if (modal) modal.hide()
@@ -82,17 +117,54 @@ export default class extends Controller {
     this.updateCharCount()
   }
 
-  // Action: Template editor input
-  onTemplateInput() {
+  /**
+   * Attach event listeners for modal buttons
+   * These modals get moved to document.body by modal-fix controller,
+   * so we can't use data-action attributes (they lose controller scope)
+   */
+  attachModalEventListeners() {
+    // Generate Prompt button in modal
+    const generateButton = document.getElementById('generatePromptButton')
+    if (generateButton) {
+      generateButton.addEventListener('click', () => {
+        this.submitGeneration()
+      })
+    }
+  }
+
+  // Action: User prompt editor input
+  onUserPromptInput() {
     this.debouncedUpdatePreview()
     this.updateVariableInputs()
     this.updateCharCount()
+    this.updateAIButtonState()
+  }
+
+  // Action: System prompt editor input
+  onSystemPromptInput() {
+    this.debouncedUpdatePreview()
+    this.updateVariableInputs()
+    this.updateCharCount()
+    this.updateAIButtonState()
+  }
+
+  // Backward compatibility
+  onTemplateInput() {
+    this.onUserPromptInput()
   }
 
   // Action: Variable input
   onVariableInput(event) {
     if (event.target.classList.contains('variable-input')) {
       this.debouncedUpdatePreview()
+    }
+  }
+
+  // Action: Model config change
+  onModelConfigChange() {
+    // Update temperature badge
+    if (this.hasTemperatureBadgeTarget && this.hasModelTemperatureTarget) {
+      this.temperatureBadgeTarget.textContent = this.modelTemperatureTarget.value
     }
   }
 
@@ -115,11 +187,19 @@ export default class extends Controller {
   }
 
   async updatePreview() {
-    const template = this.templateEditorTarget.value
+    const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value : ''
+    const userPrompt = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value : ''
     const variables = this.collectVariables()
 
-    if (!template.trim()) {
-      this.previewContainerTarget.innerHTML = '<p class="text-muted">Enter a template to see preview...</p>'
+    if (!userPrompt.trim()) {
+      this.previewContainerTarget.innerHTML = '<p class="text-muted">Enter a user prompt to see preview...</p>'
+      this.previewErrorTarget.style.display = 'none'
+      return
+    }
+
+    // Check for incomplete Liquid/Mustache syntax
+    if (this.hasIncompleteSyntax(userPrompt) || this.hasIncompleteSyntax(systemPrompt)) {
+      this.previewContainerTarget.innerHTML = '<p class="text-muted"><i class="bi bi-pencil"></i> Typing...</p>'
       this.previewErrorTarget.style.display = 'none'
       return
     }
@@ -136,7 +216,8 @@ export default class extends Controller {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          template: template,
+          system_prompt: systemPrompt,
+          user_prompt: userPrompt,
           variables: variables
         })
       })
@@ -161,7 +242,22 @@ export default class extends Controller {
       const data = await response.json()
 
       if (data.success) {
-        this.previewContainerTarget.innerHTML = this.escapeHtml(data.rendered)
+        // Build preview HTML with both system and user prompts
+        let previewHtml = ''
+
+        if (data.rendered_system) {
+          previewHtml += `<div class="mb-3">
+            <div class="badge bg-secondary mb-2">System Prompt</div>
+            <div class="border-start border-3 border-secondary ps-3">${this.escapeHtml(data.rendered_system)}</div>
+          </div>`
+        }
+
+        previewHtml += `<div>
+          <div class="badge bg-primary mb-2">User Prompt</div>
+          <div class="border-start border-3 border-primary ps-3">${this.escapeHtml(data.rendered_user)}</div>
+        </div>`
+
+        this.previewContainerTarget.innerHTML = previewHtml
         this.previewErrorTarget.style.display = 'none'
         this.updateEngineBadge()
         this.updateVariablesFromDetection(data.variables_detected)
@@ -177,20 +273,27 @@ export default class extends Controller {
   }
 
   updateVariableInputs() {
-    const template = this.templateEditorTarget.value
-    const variables = this.extractVariables(template)
+    const userPrompt = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value : ''
+    const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value : ''
+
+    // Extract variables from both prompts
+    const userVariables = this.extractVariables(userPrompt)
+    const systemVariables = this.extractVariables(systemPrompt)
+
+    // Combine and deduplicate variables
+    const allVariables = [...new Set([...systemVariables, ...userVariables])]
 
     // Get current variable values
     const currentValues = this.collectVariables()
 
     // Rebuild variable inputs
-    if (variables.length === 0) {
-      this.variablesContainerTarget.innerHTML = '<p class="text-muted">No variables detected. Start typing in the template editor.</p>'
+    if (allVariables.length === 0) {
+      this.variablesContainerTarget.innerHTML = '<p class="text-muted">No variables detected. Start typing in the prompt editors.</p>'
       return
     }
 
     let html = ''
-    variables.forEach(varName => {
+    allVariables.forEach(varName => {
       const value = currentValues[varName] || ''
       html += `
         <div class="mb-2">
@@ -250,6 +353,16 @@ export default class extends Controller {
     return Array.from(variables).sort()
   }
 
+  hasIncompleteSyntax(template) {
+    // Check for incomplete {{ or {% tags
+    const openBraces = (template.match(/\{\{/g) || []).length
+    const closeBraces = (template.match(/\}\}/g) || []).length
+    const openTags = (template.match(/\{%/g) || []).length
+    const closeTags = (template.match(/%\}/g) || []).length
+
+    return openBraces !== closeBraces || openTags !== closeTags
+  }
+
   collectVariables() {
     const variables = {}
     const inputs = this.variablesContainerTarget.querySelectorAll('.variable-input')
@@ -277,10 +390,11 @@ export default class extends Controller {
   }
 
   async performSave(saveAction = 'new_version') {
-    const template = this.templateEditorTarget.value
+    const userPrompt = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value : ''
+    const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value : ''
 
-    if (!template.trim()) {
-      this.showAlert('Please enter a template before saving.', 'warning')
+    if (!userPrompt.trim()) {
+      this.showAlert('Please enter a user prompt before saving.', 'warning')
       return
     }
 
@@ -310,9 +424,11 @@ export default class extends Controller {
     }
 
     const requestBody = {
-      template: template,
+      user_prompt: userPrompt,
+      system_prompt: systemPrompt,
       notes: notes,
-      save_action: saveAction
+      save_action: saveAction,
+      model_config: this.getModelConfig()
     }
 
     if (this.isStandaloneValue) {
@@ -391,7 +507,10 @@ export default class extends Controller {
   }
 
   updateCharCount() {
-    const count = this.templateEditorTarget.value.length
+    const userPromptLength = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value.length : 0
+    const systemPromptLength = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value.length : 0
+    const count = userPromptLength + systemPromptLength
+
     this.charCountTarget.textContent = `${count} chars`
 
     // Color code based on length
@@ -407,6 +526,282 @@ export default class extends Controller {
   showPreviewLoading(isLoading) {
     if (this.hasPreviewStatusTarget) {
       this.previewStatusTarget.style.display = isLoading ? 'inline-block' : 'none'
+    }
+  }
+
+  // ========================================
+  // ENHANCE PROMPT METHODS
+  // ========================================
+
+  /**
+   * Main action: Enhance or generate prompts using AI
+   */
+  async enhancePrompt() {
+    const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value : ''
+    const userPrompt = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value : ''
+    const context = this.hasPromptNameInputTarget ? this.promptNameInputTarget.value : ''
+
+    // Show loading state
+    this.showEnhanceLoading(true)
+
+    try {
+      const response = await fetch(this.enhanceUrlValue, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCsrfToken(),
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          system_prompt: systemPrompt,
+          user_prompt: userPrompt,
+          context: context
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Server error (${response.status})`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Animate the enhanced prompts into the editors
+        if (data.system_prompt && this.hasSystemPromptEditorTarget) {
+          await this.animateTextInsertion(this.systemPromptEditorTarget, data.system_prompt)
+        }
+
+        if (data.user_prompt && this.hasUserPromptEditorTarget) {
+          await this.animateTextInsertion(this.userPromptEditorTarget, data.user_prompt)
+        }
+
+        // Update variables and preview
+        this.updateVariableInputs()
+        this.updatePreview()
+
+        // Show success message with explanation
+        const message = data.explanation || 'Prompt enhanced successfully!'
+        this.showAlert(message, 'success')
+      } else {
+        throw new Error(data.error || 'Enhancement failed')
+      }
+    } catch (error) {
+      console.error('Enhancement error:', error)
+      this.showAlert(`Enhancement failed: ${error.message}`, 'danger')
+    } finally {
+      this.showEnhanceLoading(false)
+    }
+  }
+
+  /**
+   * Animate text insertion with typewriter effect
+   */
+  async animateTextInsertion(textarea, newText, speed = 2) {
+    // Clear existing content
+    textarea.value = ''
+
+    // Animate character by character
+    for (let i = 0; i < newText.length; i++) {
+      textarea.value += newText[i]
+
+      // Trigger input event periodically for live updates
+      if (i % 50 === 0 || i === newText.length - 1) {
+        textarea.dispatchEvent(new Event('input'))
+      }
+
+      // Delay between characters (skip for whitespace to speed up)
+      const char = newText[i]
+      const delay = (char === ' ' || char === '\n') ? speed / 3 : speed
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+
+    // Final input event to ensure everything is updated
+    textarea.dispatchEvent(new Event('input'))
+  }
+
+  /**
+   * Show/hide enhancement loading overlay
+   */
+  showEnhanceLoading(isLoading) {
+    // Update button state
+    if (this.hasEnhanceBtnTarget) {
+      this.enhanceBtnTarget.disabled = isLoading
+      this.enhanceBtnTarget.innerHTML = isLoading ?
+        '<span class="spinner-border spinner-border-sm me-1"></span>Enhancing...' :
+        '<i class="bi bi-magic"></i> Enhance'
+    }
+
+    // Show/hide overlay
+    if (this.hasEnhanceOverlayTarget) {
+      this.enhanceOverlayTarget.style.display = isLoading ? 'flex' : 'none'
+    }
+  }
+
+  // ========================================
+  // AI BUTTON - GENERATE ONLY
+  // ========================================
+
+  /**
+   * Check if prompts are empty
+   */
+  get isPromptsEmpty() {
+    const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value.trim() : ''
+    const userPrompt = this.hasUserPromptEditorTarget ? this.userPromptEditorTarget.value.trim() : ''
+    return systemPrompt === '' && userPrompt === ''
+  }
+
+  /**
+   * Update AI button visibility based on content state
+   * Only show when prompts are empty (generate mode)
+   */
+  updateAIButtonState() {
+    if (!this.hasAiButtonTarget) return
+
+    if (this.isPromptsEmpty) {
+      this.aiButtonTarget.style.display = ''
+      if (this.hasAiButtonTextTarget) {
+        this.aiButtonTextTarget.textContent = 'Generate'
+      }
+      if (this.hasAiButtonIconTarget) {
+        this.aiButtonIconTarget.className = 'bi bi-stars'
+      }
+    } else {
+      // Hide button when prompts have content
+      this.aiButtonTarget.style.display = 'none'
+    }
+  }
+
+  /**
+   * Handle AI button click - opens generate modal
+   */
+  handleAIButtonClick() {
+    this.openGenerateModal()
+  }
+
+  // ========================================
+  // GENERATE FEATURE
+  // ========================================
+
+  /**
+   * Open the generate prompt modal
+   */
+  openGenerateModal() {
+    const modalEl = document.getElementById('generatePromptModal')
+    if (modalEl) {
+      const modal = new Modal(modalEl)
+      modal.show()
+    }
+  }
+
+  /**
+   * Submit generation request
+   */
+  async submitGeneration() {
+    // Use getElementById since modal gets moved to document.body by modal-fix
+    const descriptionTextarea = document.getElementById('generateDescription')
+
+    if (!descriptionTextarea) {
+      return
+    }
+
+    const description = descriptionTextarea.value.trim()
+
+    if (!description) {
+      this.showAlert('Please describe what your prompt should do', 'warning')
+      return
+    }
+
+    // Close the input modal
+    const inputModalEl = document.getElementById('generatePromptModal')
+    if (inputModalEl) {
+      const inputModal = Modal.getInstance(inputModalEl)
+      if (inputModal) inputModal.hide()
+    }
+
+    // Show generating modal
+    this.showGeneratingModal()
+
+    try {
+      await this.generatePromptFromDescription(description)
+    } catch (error) {
+      console.error('Generation error:', error)
+    } finally {
+      this.hideGeneratingModal()
+      // Clear the description for next time
+      if (descriptionTextarea) {
+        descriptionTextarea.value = ''
+      }
+    }
+  }
+
+  /**
+   * Generate prompt from description with animation
+   */
+  async generatePromptFromDescription(description) {
+    try {
+      const response = await fetch(this.generateUrlValue, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCsrfToken(),
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ description })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Server error (${response.status})`)
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Animate the generated prompts
+        if (data.system_prompt && this.hasSystemPromptEditorTarget) {
+          await this.animateTextInsertion(this.systemPromptEditorTarget, data.system_prompt)
+        }
+
+        if (data.user_prompt && this.hasUserPromptEditorTarget) {
+          await this.animateTextInsertion(this.userPromptEditorTarget, data.user_prompt)
+        }
+
+        // Update variables and preview
+        this.updateVariableInputs()
+        this.updatePreview()
+        this.updateAIButtonState()
+
+        // Show success message with explanation
+        const message = data.explanation || 'Prompt generated successfully!'
+        this.showAlert(message, 'success')
+      } else {
+        throw new Error(data.error || 'Generation failed')
+      }
+    } catch (error) {
+      console.error('Generation error:', error)
+      this.showAlert(`Generation failed: ${error.message}`, 'danger')
+    }
+  }
+
+  /**
+   * Show generating modal
+   */
+  showGeneratingModal() {
+    const modalEl = document.getElementById('generatingModal')
+    if (modalEl) {
+      this.generatingModal = new Modal(modalEl)
+      this.generatingModal.show()
+    }
+  }
+
+  /**
+   * Hide generating modal
+   */
+  hideGeneratingModal() {
+    if (this.generatingModal) {
+      this.generatingModal.hide()
+      this.generatingModal = null
     }
   }
 
@@ -437,5 +832,40 @@ export default class extends Controller {
         })
       }
     }
+  }
+
+  // Get model configuration from form
+  getModelConfig() {
+    const config = {}
+
+    if (this.hasModelProviderTarget) {
+      config.provider = this.modelProviderTarget.value
+    }
+
+    if (this.hasModelNameTarget && this.modelNameTarget.value) {
+      config.model = this.modelNameTarget.value
+    }
+
+    if (this.hasModelTemperatureTarget) {
+      config.temperature = parseFloat(this.modelTemperatureTarget.value)
+    }
+
+    if (this.hasModelMaxTokensTarget && this.modelMaxTokensTarget.value) {
+      config.max_tokens = parseInt(this.modelMaxTokensTarget.value)
+    }
+
+    if (this.hasModelTopPTarget && this.modelTopPTarget.value) {
+      config.top_p = parseFloat(this.modelTopPTarget.value)
+    }
+
+    if (this.hasModelFrequencyPenaltyTarget && this.modelFrequencyPenaltyTarget.value) {
+      config.frequency_penalty = parseFloat(this.modelFrequencyPenaltyTarget.value)
+    }
+
+    if (this.hasModelPresencePenaltyTarget && this.modelPresencePenaltyTarget.value) {
+      config.presence_penalty = parseFloat(this.modelPresencePenaltyTarget.value)
+    }
+
+    return config
   }
 }

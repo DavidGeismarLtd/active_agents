@@ -1,0 +1,69 @@
+<%# Unified form for Exact Match Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'exact_match' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-check-circle"></i>
+  <strong>Exact Match</strong>
+  <p class="mb-0 mt-1">Checks if response exactly matches expected text. Binary pass/fail evaluator.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+<!-- Expected Text -->
+<div class="mb-3">
+  <label class="form-label">Expected Text</label>
+  <textarea name="<%= namespace %>[expected_text]"
+            class="form-control"
+            rows="4"
+            placeholder="Enter the exact text you expect in the response..."
+            required><%= config['expected_text'] || config[:expected_text] || '' %></textarea>
+  <small class="form-text text-muted">
+    The exact text that the response should match.
+  </small>
+</div>
+
+<!-- Case Sensitive -->
+<div class="mb-3 form-check">
+  <input type="checkbox"
+         name="<%= namespace %>[case_sensitive]"
+         class="form-check-input"
+         id="<%= evaluator_key %>_case_sensitive"
+         value="true"
+         <%= 'checked' if config['case_sensitive'] || config[:case_sensitive] %>>
+  <label class="form-check-label" for="<%= evaluator_key %>_case_sensitive">
+    Case-sensitive matching
+  </label>
+  <div class="form-text">
+    If checked, "Hello" and "hello" will be treated as different.
+  </div>
+</div>
+
+<!-- Trim Whitespace -->
+<div class="mb-3 form-check">
+  <input type="checkbox"
+         name="<%= namespace %>[trim_whitespace]"
+         class="form-check-input"
+         id="<%= evaluator_key %>_trim_whitespace"
+         value="true"
+         <%= 'checked' if (config['trim_whitespace'] || config[:trim_whitespace]).nil? || (config['trim_whitespace'] || config[:trim_whitespace]) %>>
+  <label class="form-check-label" for="<%= evaluator_key %>_trim_whitespace">
+    Trim whitespace before comparing
+  </label>
+  <div class="form-text">
+    If checked, leading and trailing whitespace will be removed before comparison.
+  </div>
+</div>
+
+<div class="alert alert-secondary">
+  <strong>Binary Scoring:</strong>
+  <ul class="mb-0 mt-2">
+    <li>Exact match: <strong>PASS (100 points)</strong></li>
+    <li>No match: <strong>FAIL (0 points)</strong></li>
+  </ul>
+</div>

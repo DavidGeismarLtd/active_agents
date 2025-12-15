@@ -1,0 +1,152 @@
+<%
+  # Shared prompts accordion component
+  # Displays all prompts with their versions in an accordion format
+  #
+  # Local variables:
+  # - prompts: Collection of Prompt records to display
+  # - show_monitor_button: (optional) Boolean to show Monitor button for versions with tracked calls
+  # - search_enabled: (optional) Boolean to enable search functionality
+
+  show_monitor_button ||= false
+  search_enabled ||= false
+%>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">All Prompts & Versions</h5>
+  </div>
+  <div class="card-body" <%= 'data-controller="prompt-search"'.html_safe if search_enabled %>>
+    <% if search_enabled %>
+      <!-- Search Box -->
+      <div class="mb-3">
+        <input
+          type="text"
+          id="promptSearch"
+          class="form-control"
+          placeholder="Search prompts and versions..."
+          data-action="input->prompt-search#search"
+        >
+      </div>
+    <% end %>
+
+    <% if prompts.any? %>
+      <div class="accordion" id="promptsAccordion">
+        <% prompts.each_with_index do |prompt, index| %>
+          <div class="accordion-item" data-prompt-search-target="item" data-prompt-name="<%= prompt.name.downcase %>">
+            <h2 class="accordion-header" id="heading<%= prompt.id %>">
+              <button class="accordion-button <%= 'collapsed' unless index == 0 %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= prompt.id %>" aria-expanded="<%= index == 0 ? 'true' : 'false' %>" aria-controls="collapse<%= prompt.id %>">
+                <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                  <div>
+                    <strong><%= prompt.name %></strong>
+                    <% if prompt.archived_at.present? %>
+                      <span class="badge bg-dark ms-2">Archived</span>
+                    <% end %>
+                  </div>
+                  <div>
+                    <span class="badge bg-secondary"><%= prompt.prompt_versions.count %> versions</span>
+                  </div>
+                </div>
+              </button>
+            </h2>
+            <div id="collapse<%= prompt.id %>" class="accordion-collapse collapse <%= 'show' if index == 0 %>" aria-labelledby="heading<%= prompt.id %>" data-bs-parent="#promptsAccordion">
+              <div class="accordion-body">
+                <% if prompt.description.present? %>
+                  <p class="text-muted mb-3"><%= prompt.description %></p>
+                <% end %>
+
+                <% if prompt.prompt_versions.any? %>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Version</th>
+                          <th>Status</th>
+                          <th>Created</th>
+                          <th class="text-end">Test Results</th>
+                          <% if show_monitor_button %>
+                            <th class="text-end">Tracked Calls</th>
+                          <% end %>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <%
+                          # Sort versions: active first, then by version number descending
+                          active_version = prompt.active_version
+                          sorted_versions = prompt.prompt_versions.sort_by do |v|
+                            [v == active_version ? 0 : 1, -v.version_number]
+                          end
+                        %>
+                        <% sorted_versions.each do |version| %>
+                          <tr class="<%= 'table-primary' if version == active_version %>" data-version-number="<%= version.version_number %>">
+                            <td>
+                              <strong>v<%= version.version_number %></strong>
+                              <% if version == active_version %>
+                                <span class="badge bg-success ms-2">Active</span>
+                              <% end %>
+                            </td>
+                            <td><%= status_badge(version.status) %></td>
+                            <td><%= format_timestamp(version.created_at) %></td>
+                            <td class="text-end">
+                              <%
+                                # Get all test runs for this version
+                                test_runs = PromptTracker::PromptTestRun.where(prompt_version_id: version.id).completed
+                                total_tests = test_runs.count
+                                passed_tests = test_runs.passed.count
+                                failed_tests = test_runs.failed.count
+                              %>
+                              <% if total_tests > 0 %>
+                                <div class="d-flex align-items-center justify-content-end gap-2">
+                                  <span class="badge bg-success"><%= passed_tests %> passed</span>
+                                  <span class="badge bg-danger"><%= failed_tests %> failed</span>
+                                </div>
+                              <% else %>
+                                <span class="text-muted">No tests</span>
+                              <% end %>
+                            </td>
+                            <% if show_monitor_button %>
+                              <td class="text-end">
+                                <%
+                                  # Get tracked calls count for this version
+                                  tracked_calls_count = PromptTracker::LlmResponse.tracked_calls.where(prompt_version_id: version.id).count
+                                %>
+                                <% if tracked_calls_count > 0 %>
+                                  <span class="badge bg-info"><%= tracked_calls_count %> calls</span>
+                                <% else %>
+                                  <span class="text-muted">No calls</span>
+                                <% end %>
+                              </td>
+                            <% end %>
+                            <td>
+                              <div class="btn-group" role="group">
+                                <%= link_to "View", testing_prompt_prompt_version_path(prompt, version), class: "btn btn-sm btn-outline-primary" %>
+                                <% if show_monitor_button %>
+                                  <%= link_to "Monitor", monitoring_prompt_prompt_version_path(prompt, version), class: "btn btn-sm btn-outline-success", title: "View Tracked Calls" %>
+                                <% end %>
+                                <% unless version.active? %>
+                                  <%= button_to "Activate", activate_testing_prompt_prompt_version_path(prompt, version), method: :post, class: "btn btn-sm btn-outline-success", title: "Activate", data: { confirm: "Activate this version? This will deprecate all other versions." } %>
+                                <% end %>
+                              </div>
+                            </td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                <% else %>
+                  <p class="text-muted">No versions yet</p>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">No prompts found</p>
+        <%= link_to "Create your first prompt", testing_playground_path, class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,121 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= @prompt.name %></li>
+  <li class="breadcrumb-item active" aria-current="page">v<%= @version.version_number %></li>
+<% end %>
+
+<div class="monitoring-prompt-version-show">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #ECFDF5; border-left: 4px solid #10B981; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 style="color: #065F46; margin: 0;">
+          <i class="bi bi-activity"></i> <%= @prompt.name %>
+          <span class="badge bg-primary">v<%= @version.version_number %></span>
+          <%= status_badge(@version.status) %>
+        </h1>
+        <p style="color: #065F46; margin: 0.5rem 0 0 0;">
+          Monitoring tracked calls and evaluations for this version
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <%= link_to docs_tracking_path(prompt_id: @prompt.id, version_id: @version.id),
+                    class: "btn btn-outline-info",
+                    target: "_blank",
+                    title: "Learn how to track LLM calls in your code" do %>
+          <i class="bi bi-book"></i> How to Track Calls
+        <% end %>
+        <%= link_to testing_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-primary" do %>
+          <i class="bi bi-flask"></i> View in Testing
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Total Calls</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @total_calls %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Successful</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @successful_calls %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #FEE2E2; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Failed</div>
+      <div style="color: #EF4444; font-size: 1.5rem; font-weight: bold;"><%= @failed_calls %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Evaluations</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @total_evaluations %></div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+        <%= @passed_evaluations %> passed, <%= @failed_evaluations %> failed
+      </div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Avg Score</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= @avg_score %>/100</div>
+    </div>
+  </div>
+
+  <!-- Auto-Evaluators Configuration -->
+  <div class="mb-4">
+    <%= render "evaluator_configs" %>
+  </div>
+
+  <!-- Evaluator Modals (for Add/Edit) -->
+  <%= render "evaluator_modals" %>
+
+  <!-- Filters -->
+  <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+    <%= form_with url: monitoring_prompt_prompt_version_path(@prompt, @version), method: :get, local: true, style: "margin: 0;" do |f| %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+        <!-- Environment Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Environment</label>
+          <%= f.select :environment,
+              options_for_select([["All Environments", ""]] + @environments.map { |e| [e, e] }, params[:environment]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Status Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Status</label>
+          <%= f.select :status,
+              options_for_select([["All Statuses", ""]] + @statuses.map { |s| [s.titleize, s] }, params[:status]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- User ID Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">User ID</label>
+          <%= f.select :user_id,
+              options_for_select([["All Users", ""]] + @user_ids.map { |u| [u, u] }, params[:user_id]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Submit Button -->
+        <div>
+          <%= f.submit "Apply Filters", style: "width: 100%; padding: 0.5rem 1rem; background: #10B981; color: white; border: none; border-radius: 4px; font-size: 0.875rem; font-weight: 500; cursor: pointer;" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Tracked Calls Table -->
+  <%= render "prompt_tracker/monitoring/shared/tracked_calls_table",
+             tracked_calls: @tracked_calls,
+             show_column_visibility: true,
+             show_pagination: true,
+             title: "Tracked Calls",
+             empty_message: "No tracked calls found for this version",
+             show_evaluations_column: true,
+             prompt: @prompt,
+             version: @version %>
+</div>
+
+<!-- Evaluation Modals -->
+<%= render "prompt_tracker/monitoring/shared/evaluation_modals", tracked_calls: @tracked_calls %>

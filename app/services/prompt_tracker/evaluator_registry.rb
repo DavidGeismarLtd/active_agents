@@ -13,12 +13,12 @@ module PromptTracker
   # @example Getting all available evaluators
   #   EvaluatorRegistry.all
   #   # => {
-  #   #   length_check: { name: "Length Validator", class: LengthEvaluator, ... },
-  #   #   keyword_check: { name: "Keyword Checker", class: KeywordEvaluator, ... }
+  #   #   length: { name: "Length Validator", class: LengthEvaluator, ... },
+  #   #   keyword: { name: "Keyword Checker", class: KeywordEvaluator, ... }
   #   # }
   #
   # @example Building an evaluator instance
-  #   evaluator = EvaluatorRegistry.build(:length_check, llm_response, { min_length: 50 })
+  #   evaluator = EvaluatorRegistry.build(:length, llm_response, { min_length: 50 })
   #   result = evaluator.evaluate
   #
   # @example Registering a custom evaluator
@@ -43,13 +43,7 @@ module PromptTracker
         registry
       end
 
-      # Returns evaluators in a specific category
-      #
-      # @param category [Symbol] the category (:format, :content, :quality, :custom)
-      # @return [Hash] hash of evaluator_key => metadata
-      def by_category(category)
-        registry.select { |_key, metadata| metadata[:category] == category }
-      end
+
 
       # Gets metadata for a specific evaluator
       #
@@ -88,25 +82,19 @@ module PromptTracker
       # @param name [String] human-readable name
       # @param description [String] description of what it evaluates
       # @param evaluator_class [Class] the evaluator class
-      # @param category [Symbol] category (:format, :content, :quality, :custom)
       # @param icon [String] Bootstrap icon name (without 'bi-' prefix)
-      # @param config_schema [Hash] schema defining configuration options
       # @param default_config [Hash] default configuration values
       # @param form_template [String] path to the form partial for manual evaluation (optional)
-      # @param evaluator_type [String] type of evaluator (human, automated, llm_judge)
       # @return [void]
-      def register(key:, name:, description:, evaluator_class:, category: :custom, icon: nil, config_schema: {}, default_config: {}, form_template: nil, evaluator_type: 'automated')
+      def register(key:, name:, description:, evaluator_class:, icon:, default_config: {}, form_template: nil)
         registry[key.to_sym] = {
           key: key.to_sym,
           name: name,
           description: description,
           evaluator_class: evaluator_class,
-          category: category,
-          icon: icon || 'gear',
-          config_schema: config_schema,
+          icon: icon,
           default_config: default_config,
-          form_template: form_template,
-          evaluator_type: evaluator_type
+          form_template: form_template
         }
       end
 
@@ -135,112 +123,97 @@ module PromptTracker
         @registry ||= initialize_registry
       end
 
-      # Initializes the registry with built-in evaluators
+      # Initializes the registry with auto-discovered evaluators
       #
       # @return [Hash] the initialized registry
       def initialize_registry
         @registry = {}
 
-        # Register built-in evaluators
-        register_length_evaluator
-        register_keyword_evaluator
-        register_format_evaluator
-        register_llm_judge_evaluator
+        # Auto-discover all evaluator classes
+        auto_discover_evaluators
 
         @registry
       end
 
-      # Registers the length evaluator
-      def register_length_evaluator
-        register(
-          key: :length_check,
-          name: "Length Validator",
-          description: "Validates response length against min/max and ideal ranges",
-          evaluator_class: Evaluators::LengthEvaluator,
-          category: :format,
-          icon: "rulers",
-          config_schema: {
-            min_length: { type: :integer, default: 10, description: "Minimum acceptable length" },
-            max_length: { type: :integer, default: 2000, description: "Maximum acceptable length" },
-            ideal_min: { type: :integer, default: 50, description: "Ideal minimum length" },
-            ideal_max: { type: :integer, default: 500, description: "Ideal maximum length" }
-          },
-          default_config: {
-            min_length: 10,
-            max_length: 2000,
-            ideal_min: 50,
-            ideal_max: 500
-          }
-        )
+      # Auto-discovers evaluator classes by convention
+      #
+      # Scans app/services/prompt_tracker/evaluators/ for evaluator classes
+      # and registers them automatically based on naming conventions.
+      #
+      # @return [void]
+      def auto_discover_evaluators
+        evaluators_path = File.join(File.dirname(__FILE__), "evaluators", "*.rb")
+
+        Dir.glob(evaluators_path).each do |file|
+          # Skip base evaluator
+          next if file.end_with?("base_evaluator.rb")
+
+          # Extract class name from filename
+          filename = File.basename(file, ".rb")
+          class_name = filename.camelize
+
+          begin
+            # Constantize the class
+            evaluator_class = "PromptTracker::Evaluators::#{class_name}".constantize
+
+            # Register the evaluator
+            register_evaluator_by_convention(evaluator_class)
+          rescue NameError => e
+            Rails.logger.warn "Failed to load evaluator class #{class_name}: #{e.message}"
+          end
+        end
       end
 
-      # Registers the keyword evaluator
-      def register_keyword_evaluator
-        register(
-          key: :keyword_check,
-          name: "Keyword Checker",
-          description: "Checks for required and forbidden keywords in the response",
-          evaluator_class: Evaluators::KeywordEvaluator,
-          category: :content,
-          icon: "search",
-          config_schema: {
-            required_keywords: { type: :array, default: [], description: "Keywords that must be present" },
-            forbidden_keywords: { type: :array, default: [], description: "Keywords that must not be present" },
-            case_sensitive: { type: :boolean, default: false, description: "Whether matching is case-sensitive" }
-          },
-          default_config: {
-            required_keywords: [],
-            forbidden_keywords: [],
-            case_sensitive: false
-          }
-        )
-      end
+      # Registers an evaluator using naming conventions
+      #
+      # Derives all metadata from the class name and structure:
+      # - Key: class name without "Evaluator" suffix, underscored
+      # - Name: class name without "Evaluator" suffix, titleized
+      # - Form template: derived from key for human/llm_judge evaluators
+      # - Icon, description, default_config: from evaluator class metadata
+      #
+      # @param evaluator_class [Class] the evaluator class to register
+      # @return [void]
+      def register_evaluator_by_convention(evaluator_class)
+        # Derive key from class name
+        # e.g., "KeywordEvaluator" -> "keyword"
+        class_base_name = evaluator_class.name.demodulize
+        key = class_base_name.underscore.gsub("_evaluator", "").to_sym
 
-      # Registers the format evaluator
-      def register_format_evaluator
-        register(
-          key: :format_check,
-          name: "Format Validator",
-          description: "Validates response format (JSON, Markdown, etc.)",
-          evaluator_class: Evaluators::FormatEvaluator,
-          category: :format,
-          icon: "file-code",
-          config_schema: {
-            expected_format: { type: :string, default: "json", description: "Expected format (json, markdown, plain)" },
-            strict: { type: :boolean, default: false, description: "Whether to use strict validation" }
-          },
-          default_config: {
-            expected_format: "json",
-            strict: false
-          }
-        )
-      end
+        # Derive human-readable name
+        # e.g., "KeywordEvaluator" -> "Keyword"
+        name = class_base_name.gsub("Evaluator", "").titleize
 
-      # Registers the LLM judge evaluator
-      def register_llm_judge_evaluator
+        # Get metadata from class (required)
+        unless evaluator_class.respond_to?(:metadata)
+          Rails.logger.warn "Evaluator #{evaluator_class.name} does not define .metadata class method"
+          return
+        end
+
+        metadata = evaluator_class.metadata
+
+        # Validate required metadata
+        unless metadata[:icon]
+          Rails.logger.warn "Evaluator #{evaluator_class.name} metadata missing required :icon"
+          return
+        end
+
+        # Build form template path for human/llm_judge evaluators
+        form_template = if [ "HumanEvaluator", "LlmJudgeEvaluator" ].include?(class_base_name)
+          "prompt_tracker/evaluator_configs/forms/#{key}"
+        else
+          nil
+        end
+
+        # Register with metadata from class
         register(
-          key: :gpt4_judge,
-          name: "GPT-4 Judge",
-          description: "Uses GPT-4 to evaluate response quality",
-          evaluator_class: Evaluators::LlmJudgeEvaluator,
-          category: :quality,
-          icon: "robot",
-          evaluator_type: "llm_judge",
-          form_template: "prompt_tracker/evaluators/forms/llm_judge",
-          config_schema: {
-            judge_model: { type: :string, default: "gpt-4", description: "LLM model to use as judge" },
-            criteria: { type: :array, default: [ "accuracy", "helpfulness", "clarity" ], description: "Criteria to evaluate" },
-            custom_instructions: { type: :string, default: "", description: "Additional instructions for the judge" },
-            score_min: { type: :integer, default: 0, description: "Minimum score" },
-            score_max: { type: :integer, default: 100, description: "Maximum score" }
-          },
-          default_config: {
-            judge_model: "gpt-4",
-            criteria: [ "accuracy", "helpfulness", "clarity" ],
-            custom_instructions: "",
-            score_min: 0,
-            score_max: 100
-          }
+          key: key,
+          name: metadata[:name] || name,
+          description: metadata[:description] || "Evaluates using #{name}",
+          evaluator_class: evaluator_class,
+          icon: metadata[:icon],
+          default_config: metadata[:default_config] || {},
+          form_template: form_template
         )
       end
     end

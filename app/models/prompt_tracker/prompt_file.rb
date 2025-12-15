@@ -12,17 +12,14 @@ module PromptTracker
   #   file = PromptFile.new("app/prompts/support/greeting.yml")
   #   file.valid?  # => true
   #   file.name    # => "support_greeting"
-  #   file.template  # => "Hello {{name}}"
+  #   file.user_prompt  # => "Hello {{name}}"
   #
   # @example Expected YAML structure
   #   # app/prompts/support/greeting.yml
   #   name: support_greeting
   #   description: Greeting for customer support
-  #   category: support
-  #   tags:
-  #     - customer-facing
-  #     - greeting
-  #   template: |
+  #   system_prompt: You are a helpful customer support agent.
+  #   user_prompt: |
   #     Hello {{customer_name}}!
   #     How can I help you today?
   #   variables:
@@ -37,10 +34,10 @@ module PromptTracker
     attr_reader :path, :errors
 
     # Required fields in YAML file
-    REQUIRED_FIELDS = %w[name template].freeze
+    REQUIRED_FIELDS = %w[name user_prompt].freeze
 
     # Optional fields in YAML file
-    OPTIONAL_FIELDS = %w[description category tags variables model_config notes].freeze
+    OPTIONAL_FIELDS = %w[description category tags variables model_config notes system_prompt].freeze
 
     # All valid fields
     ALL_FIELDS = (REQUIRED_FIELDS + OPTIONAL_FIELDS).freeze
@@ -70,11 +67,18 @@ module PromptTracker
       data["name"]
     end
 
-    # Get the template from the YAML file.
+    # Get the user_prompt from the YAML file.
     #
-    # @return [String, nil] the template
-    def template
-      data["template"]
+    # @return [String, nil] the user prompt
+    def user_prompt
+      data["user_prompt"]
+    end
+
+    # Get the system_prompt from the YAML file.
+    #
+    # @return [String, nil] the system prompt
+    def system_prompt
+      data["system_prompt"]
     end
 
     # Get the description from the YAML file.
@@ -82,20 +86,6 @@ module PromptTracker
     # @return [String, nil] the description
     def description
       data["description"]
-    end
-
-    # Get the category from the YAML file.
-    #
-    # @return [String, nil] the category
-    def category
-      data["category"]
-    end
-
-    # Get the tags from the YAML file.
-    #
-    # @return [Array<String>] the tags (empty array if not specified)
-    def tags
-      data["tags"] || []
     end
 
     # Get the variables schema from the YAML file.
@@ -147,12 +137,11 @@ module PromptTracker
       {
         prompt: {
           name: name,
-          description: description,
-          category: category,
-          tags: tags
+          description: description
         },
         version: {
-          template: template,
+          system_prompt: system_prompt,
+          user_prompt: user_prompt,
           variables_schema: variables,
           model_config: model_config,
           notes: notes,
@@ -226,14 +215,14 @@ module PromptTracker
         @errors << "Field 'name' must be a string"
       end
 
-      # template must be a string
-      if @data["template"] && !@data["template"].is_a?(String)
-        @errors << "Field 'template' must be a string"
+      # user_prompt must be a string
+      if @data["user_prompt"] && !@data["user_prompt"].is_a?(String)
+        @errors << "Field 'user_prompt' must be a string"
       end
 
-      # tags must be an array
-      if @data["tags"] && !@data["tags"].is_a?(Array)
-        @errors << "Field 'tags' must be an array"
+      # system_prompt must be a string if present
+      if @data["system_prompt"] && !@data["system_prompt"].is_a?(String)
+        @errors << "Field 'system_prompt' must be a string"
       end
 
       # variables must be an array
@@ -256,29 +245,29 @@ module PromptTracker
       end
     end
 
-    # Validate that variables in template match variables schema.
+    # Validate that variables in user_prompt match variables schema.
     def validate_template_variables
-      return unless @data["template"].is_a?(String)
+      return unless @data["user_prompt"].is_a?(String)
       return unless @data["variables"].is_a?(Array)
 
-      # Extract variables from template ({{variable_name}})
-      template_vars = @data["template"].scan(/\{\{(\w+)\}\}/).flatten.uniq
+      # Extract variables from user_prompt ({{variable_name}})
+      template_vars = @data["user_prompt"].scan(/\{\{(\w+)\}\}/).flatten.uniq
 
       # Extract variable names from schema
       schema_vars = @data["variables"].map { |v| v["name"] }.compact
 
-      # Check for variables in template that aren't in schema
+      # Check for variables in user_prompt that aren't in schema
       missing_in_schema = template_vars - schema_vars
       if missing_in_schema.any?
-        @errors << "Template uses variables not defined in schema: #{missing_in_schema.join(', ')}"
+        @errors << "User prompt uses variables not defined in schema: #{missing_in_schema.join(', ')}"
       end
 
-      # Warn about variables in schema that aren't used in template
+      # Warn about variables in schema that aren't used in user_prompt
       # (This is just a warning, not an error)
       unused_vars = schema_vars - template_vars
       if unused_vars.any?
         # We could add warnings here, but for now we'll just allow it
-        # @warnings << "Variables defined but not used in template: #{unused_vars.join(', ')}"
+        # @warnings << "Variables defined but not used in user_prompt: #{unused_vars.join(', ')}"
       end
     end
   end

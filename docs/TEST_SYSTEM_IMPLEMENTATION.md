@@ -20,13 +20,7 @@ Created 4 database models with full associations and validations:
    - Tags for organization
    - Methods: `pass_rate`, `passing?`, `recent_runs`, `avg_execution_time`
 
-2. **PromptTestSuite** - Groups of related tests
-   - Optional prompt association (can test multiple prompts)
-   - Enabled/disabled flag
-   - Tags for organization
-   - Methods: `enabled_tests`, `pass_rate`, `passing?`, `recent_runs`
-
-3. **PromptTestRun** - Results of running a single test
+2. **PromptTestRun** - Results of running a single test
    - Status tracking (pending, running, passed, failed, error, skipped)
    - Assertion results (pattern matching, exact output)
    - Evaluator results (scores, thresholds, pass/fail)
@@ -59,14 +53,6 @@ Created 2 core services for executing tests:
    - Determines pass/fail (ALL evaluators AND assertions must pass)
    - Records detailed results in PromptTestRun
 
-2. **PromptTestSuiteRunner** - Executes all tests in a suite
-   - Gets all enabled tests from suite
-   - Runs each test using PromptTestRunner
-   - Aggregates results (passed, failed, error, skipped counts)
-   - Calculates total duration and cost
-   - Determines suite status (passed, failed, partial, error)
-   - Records results in PromptTestSuiteRun
-
 **Key Features:**
 - Flexible LLM integration via blocks
 - Comprehensive error handling
@@ -83,19 +69,10 @@ Created 4 controllers with full CRUD operations:
    - Actions: index, show, new, create, edit, update, destroy, run
    - Nested under prompts: `/prompts/:prompt_id/tests`
 
-2. **PromptTestSuitesController** - Manage test suites
-   - Actions: index, show, new, create, edit, update, destroy, run
-   - Top-level: `/test-suites`
-
-3. **PromptTestRunsController** - View test run results
+2. **PromptTestRunsController** - View test run results
    - Actions: index, show
    - Filtering by status and pass/fail
    - Top-level: `/test-runs`
-
-4. **PromptTestSuiteRunsController** - View suite run results
-   - Actions: index, show
-   - Filtering by status
-   - Top-level: `/suite-runs`
 
 **Routes Added:**
 ```ruby
@@ -105,11 +82,7 @@ resources :prompt_tests, path: "tests" do
 end
 
 # Top-level
-resources :prompt_test_suites, path: "test-suites" do
-  member { post :run }
-end
 resources :prompt_test_runs, path: "test-runs"
-resources :prompt_test_suite_runs, path: "suite-runs"
 ```
 
 ---
@@ -124,9 +97,6 @@ Created comprehensive views for test management:
 - `new.html.erb` - Create new test
 - `edit.html.erb` - Edit existing test
 - `_form.html.erb` - Shared form for create/edit
-
-**Test Suite Views:**
-- `index.html.erb` - List all test suites with stats
 
 **Features:**
 - Test statistics dashboard (total, enabled, passing, pass rate)
@@ -144,9 +114,7 @@ Created comprehensive RSpec tests and factories:
 
 **Factories:**
 - `prompt_test` - Test case factory
-- `prompt_test_suite` - Test suite factory
 - `prompt_test_run` - Test run factory (with :failed and :error traits)
-- `prompt_test_suite_run` - Suite run factory (with :failed and :partial traits)
 
 **Model Specs:**
 - `prompt_test_spec.rb` - Tests for PromptTest model
@@ -211,7 +179,6 @@ To complete the test system:
 
 4. **Enhance UI**
    - Add test run details view
-   - Add suite run details view
    - Add test history charts
    - Add pass rate trends
 
@@ -248,4 +215,3 @@ puts test_run.assertion_results
 ---
 
 **Status:** 4 of 6 phases complete (67%) 🎯
-

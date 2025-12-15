@@ -1,0 +1,82 @@
+<%# Reusable Modal body content for all human evaluations %>
+<%# Parameters:
+  - record: The record with human evaluations (PromptTestRun or LlmResponse)
+  - context: 'testing' or 'monitoring' (for color scheme)
+%>
+
+<%
+  # Determine color scheme based on context
+  if context == 'testing'
+    border_color = '#3B82F6'
+    badge_color = 'bg-primary'
+  else # monitoring
+    border_color = '#10B981'
+    badge_color = 'bg-success'
+  end
+%>
+
+<div data-updated-at="<%= Time.current.to_i %>">
+<% if record.human_evaluations.any? %>
+  <!-- Summary Stats -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card bg-light">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-1">Total Evaluations</h6>
+          <h3 class="mb-0"><%= record.human_evaluations.count %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card bg-light">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-1">Average Score</h6>
+          <h3 class="mb-0">
+            <%= number_with_precision(record.human_evaluations.average(:score), precision: 1) %>
+          </h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Individual Evaluations -->
+  <h6 class="mb-3">Individual Evaluations</h6>
+  <% record.human_evaluations.recent.each_with_index do |human_eval, index| %>
+    <div class="card mb-3" style="border-left: 4px solid <%= border_color %>;">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="mb-1">
+              <span class="badge <%= badge_color %>">
+                Score: <%= human_eval.score %> / 100
+              </span>
+            </h6>
+          </div>
+          <div class="text-end">
+            <small class="text-muted d-block">
+              <%= time_ago_in_words(human_eval.created_at) %> ago
+            </small>
+            <small class="text-muted" style="font-size: 0.75rem;">
+              <%= human_eval.created_at.strftime("%Y-%m-%d %H:%M:%S") %>
+            </small>
+          </div>
+        </div>
+        <div class="mt-2">
+          <strong class="d-block mb-1">Feedback:</strong>
+          <div class="bg-light p-3 rounded" style="white-space: pre-wrap;"><%= human_eval.feedback %></div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <div class="text-center py-5">
+    <i class="bi bi-inbox" style="font-size: 3rem; color: #9CA3AF;"></i>
+    <% if record.is_a?(PromptTracker::PromptTestRun) %>
+      <p class="text-muted mt-3 mb-0">No human evaluations yet for this test run.</p>
+    <% else %>
+      <p class="text-muted mt-3 mb-0">No human evaluations yet for this tracked call.</p>
+    <% end %>
+  </div>
+<% end %>
+</div>
+

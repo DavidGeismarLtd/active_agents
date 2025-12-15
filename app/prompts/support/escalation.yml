@@ -11,17 +11,17 @@ tags:
   - internal
   - high-priority
 
-template: |
+user_prompt: |
   I'm escalating this {{issue_type}} issue to you for {{customer_name}}.
-  
+
   Issue Summary: {{issue_summary}}
-  
+
   Customer Sentiment: {{sentiment}}
   Priority: {{priority}}
-  
+
   Previous Actions Taken:
   {{previous_actions}}
-  
+
   Please review and provide guidance or take over the conversation.
 
 variables:
@@ -54,4 +54,3 @@ model_config:
   max_tokens: 300
 
 notes: Professional escalation format for internal use
-

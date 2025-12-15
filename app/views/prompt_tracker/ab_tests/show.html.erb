@@ -21,8 +21,8 @@
       <% end %>
     </h1>
     <p class="text-muted">
-      <%= link_to @ab_test.prompt.name, prompt_path(@ab_test.prompt) %> • 
-      <%= @ab_test.metric_to_optimize.humanize %> 
+      <%= @ab_test.prompt.name %> •
+      <%= @ab_test.metric_to_optimize.humanize %>
       (<%= @ab_test.optimization_direction %>)
     </p>
   </div>
@@ -143,7 +143,7 @@
               </td>
               <td>
                 <% if version %>
-                  <%= link_to "v#{version.version_number}", prompt_prompt_version_path(@ab_test.prompt, version) %>
+                  v<%= version.version_number %>
                 <% else %>
                   <span class="text-muted">-</span>
                 <% end %>
@@ -211,7 +211,7 @@
           <h2><%= @analysis[:p_value].round(4) %></h2>
         </div>
       </div>
-      
+
       <% if @ab_test.running? %>
         <hr>
         <%= form_with url: complete_ab_test_path(@ab_test), method: :post, class: "d-inline" do |f| %>
@@ -294,4 +294,3 @@
     </dl>
   </div>
 </div>
-

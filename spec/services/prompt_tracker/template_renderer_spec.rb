@@ -8,28 +8,28 @@ module PromptTracker
       context "with Mustache-style templates" do
         it "renders simple variable substitution" do
           renderer = TemplateRenderer.new("Hello {{name}}!")
-          result = renderer.render(name: "John")
+          result = renderer.render({ name: "John" })
 
           expect(result).to eq("Hello John!")
         end
 
         it "renders multiple variables" do
           renderer = TemplateRenderer.new("{{greeting}} {{name}}, welcome to {{place}}!")
-          result = renderer.render(greeting: "Hi", name: "Alice", place: "Wonderland")
+          result = renderer.render({ greeting: "Hi", name: "Alice", place: "Wonderland" })
 
           expect(result).to eq("Hi Alice, welcome to Wonderland!")
         end
 
         it "converts values to strings" do
           renderer = TemplateRenderer.new("Count: {{count}}")
-          result = renderer.render(count: 42)
+          result = renderer.render({ count: 42 })
 
           expect(result).to eq("Count: 42")
         end
 
         it "works with indifferent access" do
           renderer = TemplateRenderer.new("Hello {{name}}!")
-          result = renderer.render("name" => "Bob")
+          result = renderer.render({ "name" => "Bob" })
 
           expect(result).to eq("Hello Bob!")
         end
@@ -38,14 +38,14 @@ module PromptTracker
       context "with Liquid templates" do
         it "renders simple Liquid variables" do
           renderer = TemplateRenderer.new("Hello {{ name }}!")
-          result = renderer.render(name: "John")
+          result = renderer.render({ name: "John" }, engine: :liquid)
 
           expect(result).to eq("Hello John!")
         end
 
         it "renders Liquid filters" do
           renderer = TemplateRenderer.new("Hello {{ name | upcase }}!")
-          result = renderer.render(name: "john")
+          result = renderer.render({ name: "john" })
 
           expect(result).to eq("Hello JOHN!")
         end
@@ -54,21 +54,21 @@ module PromptTracker
           template = "{% if premium %}Premium user{% else %}Basic user{% endif %}"
           renderer = TemplateRenderer.new(template)
 
-          expect(renderer.render(premium: true)).to eq("Premium user")
-          expect(renderer.render(premium: false)).to eq("Basic user")
+          expect(renderer.render({ premium: true })).to eq("Premium user")
+          expect(renderer.render({ premium: false })).to eq("Basic user")
         end
 
         it "renders Liquid loops" do
           template = "{% for item in items %}{{ item }} {% endfor %}"
           renderer = TemplateRenderer.new(template)
-          result = renderer.render(items: %w[a b c])
+          result = renderer.render({ items: %w[a b c] })
 
           expect(result).to eq("a b c ")
         end
 
         it "renders nested object access" do
           renderer = TemplateRenderer.new("Hello {{ user.name }}!")
-          result = renderer.render(user: { "name" => "Alice" })
+          result = renderer.render({ user: { "name" => "Alice" } })
 
           expect(result).to eq("Hello Alice!")
         end
@@ -77,8 +77,8 @@ module PromptTracker
           template = "{% if name %}Hello {{ name | capitalize }}!{% endif %}"
           renderer = TemplateRenderer.new(template)
 
-          expect(renderer.render(name: "john")).to eq("Hello John!")
-          expect(renderer.render(name: nil)).to eq("")
+          expect(renderer.render({ name: "john" })).to eq("Hello John!")
+          expect(renderer.render({ name: nil })).to eq("")
         end
       end
 
@@ -109,7 +109,7 @@ module PromptTracker
       context "with auto-detection" do
         it "uses Liquid for templates with filters" do
           renderer = TemplateRenderer.new("{{ name | upcase }}")
-          result = renderer.render(name: "test")
+          result = renderer.render({ name: "test" })
 
           expect(result).to eq("TEST")
         end
@@ -123,7 +123,7 @@ module PromptTracker
 
         it "uses Mustache for simple templates" do
           renderer = TemplateRenderer.new("{{name}}")
-          result = renderer.render(name: "test")
+          result = renderer.render({ name: "test" })
 
           expect(result).to eq("test")
         end
@@ -178,4 +178,3 @@ module PromptTracker
     end
   end
 end
-

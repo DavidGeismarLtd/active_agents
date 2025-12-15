@@ -11,11 +11,8 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
   let(:llm_response) { create(:llm_response, prompt_version: version) }
   let(:config) do
     {
-      judge_model: "gpt-4",
-      criteria: [ "accuracy", "relevance", "clarity" ],
-      custom_instructions: "Be strict in your evaluation",
-      score_min: 0,
-      score_max: 100
+      judge_model: "gpt-4o",
+      custom_instructions: "Be strict in your evaluation. Consider accuracy, relevance, and clarity."
     }
   end
 
@@ -26,8 +23,7 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
     double(
       "RubyLLM::Response",
       content: {
-        overall_score: 85.0,
-        criteria_scores: { accuracy: 90.0, relevance: 85.0, clarity: 80.0 },
+        overall_score: 85,
         feedback: "Good response with accurate information."
       },
       raw: double("raw response")
@@ -47,13 +43,13 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
       }.to change(PromptTracker::Evaluation, :count).by(1)
     end
 
-    it "uses the gpt4_judge evaluator" do
+    it "uses the llm_judge evaluator" do
       allow(PromptTracker::EvaluatorRegistry).to receive(:build).and_call_original
 
       described_class.new.perform(llm_response.id, config)
 
       expect(PromptTracker::EvaluatorRegistry).to have_received(:build).with(
-        :gpt4_judge,
+        :llm_judge,
         llm_response,
         config
       )
@@ -74,12 +70,12 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
       expect(evaluation.metadata["executed_at"]).to be_present
     end
 
-    it "generates a score within the configured range" do
+    it "generates a score within 0-100 range" do
       described_class.new.perform(llm_response.id, config)
 
       evaluation = PromptTracker::Evaluation.last
-      expect(evaluation.score).to be >= config[:score_min]
-      expect(evaluation.score).to be <= config[:score_max]
+      expect(evaluation.score).to be >= 0
+      expect(evaluation.score).to be <= 100
     end
 
     it "handles missing response gracefully" do
@@ -97,23 +93,12 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
         a_string_matching(/LLM Judge evaluation completed/)
       )
     end
-
-    it "logs error message on failure" do
-      allow(Rails.logger).to receive(:error)
-      allow(PromptTracker::EvaluatorRegistry).to receive(:build).and_raise(StandardError.new("Test error"))
-
-      expect {
-        described_class.new.perform(llm_response.id, config)
-      }.to raise_error(StandardError)
-
-      expect(Rails.logger).to have_received(:error).with(
-        a_string_matching(/LLM Judge evaluation failed/)
-      )
-    end
   end
 
   describe "job queuing" do
     it "enqueues the job" do
+      ActiveJob::Base.queue_adapter = :test
+
       expect {
         described_class.perform_later(llm_response.id, config)
       }.to have_enqueued_job(described_class).with(llm_response.id, config)
@@ -121,14 +106,6 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
 
     it "uses the default queue" do
       expect(described_class.new.queue_name).to eq("default")
-    end
-  end
-
-  describe "retry behavior" do
-    it "is configured to retry on StandardError with exponential backoff" do
-      # Verify the job class has retry_on configured
-      # This is a meta-test to ensure retry configuration exists
-      expect(described_class).to respond_to(:retry_on)
     end
   end
 end

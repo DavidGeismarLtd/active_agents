@@ -133,21 +133,21 @@ module PromptTracker
 
       responses.find_each do |response|
         value = case metric
-                when "response_time"
+        when "response_time"
                   response.response_time_ms
-                when "cost"
+        when "cost"
                   response.cost_usd
-                when "token_count"
+        when "token_count"
                   response.tokens_total
-                when "success_rate"
+        when "success_rate"
                   response.status == "success" ? 1.0 : 0.0
-                when "quality_score", "evaluation_score"
+        when "quality_score", "evaluation_score"
                   # Get average evaluation score
                   avg_score = response.evaluations.average(:score)
                   avg_score&.to_f
-                else
+        else
                   nil
-                end
+        end
 
         values << value if value.present?
       end
@@ -217,7 +217,7 @@ module PromptTracker
       # In production, you'd use a proper statistical library
       p_value = approximate_p_value(t_stat.abs, df)
 
-      [t_stat, p_value]
+      [ t_stat, p_value ]
     end
 
     # Approximate p-value from t-statistic
@@ -238,7 +238,7 @@ module PromptTracker
         z = t
         phi = 0.5 * (1.0 + Math.erf(z / Math.sqrt(2)))
         p_value = 2.0 * (1.0 - phi)
-        [p_value, 0.001].max # Minimum p-value
+        [ p_value, 0.001 ].max # Minimum p-value
       else
         # For small df, use conservative estimate
         0.05

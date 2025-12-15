@@ -1,5 +1,4 @@
 //= link_directory ../stylesheets/prompt_tracker .css
-//= link bootstrap.min.css
 //= link_tree ../../../vendor/assets/stylesheets .css
 //= link_tree ../../../vendor/assets/fonts
 //= link prompt_tracker/application.js

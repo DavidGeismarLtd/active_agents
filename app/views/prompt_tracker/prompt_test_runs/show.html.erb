@@ -32,13 +32,13 @@
       <% end %>
     </h1>
     <p class="text-muted">
-      Test: <%= link_to @test.name, prompt_prompt_version_prompt_test_path(@test.prompt, @version, @test) %>
-      | Version: <%= link_to "v#{@version.version_number}", prompt_prompt_version_path(@test.prompt, @version) %>
+      Test: <%= link_to @test.name, testing_prompt_prompt_version_prompt_test_path(@test.prompt, @version, @test) %>
+      | Version: <%= link_to "v#{@version.version_number}", testing_prompt_prompt_version_path(@test.prompt, @version) %>
       | Run at: <%= @test_run.created_at.strftime("%B %d, %Y at %I:%M %p") %>
     </p>
   </div>
   <div class="col-auto">
-    <%= link_to prompt_prompt_version_prompt_test_path(@test.prompt, @version, @test), class: "btn btn-outline-secondary" do %>
+    <%= link_to testing_prompt_prompt_version_prompt_test_path(@test.prompt, @version, @test), class: "btn btn-outline-secondary" do %>
       <i class="bi bi-arrow-left"></i> Back to Test
     <% end %>
   </div>
@@ -71,6 +71,25 @@
       <div class="metric-label">Execution Time</div>
     </div>
   </div>
+  <div class="col-md-2">
+    <div class="card metric-card">
+      <div class="metric-value">
+        <% if @test_run.avg_score.present? %>
+          <%= @test_run.avg_score.round(0) %>
+        <% else %>
+          <span class="text-muted">N/A</span>
+        <% end %>
+      </div>
+      <div class="metric-label">
+        Avg Score
+        <i class="bi bi-info-circle text-muted"
+           data-bs-toggle="tooltip"
+           data-bs-placement="top"
+           title="Average score (0-100) from all evaluators in this test run"
+           style="cursor: help;"></i>
+      </div>
+    </div>
+  </div>
   <div class="col-md-3">
     <div class="card metric-card">
       <div class="metric-value">
@@ -78,19 +97,6 @@
         <span class="text-danger"><%= @test_run.failed_evaluators || 0 %></span>
       </div>
       <div class="metric-label">Evaluators (Pass/Fail)</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card metric-card">
-      <div class="metric-value">
-        <%
-          passed_assertions = @test_run.assertion_results&.count { |_, passed| passed } || 0
-          failed_assertions = @test_run.assertion_results&.count { |_, passed| !passed } || 0
-        %>
-        <span class="text-success"><%= passed_assertions %></span> /
-        <span class="text-danger"><%= failed_assertions %></span>
-      </div>
-      <div class="metric-label">Assertions (Pass/Fail)</div>
     </div>
   </div>
   <div class="col-md-2">
@@ -165,144 +171,8 @@
   </div>
 <% end %>
 
-<!-- Evaluator Results -->
-<% if @test_run.evaluator_results.present? && @test_run.evaluator_results.any? %>
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Evaluator Results</h5>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Evaluator</th>
-              <th>Score</th>
-              <th>Threshold</th>
-              <th>Status</th>
-              <th>Feedback</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @test_run.evaluator_results.each do |result| %>
-              <%
-                evaluator_key = (result["evaluator_key"] || result[:evaluator_key]).to_sym
-                evaluator_meta = PromptTracker::EvaluatorRegistry.get(evaluator_key)
-                evaluator_name = evaluator_meta ? evaluator_meta[:name] : evaluator_key.to_s.humanize
-                evaluator_icon = evaluator_meta ? evaluator_meta[:icon] : "gear"
-                evaluator_description = evaluator_meta ? evaluator_meta[:description] : ""
-              %>
-              <tr>
-                <td>
-                  <strong>
-                    <i class="bi bi-<%= evaluator_icon %>"></i>
-                    <%= evaluator_name %>
-                  </strong>
-                  <% if evaluator_description.present? %>
-                    <br>
-                    <small class="text-muted"><%= evaluator_description %></small>
-                  <% end %>
-                </td>
-                <td>
-                  <% score = result["score"] || result[:score] %>
-                  <% if score %>
-                    <strong><%= number_with_precision(score, precision: 2) %></strong>
-                  <% else %>
-                    <span class="text-muted">-</span>
-                  <% end %>
-                </td>
-                <td>
-                  <span class="text-muted"><%= result["threshold"] || result[:threshold] || 0 %></span>
-                </td>
-                <td>
-                  <% if result["passed"] || result[:passed] %>
-                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Passed</span>
-                  <% else %>
-                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
-                  <% end %>
-                </td>
-                <td>
-                  <% feedback = result["feedback"] || result[:feedback] %>
-                  <% error = result["error"] || result[:error] %>
-                  <% if error %>
-                    <div class="text-danger">
-                      <i class="bi bi-exclamation-triangle"></i>
-                      <strong>Error:</strong> <%= error %>
-                    </div>
-                  <% elsif feedback %>
-                    <%= truncate(feedback, length: 150) %>
-                  <% else %>
-                    <span class="text-muted">No feedback</span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-<% end %>
-
-<!-- Assertion Results -->
-<% if @test_run.assertion_results.present? && @test_run.assertion_results.any? %>
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Assertion Results</h5>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Assertion Type</th>
-              <th>Details</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @test_run.assertion_results.each do |name, passed| %>
-              <tr>
-                <td>
-                  <strong>
-                    <% if name == "expected_output" %>
-                      <i class="bi bi-text-paragraph"></i> Exact Match
-                    <% elsif name.start_with?("pattern_") %>
-                      <i class="bi bi-regex"></i> Regex Pattern <%= name.gsub("pattern_", "#") %>
-                    <% else %>
-                      <%= name.humanize %>
-                    <% end %>
-                  </strong>
-                </td>
-                <td>
-                  <% if name == "expected_output" && @test.expected_output.present? %>
-                    <small class="text-muted">
-                      Expected: <code><%= truncate(@test.expected_output, length: 100) %></code>
-                    </small>
-                  <% elsif name.start_with?("pattern_") %>
-                    <% pattern_index = name.gsub("pattern_", "").to_i - 1 %>
-                    <% if @test.expected_patterns && @test.expected_patterns[pattern_index] %>
-                      <small class="text-muted">
-                        Pattern: <code><%= @test.expected_patterns[pattern_index] %></code>
-                      </small>
-                    <% end %>
-                  <% end %>
-                </td>
-                <td>
-                  <% if passed %>
-                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Passed</span>
-                  <% else %>
-                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-<% end %>
+<!-- Evaluations -->
+<%= render "prompt_tracker/shared/evaluations_table", evaluations: @test_run.evaluations, title: "Evaluations" %>
 
 <!-- Test Configuration -->
 <div class="card mb-4">
@@ -321,19 +191,6 @@
       </div>
     </div>
 
-    <% if @test.expected_output.present? %>
-      <h6 class="mt-3">Expected Output</h6>
-      <pre class="bg-light p-3 rounded"><code><%= @test.expected_output %></code></pre>
-    <% end %>
-
-    <% if @test.expected_patterns.present? && @test.expected_patterns.any? %>
-      <h6 class="mt-3">Expected Patterns</h6>
-      <ul>
-        <% @test.expected_patterns.each do |pattern| %>
-          <li><code><%= pattern %></code></li>
-        <% end %>
-      </ul>
-    <% end %>
   </div>
 </div>
 

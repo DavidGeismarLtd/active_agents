@@ -13,9 +13,6 @@ module PromptTracker
   class LlmJudgeEvaluationJob < ApplicationJob
     queue_as :default
 
-    # Retry on standard errors with exponential backoff
-    retry_on StandardError, wait: :exponentially_longer, attempts: 3
-
     # Performs the LLM judge evaluation
     #
     # @param llm_response_id [Integer] ID of the response to evaluate
@@ -28,7 +25,7 @@ module PromptTracker
     # @return [void]
     def perform(llm_response_id, config)
       llm_response = LlmResponse.find(llm_response_id)
-      evaluator_key = :gpt4_judge
+      evaluator_key = :llm_judge
 
       # Build the evaluator with the provided config
       evaluator = EvaluatorRegistry.build(evaluator_key, llm_response, config)

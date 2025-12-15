@@ -64,12 +64,12 @@ class CreatePromptTrackerPromptVersions < ActiveRecord::Migration[7.2]
 
     # Composite index for finding active version of a prompt
     add_index :prompt_tracker_prompt_versions,
-              [:prompt_id, :status],
+              [ :prompt_id, :status ],
               name: "index_prompt_versions_on_prompt_and_status"
 
     # Unique constraint: only one version number per prompt
     add_index :prompt_tracker_prompt_versions,
-              [:prompt_id, :version_number],
+              [ :prompt_id, :version_number ],
               unique: true,
               name: "index_prompt_versions_on_prompt_and_version_number"
   end

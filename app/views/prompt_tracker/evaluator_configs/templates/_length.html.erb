@@ -1,0 +1,29 @@
+<%# Display template for Length Evaluator configuration %>
+<% config ||= {} %>
+
+<div class="evaluator-display">
+  <h6 class="mb-2">
+    <i class="bi bi-rulers"></i>
+    Length Check
+  </h6>
+  
+  <% min_length = config['min_length'] || config[:min_length] %>
+  <% max_length = config['max_length'] || config[:max_length] %>
+  
+  <% if min_length.present? || max_length.present? %>
+    <div class="mb-2">
+      <strong>Length Requirements:</strong>
+      <div class="mt-1">
+        <% if min_length.present? %>
+          <div><i class="bi bi-arrow-down-circle text-info"></i> Minimum: <strong><%= min_length %></strong> characters</div>
+        <% end %>
+        <% if max_length.present? %>
+          <div><i class="bi bi-arrow-up-circle text-warning"></i> Maximum: <strong><%= max_length %></strong> characters</div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <p class="text-muted mb-0">No length constraints configured</p>
+  <% end %>
+</div>
+

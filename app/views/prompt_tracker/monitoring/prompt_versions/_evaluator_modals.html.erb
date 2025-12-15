@@ -1,0 +1,106 @@
+<!-- Modals with Stimulus controller for z-index fix -->
+<div data-controller="modal-fix">
+  <!-- Add Evaluator Modal -->
+  <div class="modal fade" id="addEvaluatorModal" tabindex="-1" aria-labelledby="addEvaluatorModalLabel" aria-hidden="true" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addEvaluatorModalLabel">Add Auto-Evaluator</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= form_with model: [@prompt, @version, PromptTracker::EvaluatorConfig.new],
+                    url: prompt_evaluator_configs_path(@prompt),
+                    local: true,
+                    data: { controller: "evaluator-config-form", evaluator_config_form_prompt_id_value: @prompt.id, evaluator_config_form_version_id_value: @version.id } do |f| %>
+        <%= f.hidden_field :configurable_type, value: "PromptTracker::PromptVersion" %>
+        <%= f.hidden_field :configurable_id, value: @version.id %>
+
+        <div class="modal-body">
+          <!-- Evaluator Selection -->
+          <div class="mb-3">
+            <%= f.label :evaluator_key, "Evaluator", class: "form-label" %>
+            <%= f.select :evaluator_key,
+                         options_for_select(PromptTracker::EvaluatorRegistry.all.map { |k, v| [v[:name], k.to_s] }),
+                         { include_blank: "Select an evaluator..." },
+                         {
+                           class: "form-select",
+                           required: true,
+                           data: {
+                             evaluator_config_form_target: "select",
+                             action: "change->evaluator-config-form#loadForm",
+                             evaluators: PromptTracker::EvaluatorRegistry.all.transform_values { |v|
+                               { name: v[:name], description: v[:description], category: v[:category] }
+                             }.to_json
+                           }
+                         } %>
+            <div data-evaluator-config-form-target="description" class="form-text mt-2"></div>
+          </div>
+
+          <!-- Enabled -->
+          <div class="mb-3 form-check">
+            <%= f.check_box :enabled, class: "form-check-input", checked: true %>
+            <%= f.label :enabled, "Enabled (run this evaluator automatically on tracked calls)", class: "form-check-label" %>
+          </div>
+
+          <!-- Dynamic Configuration Form (Turbo Frame) -->
+          <turbo-frame id="evaluator_config_container">
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-arrow-up"></i>
+              <p>Select an evaluator above to configure it</p>
+            </div>
+          </turbo-frame>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Add Auto-Evaluator", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+    </div>
+  </div>
+
+  <!-- Edit Evaluator Modal -->
+  <div class="modal fade" id="editEvaluatorModal" tabindex="-1" aria-labelledby="editEvaluatorModalLabel" aria-hidden="true" data-modal-fix-target="modal" data-controller="evaluator-edit-form">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editEvaluatorModalLabel">Edit Auto-Evaluator</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editEvaluatorForm" data-action="submit->evaluator-edit-form#submit">
+        <input type="hidden" id="edit_evaluator_id" name="id">
+        <input type="hidden" id="edit_prompt_id" value="<%= @prompt.id %>">
+        <input type="hidden" id="edit_evaluator_key_hidden" name="evaluator_key">
+        <div class="modal-body">
+          <!-- Evaluator Type (Read-only display) -->
+          <div class="mb-3">
+            <label for="edit_evaluator_key_display" class="form-label">Evaluator</label>
+            <input type="text" id="edit_evaluator_key_display" class="form-control" readonly>
+          </div>
+
+          <!-- Enabled -->
+          <div class="mb-3 form-check">
+            <input type="checkbox" id="edit_enabled" name="evaluator_config[enabled]" class="form-check-input">
+            <label for="edit_enabled" class="form-check-label">Enabled (run this evaluator automatically on tracked calls)</label>
+          </div>
+
+          <!-- Dynamic Configuration Form (Turbo Frame) -->
+          <turbo-frame id="edit_evaluator_config_container">
+            <div class="text-center py-4 text-muted">
+              <div class="spinner-border spinner-border-sm" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2">Loading configuration form...</p>
+            </div>
+          </turbo-frame>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</div>
+

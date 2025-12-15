@@ -82,7 +82,7 @@ class CreatePromptTrackerEvaluatorConfigs < ActiveRecord::Migration[7.2]
 
     # Ensure each prompt can only have one config per evaluator_key
     add_index :prompt_tracker_evaluator_configs,
-              [:prompt_id, :evaluator_key],
+              [ :prompt_id, :evaluator_key ],
               unique: true,
               name: "index_evaluator_configs_on_prompt_and_key"
 
@@ -98,8 +98,7 @@ class CreatePromptTrackerEvaluatorConfigs < ActiveRecord::Migration[7.2]
 
     # Index for priority ordering
     add_index :prompt_tracker_evaluator_configs,
-              [:prompt_id, :priority],
+              [ :prompt_id, :priority ],
               name: "index_evaluator_configs_on_prompt_and_priority"
   end
 end
-

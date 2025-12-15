@@ -1,0 +1,46 @@
+<%# Shared partial for displaying tracking code example %>
+<%# Usage: render "prompt_tracker/shared/tracking_code_example", prompt: @prompt, version: @version %>
+
+<% if local_assigns[:prompt] && local_assigns[:version] %>
+  <div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle"></i>
+    <strong>Quick Start for "<%= prompt.name %>" (v<%= version.version_number %>)</strong>
+    <p class="mb-0 mt-2">Copy this code to start tracking calls for this specific prompt:</p>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <pre><code class="language-ruby"># Track a call for <%= prompt.name %> (v<%= version.version_number %>)
+result = PromptTracker::LlmCallService.track(
+  prompt_name: "<%= prompt.name %>",
+  variables: {
+    <%= version.variables_schema.map { |v| "#{v['name']}: \"your_value\"" }.join(",\n    ") %>
+  },
+  provider: "openai",  # or "anthropic", "google", etc.
+  model: "gpt-4o",
+  user_id: current_user&.id,  # Optional: track which user made the call
+  environment: Rails.env.to_s  # Optional: "production", "staging", etc.
+) do |rendered_prompt|
+  # Make your actual LLM API call here
+  # The rendered_prompt contains the template with variables filled in
+
+  client = OpenAI::Client.new
+  response = client.chat(
+    parameters: {
+      model: "gpt-4o",
+      messages: [{ role: "user", content: rendered_prompt }]
+    }
+  )
+
+  # Return the response text
+  response.dig("choices", 0, "message", "content")
+end
+
+# Use the result
+puts result[:response_text]  # The LLM's response
+puts result[:tracking_id]    # Unique ID for this call
+</code></pre>
+    </div>
+  </div>
+<% end %>
+

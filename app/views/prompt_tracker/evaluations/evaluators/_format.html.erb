@@ -1,0 +1,34 @@
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0" style="color: #374151;">
+      <i class="bi bi-file-earmark-code"></i>
+      Format Validation
+    </h5>
+  </div>
+  <div class="card-body">
+    <% metadata = evaluation.metadata || {} %>
+    <% format_type = metadata['format'] %>
+    <% format_valid = metadata['format_valid'] %>
+
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <p class="mb-1"><strong>Expected Format:</strong></p>
+        <span class="badge bg-primary fs-6"><%= format_type.to_s.upcase %></span>
+      </div>
+      <div class="col-md-6">
+        <p class="mb-1"><strong>Format Valid:</strong></p>
+        <% if format_valid %>
+          <span class="badge bg-success fs-6"><i class="bi bi-check-circle"></i> Valid</span>
+        <% else %>
+          <span class="badge bg-danger fs-6"><i class="bi bi-x-circle"></i> Invalid</span>
+        <% end %>
+      </div>
+    </div>
+
+    <% if evaluation.feedback.present? %>
+      <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-warning' %> mb-0">
+        <strong>Result:</strong> <%= evaluation.feedback %>
+      </div>
+    <% end %>
+  </div>
+</div>

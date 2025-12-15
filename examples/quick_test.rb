@@ -35,9 +35,7 @@ config = prompt.evaluator_configs.create!(
   weight: 1.0,
   config: {
     min_length: 5,
-    max_length: 100,
-    ideal_min: 10,
-    ideal_max: 50
+    max_length: 100
   }
 )
 
@@ -71,8 +69,8 @@ puts "  Evaluations count: #{response.evaluations.count}"
 
 if response.evaluations.any?
   puts "  ✅ Auto-evaluation worked!"
-  puts "  Overall score: #{response.overall_score}/100"
-  
+  puts "  Passed: #{response.evaluations.where(passed: true).count}/#{response.evaluations.count}"
+
   response.evaluations.each do |eval|
     puts "\n  Evaluation:"
     puts "    Evaluator: #{eval.evaluator_id}"
@@ -86,4 +84,3 @@ else
 end
 
 puts "\n✅ Test complete!\n\n"
-

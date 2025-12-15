@@ -5,13 +5,8 @@
 
 name: customer_support_greeting
 description: Initial greeting for customer support interactions
-category: support
-tags:
-  - customer-facing
-  - greeting
-  - high-priority
 
-template: |
+user_prompt: |
   Hi {{customer_name}}! Thanks for contacting us. I'm here to help with your {{issue_category}} question. What's going on?
 
 variables:
@@ -32,4 +27,3 @@ model_config:
 notes: |
   This is the current active version. Previous versions were either too formal (v1)
   or too casual (v2). This version strikes the right balance.
-

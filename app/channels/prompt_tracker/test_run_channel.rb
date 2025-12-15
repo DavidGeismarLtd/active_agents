@@ -25,7 +25,7 @@ module PromptTracker
     # Subscribe to a specific test run
     def subscribed
       test_run = PromptTestRun.find_by(id: params[:test_run_id])
-      
+
       if test_run
         stream_for test_run
       else
@@ -39,4 +39,3 @@ module PromptTracker
     end
   end
 end
-

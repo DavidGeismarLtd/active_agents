@@ -1,0 +1,61 @@
+<div class="modal fade" id="addRowModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Row Manually</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <%= form_with(model: @dataset.dataset_rows.build,
+                    url: testing_prompt_prompt_version_dataset_dataset_rows_path(@prompt, @version, @dataset),
+                    method: :post,
+                    local: true) do |f| %>
+        <div class="modal-body">
+          <%= f.hidden_field :source, value: "manual" %>
+
+          <% if @dataset.schema.present? %>
+            <% @dataset.schema.each do |var_schema| %>
+              <div class="mb-3">
+                <%= label_tag "dataset_row[row_data][#{var_schema['name']}]", var_schema['name'], class: "form-label" %>
+                <% if var_schema['required'] %>
+                  <span class="text-danger">*</span>
+                <% end %>
+
+                <% case var_schema['type'] %>
+                <% when 'text' %>
+                  <%= text_area_tag "dataset_row[row_data][#{var_schema['name']}]",
+                                    nil,
+                                    class: "form-control",
+                                    rows: 3,
+                                    required: var_schema['required'],
+                                    placeholder: var_schema['description'] %>
+                <% else %>
+                  <%= text_field_tag "dataset_row[row_data][#{var_schema['name']}]",
+                                     nil,
+                                     class: "form-control",
+                                     required: var_schema['required'],
+                                     placeholder: var_schema['description'] %>
+                <% end %>
+
+                <% if var_schema['description'].present? %>
+                  <div class="form-text"><%= var_schema['description'] %></div>
+                <% end %>
+              </div>
+            <% end %>
+          <% else %>
+            <div class="alert alert-warning">
+              <i class="bi bi-exclamation-triangle"></i>
+              This dataset has no schema defined. Cannot add rows.
+            </div>
+          <% end %>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <% if @dataset.schema.present? %>
+            <%= f.submit "Add Row", class: "btn btn-primary" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+

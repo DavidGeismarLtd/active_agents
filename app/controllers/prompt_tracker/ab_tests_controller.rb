@@ -3,8 +3,8 @@
 module PromptTracker
   # Controller for managing A/B tests
   class AbTestsController < ApplicationController
-    before_action :set_ab_test, only: [:show, :edit, :update, :destroy, :start, :pause, :resume, :complete, :cancel, :analyze]
-    before_action :set_prompt, only: [:new, :create]
+    before_action :set_ab_test, only: [ :show, :edit, :update, :destroy, :start, :pause, :resume, :complete, :cancel, :analyze ]
+    before_action :set_prompt, only: [ :new, :create ]
 
     # GET /ab_tests
     # List all A/B tests with filtering
@@ -50,7 +50,7 @@ module PromptTracker
         confidence_level: 0.95,
         minimum_sample_size: 100
       )
-      @available_versions = @prompt.prompt_versions.where(status: ["active", "draft"]).order(version_number: :desc)
+      @available_versions = @prompt.prompt_versions.where(status: [ "active", "draft" ]).order(version_number: :desc)
     end
 
     # POST /ab_tests
@@ -62,7 +62,7 @@ module PromptTracker
       if @ab_test.save
         redirect_to ab_test_path(@ab_test), notice: "A/B test created successfully."
       else
-        @available_versions = @prompt.prompt_versions.where(status: ["active", "draft"]).order(version_number: :desc)
+        @available_versions = @prompt.prompt_versions.where(status: [ "active", "draft" ]).order(version_number: :desc)
         render :new, status: :unprocessable_entity
       end
     end
@@ -75,7 +75,7 @@ module PromptTracker
         return
       end
 
-      @available_versions = @ab_test.prompt.prompt_versions.where(status: ["active", "draft"]).order(version_number: :desc)
+      @available_versions = @ab_test.prompt.prompt_versions.where(status: [ "active", "draft" ]).order(version_number: :desc)
     end
 
     # PATCH /ab_tests/:id
@@ -92,7 +92,7 @@ module PromptTracker
       if @ab_test.save
         redirect_to ab_test_path(@ab_test), notice: "A/B test updated successfully."
       else
-        @available_versions = @ab_test.prompt.prompt_versions.where(status: ["active", "draft"]).order(version_number: :desc)
+        @available_versions = @ab_test.prompt.prompt_versions.where(status: [ "active", "draft" ]).order(version_number: :desc)
         render :edit, status: :unprocessable_entity
       end
     end
@@ -213,7 +213,7 @@ module PromptTracker
         :confidence_level,
         :minimum_sample_size,
         traffic_split: {},
-        variants: [:name, :version_id]
+        variants: [ :name, :version_id ]
       )
     end
 

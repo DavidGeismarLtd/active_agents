@@ -1,0 +1,31 @@
+<%# Display template for Pattern Match Evaluator configuration %>
+<% config ||= {} %>
+
+<div class="evaluator-display">
+  <h6 class="mb-2">
+    <i class="bi bi-regex"></i>
+    Pattern Match
+  </h6>
+  
+  <% patterns = config['patterns'] || config[:patterns] || [] %>
+  <% match_all = config['match_all'] || config[:match_all] || false %>
+  
+  <% if patterns.any? %>
+    <div class="mb-2">
+      <strong>Patterns:</strong>
+      <div class="mt-1">
+        <% patterns.each do |pattern| %>
+          <code class="badge bg-secondary-subtle text-secondary me-1"><%= pattern %></code>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="text-muted small">
+      <i class="bi bi-info-circle"></i>
+      <%= match_all ? "All patterns must match" : "At least one pattern must match" %>
+    </div>
+  <% else %>
+    <p class="text-muted mb-0">No patterns configured</p>
+  <% end %>
+</div>
+

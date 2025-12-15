@@ -1,0 +1,127 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item active" aria-current="page">Tracked Calls</li>
+<% end %>
+
+<div class="monitoring-responses-index">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #ECFDF5; border-left: 4px solid #10B981; padding: 1.5rem; margin-bottom: 2rem;">
+    <h1 style="color: #065F46; margin: 0;">
+      <i class="bi bi-telephone"></i> Tracked LLM Calls
+    </h1>
+    <p style="color: #065F46; margin: 0.5rem 0 0 0;">
+      All production LLM API calls
+    </p>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Total Calls</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @total_responses %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Successful</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @successful_count %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Failed</div>
+      <div style="color: #EF4444; font-size: 1.5rem; font-weight: bold;"><%= @failed_count %></div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div style="background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+    <%= form_with url: monitoring_llm_responses_path, method: :get, local: true, style: "margin: 0;" do |f| %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+        <!-- Prompt Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Prompt</label>
+          <%= f.select :prompt_id,
+              options_for_select([["All Prompts", ""]] + @prompts.map { |p| [p.name, p.id] }, params[:prompt_id]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Provider Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Provider</label>
+          <%= f.select :provider,
+              options_for_select([["All Providers", ""]] + @providers.map { |p| [p, p] }, params[:provider]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Model Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Model</label>
+          <%= f.select :model,
+              options_for_select([["All Models", ""]] + @models.map { |m| [m, m] }, params[:model]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Status Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Status</label>
+          <%= f.select :status,
+              options_for_select([["All Statuses", ""]] + @statuses.map { |s| [s.titleize, s] }, params[:status]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Environment Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Environment</label>
+          <%= f.select :environment,
+              options_for_select([["All Environments", ""]] + @environments.map { |e| [e, e] }, params[:environment]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- User ID Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">User ID</label>
+          <%= f.select :user_id,
+              options_for_select([["All Users", ""]] + @user_ids.map { |u| [u, u] }, params[:user_id]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Session ID Filter -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Session ID</label>
+          <%= f.select :session_id,
+              options_for_select([["All Sessions", ""]] + @session_ids.map { |s| [s, s] }, params[:session_id]),
+              {},
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Search -->
+        <div>
+          <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">Search</label>
+          <%= f.text_field :q, value: params[:q], placeholder: "Search prompts/responses...",
+              style: "width: 100%; padding: 0.5rem; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 0.875rem;" %>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 0.5rem;">
+          <%= f.submit "Apply Filters", style: "background-color: #10B981; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; font-size: 0.875rem; cursor: pointer; font-weight: 500;" %>
+          <%= link_to "Clear", monitoring_llm_responses_path, style: "background-color: #6B7280; color: white; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.875rem; text-decoration: none; display: inline-block; font-weight: 500;" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Responses Table -->
+  <%= render "prompt_tracker/monitoring/shared/tracked_calls_table",
+             tracked_calls: @responses,
+             show_column_visibility: true,
+             show_pagination: true,
+             show_prompt_column: true,
+             show_evaluations_column: true,
+             title: "Tracked Calls",
+             empty_message: "No tracked calls found matching your filters" %>
+</div>
+
+<!-- Evaluation Modals -->
+<%= render "prompt_tracker/monitoring/shared/evaluation_modals", tracked_calls: @responses %>

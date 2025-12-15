@@ -1,0 +1,17 @@
+<%# Stub form for simple_eval evaluator used in tests %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'simple_eval' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-gear"></i>
+  <strong>Simple Evaluator</strong>
+  <p class="mb-0 mt-1">Simple evaluator for testing purposes.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+

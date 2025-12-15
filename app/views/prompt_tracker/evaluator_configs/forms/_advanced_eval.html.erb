@@ -1,0 +1,31 @@
+<%# Stub form for advanced_eval evaluator used in tests %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'advanced_eval' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-star"></i>
+  <strong>Advanced Evaluator</strong>
+  <p class="mb-0 mt-1">Advanced evaluator for testing purposes.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+<!-- Threshold -->
+<div class="mb-3">
+  <label class="form-label">Threshold</label>
+  <input type="number"
+         name="<%= namespace %>[threshold]"
+         class="form-control"
+         value="<%= config['threshold'] || config[:threshold] || 75 %>"
+         min="0"
+         max="100">
+  <small class="form-text text-muted">
+    Threshold score for passing (0-100).
+  </small>
+</div>
+

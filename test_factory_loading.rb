@@ -39,4 +39,3 @@ end
 
 puts "\n" + "=" * 50
 puts "Test complete!"
-

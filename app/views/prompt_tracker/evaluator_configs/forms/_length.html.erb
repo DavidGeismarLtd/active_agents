@@ -1,0 +1,50 @@
+<%# Unified form for Length Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'length' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-rulers"></i>
+  <strong>Length Validator</strong>
+  <p class="mb-0 mt-1">Validates response length against min/max ranges. Binary pass/fail: within range = pass, outside = fail.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+<div class="row">
+  <!-- Min Length -->
+  <div class="col-md-6 mb-3">
+    <label class="form-label">Minimum Length (characters)</label>
+    <input type="number"
+           name="<%= namespace %>[min_length]"
+           class="form-control"
+           value="<%= config['min_length'] || config[:min_length] || 10 %>"
+           min="0"
+           required>
+    <small class="form-text text-muted">Responses shorter than this will fail</small>
+  </div>
+
+  <!-- Max Length -->
+  <div class="col-md-6 mb-3">
+    <label class="form-label">Maximum Length (characters)</label>
+    <input type="number"
+           name="<%= namespace %>[max_length]"
+           class="form-control"
+           value="<%= config['max_length'] || config[:max_length] || 2000 %>"
+           min="0"
+           required>
+    <small class="form-text text-muted">Responses longer than this will fail</small>
+  </div>
+</div>
+
+<div class="alert alert-secondary">
+  <strong>Binary Scoring:</strong>
+  <ul class="mb-0 mt-2">
+    <li>Within range (min ≤ length ≤ max): <strong>PASS (100 points)</strong></li>
+    <li>Outside range: <strong>FAIL (0 points)</strong></li>
+  </ul>
+</div>

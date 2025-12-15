@@ -28,18 +28,16 @@ FactoryBot.define do
     association :prompt_test, factory: :prompt_test
     association :prompt_version, factory: :prompt_version
     llm_response { nil }
-    prompt_test_suite_run { nil }
 
     status { "passed" }
     passed { true }
     error_message { nil }
-    assertion_results { { "pattern_1" => true, "pattern_2" => true } }
     evaluator_results do
       [
         {
-          evaluator_key: "length_check",
-          score: 90,
-          threshold: 80,
+          evaluator_key: "length",
+          score: 100,
+          threshold: 100,
           passed: true,
           feedback: "Length is within acceptable range"
         }

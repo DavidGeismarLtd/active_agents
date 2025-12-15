@@ -77,12 +77,12 @@ class CreatePromptTrackerLlmResponses < ActiveRecord::Migration[7.2]
 
     # Index for finding responses by status and created_at (for monitoring)
     add_index :prompt_tracker_llm_responses,
-              [:status, :created_at],
+              [ :status, :created_at ],
               name: "index_llm_responses_on_status_and_created_at"
 
     # Index for cost analysis by provider and model
     add_index :prompt_tracker_llm_responses,
-              [:provider, :model, :created_at],
+              [ :provider, :model, :created_at ],
               name: "index_llm_responses_on_provider_model_created_at"
   end
 end

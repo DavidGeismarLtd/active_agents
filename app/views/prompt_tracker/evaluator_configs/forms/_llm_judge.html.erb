@@ -1,0 +1,85 @@
+<%# Unified form for LLM Judge Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'llm_judge' %>
+<% namespace ||= 'config' %>
+<% judge_model = config['judge_model'] || config[:judge_model] || 'gpt-4o' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-robot"></i>
+  <strong>LLM Judge</strong>
+  <p class="mb-0 mt-1">Uses an LLM to evaluate response quality. Returns a score (0-100) based on custom instructions.</p>
+</div>
+
+<!-- Judge Model -->
+<div class="mb-3">
+  <label class="form-label">Judge Model</label>
+  <select name="<%= namespace %>[judge_model]" class="form-select" required>
+    <% if provider_api_key_present?("openai") %>
+      <optgroup label="OpenAI">
+        <option value="gpt-4o" <%= 'selected' if judge_model == 'gpt-4o' %>>GPT-4o</option>
+        <option value="gpt-4" <%= 'selected' if judge_model == 'gpt-4' %>>GPT-4</option>
+        <option value="gpt-4-turbo" <%= 'selected' if judge_model == 'gpt-4-turbo' %>>GPT-4 Turbo</option>
+        <option value="gpt-3.5-turbo" <%= 'selected' if judge_model == 'gpt-3.5-turbo' %>>GPT-3.5 Turbo</option>
+      </optgroup>
+    <% end %>
+    <% if provider_api_key_present?("anthropic") %>
+      <optgroup label="Anthropic">
+        <option value="claude-3-opus" <%= 'selected' if judge_model == 'claude-3-opus' %>>Claude 3 Opus</option>
+        <option value="claude-3-sonnet" <%= 'selected' if judge_model == 'claude-3-sonnet' %>>Claude 3 Sonnet</option>
+        <option value="claude-3-haiku" <%= 'selected' if judge_model == 'claude-3-haiku' %>>Claude 3 Haiku</option>
+      </optgroup>
+    <% end %>
+    <% if provider_api_key_present?("google") %>
+      <optgroup label="Google">
+        <option value="gemini-pro" <%= 'selected' if judge_model == 'gemini-pro' %>>Gemini Pro</option>
+        <option value="gemini-ultra" <%= 'selected' if judge_model == 'gemini-ultra' %>>Gemini Ultra</option>
+      </optgroup>
+    <% end %>
+  </select>
+  <small class="form-text text-muted">
+    The LLM model to use as a judge. Only models with configured API keys are shown.
+  </small>
+</div>
+
+<!-- Custom Instructions -->
+<div class="mb-3">
+  <label class="form-label">Custom Instructions</label>
+  <textarea name="<%= namespace %>[custom_instructions]"
+            class="form-control"
+            rows="4"
+            placeholder="Define what the evaluator assesses (e.g., 'Evaluate as a customer support manager' or 'Focus on technical correctness for a senior developer audience')"
+            required><%= config['custom_instructions'] || config[:custom_instructions] || '' %></textarea>
+  <small class="form-text text-muted">
+    Provide specific instructions for the LLM judge on how to evaluate the response.
+  </small>
+</div>
+
+<!-- Threshold Score -->
+<div class="mb-3">
+  <label class="form-label">Threshold Score (0-100)</label>
+  <input type="number"
+         name="<%= namespace %>[threshold_score]"
+         class="form-control"
+         value="<%= config['threshold_score'] || config[:threshold_score] || 70 %>"
+         min="0"
+         max="100"
+         required>
+  <small class="form-text text-muted">
+    Minimum score required to pass (0-100). The LLM judge will return a score from 0-100, and if it's >= this threshold, the evaluation passes.
+  </small>
+</div>
+
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle"></i>
+  <strong>Note:</strong> LLM judge evaluations require API calls and may run asynchronously. Make sure you have configured your API keys in the <code>.env</code> file.
+</div>
+
+<div class="alert alert-secondary">
+  <strong>Scoring:</strong>
+  <ul class="mb-0 mt-2">
+    <li>The LLM judge returns a score from 0-100 based on your custom instructions</li>
+    <li>If score >= threshold: <strong>PASS</strong></li>
+    <li>If score < threshold: <strong>FAIL</strong></li>
+  </ul>
+</div>

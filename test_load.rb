@@ -18,4 +18,3 @@ require_relative "lib/prompt_tracker/configuration"
 
 puts "Step 6: All loaded successfully!"
 puts "Configuration class: #{PromptTracker::Configuration}"
-

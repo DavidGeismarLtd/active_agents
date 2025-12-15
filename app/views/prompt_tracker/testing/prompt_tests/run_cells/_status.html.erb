@@ -1,0 +1,16 @@
+<td data-column="run_status">
+  <% case run.status %>
+  <% when 'running' %>
+    <span class="badge bg-warning">
+      <span class="spinner-border spinner-border-sm me-1"></span>Running
+    </span>
+  <% when 'passed' %>
+    <span class="badge bg-success">Passed</span>
+  <% when 'failed' %>
+    <span class="badge bg-danger">Failed</span>
+  <% when 'error' %>
+    <span class="badge bg-danger">Error</span>
+  <% else %>
+    <span class="badge bg-secondary">Unknown</span>
+  <% end %>
+</td>

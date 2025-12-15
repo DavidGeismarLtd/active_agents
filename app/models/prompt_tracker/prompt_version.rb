@@ -10,31 +10,35 @@
 #  model_config     :jsonb
 #  notes            :text
 #  prompt_id        :bigint           not null
-#  source           :string           default("file"), not null
 #  status           :string           default("draft"), not null
-#  template         :text             not null
+#  system_prompt    :text
+#  user_prompt      :text             not null
 #  updated_at       :datetime         not null
 #  variables_schema :jsonb
 #  version_number   :integer          not null
 #
 module PromptTracker
-  # Represents a specific version of a prompt template.
+  # Represents a specific version of a prompt.
   #
   # PromptVersions are immutable once they have LLM responses. This ensures
   # historical accuracy and reproducibility of results.
   #
+  # Each version has:
+  # - system_prompt: Optional instructions that set the AI's role and behavior
+  # - user_prompt: The main prompt template with variables (required)
+  #
   # @example Creating a new version
   #   version = prompt.prompt_versions.create!(
-  #     template: "Hello {{name}}, how can I help?",
+  #     system_prompt: "You are a helpful customer support agent.",
+  #     user_prompt: "Hello {{name}}, how can I help?",
   #     version_number: 1,
   #     status: "active",
-  #     source: "file",
   #     variables_schema: [
   #       { "name" => "name", "type" => "string", "required" => true }
   #     ]
   #   )
   #
-  # @example Rendering a template
+  # @example Rendering the user prompt
   #   rendered = version.render(name: "John")
   #   # => "Hello John, how can I help?"
   #
@@ -45,7 +49,6 @@ module PromptTracker
   class PromptVersion < ApplicationRecord
     # Constants
     STATUSES = %w[active deprecated draft].freeze
-    SOURCES = %w[file web_ui api].freeze
 
     # Associations
     belongs_to :prompt,
@@ -66,21 +69,31 @@ module PromptTracker
              dependent: :destroy,
              inverse_of: :prompt_version
 
+    has_many :evaluator_configs,
+             as: :configurable,
+             class_name: "PromptTracker::EvaluatorConfig",
+             dependent: :destroy
+
+    has_many :datasets,
+             class_name: "PromptTracker::Dataset",
+             dependent: :destroy,
+             inverse_of: :prompt_version
+
     # Validations
-    validates :template, presence: true
+    validates :user_prompt, presence: true
     validates :version_number, presence: true, numericality: { only_integer: true, greater_than: 0 }
     validates :status, presence: true, inclusion: { in: STATUSES }
-    validates :source, presence: true, inclusion: { in: SOURCES }
 
     validates :version_number,
               uniqueness: { scope: :prompt_id, message: "already exists for this prompt" }
 
-    validate :template_immutable_if_responses_exist, on: :update
+    validate :user_prompt_immutable_if_responses_exist, on: :update
     validate :variables_schema_must_be_array
     validate :model_config_must_be_hash
 
     # Callbacks
     before_validation :set_next_version_number, on: :create, if: -> { version_number.nil? }
+    before_validation :extract_variables_schema, if: :should_extract_variables?
 
     # Scopes
 
@@ -96,44 +109,32 @@ module PromptTracker
     # @return [ActiveRecord::Relation<PromptVersion>]
     scope :draft, -> { where(status: "draft") }
 
-    # Returns only file-sourced versions
-    # @return [ActiveRecord::Relation<PromptVersion>]
-    scope :from_files, -> { where(source: "file") }
-
-    # Returns only web UI-sourced versions
-    # @return [ActiveRecord::Relation<PromptVersion>]
-    scope :from_web_ui, -> { where(source: "web_ui") }
-
     # Returns versions ordered by version number (newest first)
     # @return [ActiveRecord::Relation<PromptVersion>]
     scope :by_version, -> { order(version_number: :desc) }
 
     # Instance Methods
 
-    # Renders the template with the provided variables.
-    #
-    # Uses TemplateRenderer service which supports both Liquid and Mustache syntax.
-    # Auto-detects template type based on syntax, or can be forced with engine parameter.
+    # Renders the user prompt with the provided variables using Liquid template engine.
     #
     # @param variables [Hash] the variables to substitute
-    # @param engine [Symbol] the template engine to use (:liquid, :mustache, or :auto)
-    # @return [String] the rendered template
+    # @return [String] the rendered user prompt
     # @raise [ArgumentError] if required variables are missing
     # @raise [Liquid::SyntaxError] if Liquid template has syntax errors
     #
-    # @example Render with auto-detection
+    # @example Render user prompt
     #   version.render(name: "John", issue: "billing")
     #   # => "Hello John, how can I help with billing?"
     #
-    # @example Render with Liquid
-    #   version.render({ name: "john" }, engine: :liquid)
-    #   # => "Hello JOHN!" (if template uses {{ name | upcase }})
-    def render(variables = {}, engine: :auto)
+    # @example Render with Liquid filters
+    #   version.render({ name: "john" })
+    #   # => "Hello JOHN!" (if user_prompt uses {{ name | upcase }})
+    def render(variables = {})
       variables = variables.with_indifferent_access
       validate_required_variables!(variables)
 
-      renderer = TemplateRenderer.new(template)
-      renderer.render(variables, engine: engine)
+      renderer = TemplateRenderer.new(user_prompt)
+      renderer.render(variables)
     end
 
     # Activates this version and deprecates all other versions of the same prompt.
@@ -191,13 +192,6 @@ module PromptTracker
       name
     end
 
-    # Checks if this version came from a file.
-    #
-    # @return [Boolean] true if source is "file"
-    def from_file?
-      source == "file"
-    end
-
     # Checks if this version has any LLM responses.
     #
     # @return [Boolean] true if responses exist
@@ -234,11 +228,19 @@ module PromptTracker
         "name" => prompt.name,
         "description" => prompt.description,
         "category" => prompt.category,
-        "template" => template,
+        "system_prompt" => system_prompt,
+        "user_prompt" => user_prompt,
         "variables" => variables_schema,
         "model_config" => model_config,
         "notes" => notes
       }
+    end
+
+    # Checks if this version has monitoring enabled
+    #
+    # @return [Boolean] true if any evaluator configs exist
+    def has_monitoring_enabled?
+      evaluator_configs.enabled.exists?
     end
 
     private
@@ -261,11 +263,11 @@ module PromptTracker
       raise ArgumentError, "Missing required variables: #{missing_vars.join(', ')}"
     end
 
-    # Prevents template changes if responses exist
-    def template_immutable_if_responses_exist
-      return unless template_changed? && has_responses?
+    # Prevents user_prompt changes if responses exist
+    def user_prompt_immutable_if_responses_exist
+      return unless user_prompt_changed? && has_responses?
 
-      errors.add(:template, "cannot be changed after responses exist")
+      errors.add(:user_prompt, "cannot be changed after responses exist")
     end
 
     # Validates that variables_schema is an array
@@ -280,6 +282,56 @@ module PromptTracker
       return if model_config.nil? || model_config.is_a?(Hash)
 
       errors.add(:model_config, "must be a hash")
+    end
+
+    # Determines if variables should be extracted from user_prompt
+    def should_extract_variables?
+      # Only extract if:
+      # 1. User prompt has changed (or is new)
+      # 2. Variables schema is blank (not explicitly set)
+      user_prompt.present? && (user_prompt_changed? || new_record?) && variables_schema.blank?
+    end
+
+    # Extracts variables from user_prompt and populates variables_schema
+    def extract_variables_schema
+      return if user_prompt.blank?
+
+      variable_names = extract_variable_names_from_template(user_prompt)
+      return if variable_names.empty?
+
+      # Build schema with default type and required settings
+      self.variables_schema = variable_names.map do |var_name|
+        {
+          "name" => var_name,
+          "type" => "string",
+          "required" => false
+        }
+      end
+    end
+
+    # Extract variable names from user_prompt
+    # Supports both {{variable}} and {{ variable }} syntax
+    def extract_variable_names_from_template(template_string)
+      return [] if template_string.blank?
+
+      variables = []
+
+      # Extract Mustache-style variables: {{variable}}
+      variables += template_string.scan(/\{\{\s*(\w+)\s*\}\}/).flatten
+
+      # Extract Liquid variables with filters: {{ variable | filter }}
+      variables += template_string.scan(/\{\{\s*(\w+)\s*\|/).flatten
+
+      # Extract Liquid object notation: {{ object.property }}
+      variables += template_string.scan(/\{\{\s*(\w+)\./).flatten
+
+      # Extract from conditionals: {% if variable %}
+      variables += template_string.scan(/\{%\s*if\s+(\w+)/).flatten
+
+      # Extract from loops: {% for item in items %}
+      variables += template_string.scan(/\{%\s*for\s+\w+\s+in\s+(\w+)/).flatten
+
+      variables.uniq.sort
     end
   end
 end

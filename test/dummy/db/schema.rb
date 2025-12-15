@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_11_085351) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -35,12 +35,38 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["completed_at"], name: "index_prompt_tracker_ab_tests_on_completed_at"
-    t.index ["metric_to_optimize"], name: "index_prompt_tracker_ab_tests_on_metric_to_optimize"
-    t.index ["prompt_id", "status"], name: "index_prompt_tracker_ab_tests_on_prompt_id_and_status"
-    t.index ["prompt_id"], name: "index_prompt_tracker_ab_tests_on_prompt_id"
-    t.index ["started_at"], name: "index_prompt_tracker_ab_tests_on_started_at"
-    t.index ["status"], name: "index_prompt_tracker_ab_tests_on_status"
+    t.index [ "completed_at" ], name: "index_prompt_tracker_ab_tests_on_completed_at"
+    t.index [ "metric_to_optimize" ], name: "index_prompt_tracker_ab_tests_on_metric_to_optimize"
+    t.index [ "prompt_id", "status" ], name: "index_prompt_tracker_ab_tests_on_prompt_id_and_status"
+    t.index [ "prompt_id" ], name: "index_prompt_tracker_ab_tests_on_prompt_id"
+    t.index [ "started_at" ], name: "index_prompt_tracker_ab_tests_on_started_at"
+    t.index [ "status" ], name: "index_prompt_tracker_ab_tests_on_status"
+  end
+
+  create_table "prompt_tracker_dataset_rows", force: :cascade do |t|
+    t.bigint "dataset_id", null: false
+    t.jsonb "row_data", default: {}, null: false
+    t.string "source", default: "manual", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "created_at" ], name: "index_prompt_tracker_dataset_rows_on_created_at"
+    t.index [ "dataset_id" ], name: "index_prompt_tracker_dataset_rows_on_dataset_id"
+    t.index [ "source" ], name: "index_prompt_tracker_dataset_rows_on_source"
+  end
+
+  create_table "prompt_tracker_datasets", force: :cascade do |t|
+    t.bigint "prompt_version_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.jsonb "schema", default: [], null: false
+    t.string "created_by"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "created_at" ], name: "index_prompt_tracker_datasets_on_created_at"
+    t.index [ "prompt_version_id", "name" ], name: "index_prompt_tracker_datasets_on_prompt_version_id_and_name", unique: true
+    t.index [ "prompt_version_id" ], name: "index_prompt_tracker_datasets_on_prompt_version_id"
   end
 
   create_table "prompt_tracker_evaluations", force: :cascade do |t|
@@ -48,36 +74,51 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
     t.decimal "score", precision: 10, scale: 2, null: false
     t.decimal "score_min", precision: 10, scale: 2, default: "0.0"
     t.decimal "score_max", precision: 10, scale: 2, default: "5.0"
-    t.jsonb "criteria_scores", default: {}
     t.string "evaluator_type", null: false
     t.string "evaluator_id"
     t.text "feedback"
     t.jsonb "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["evaluator_type", "created_at"], name: "index_evaluations_on_type_and_created_at"
-    t.index ["evaluator_type"], name: "index_prompt_tracker_evaluations_on_evaluator_type"
-    t.index ["llm_response_id"], name: "index_prompt_tracker_evaluations_on_llm_response_id"
-    t.index ["score"], name: "index_evaluations_on_score"
+    t.string "evaluation_context", default: "tracked_call"
+    t.boolean "passed"
+    t.bigint "prompt_test_run_id"
+    t.bigint "evaluator_config_id"
+    t.index [ "evaluation_context" ], name: "index_prompt_tracker_evaluations_on_evaluation_context"
+    t.index [ "evaluator_config_id" ], name: "index_prompt_tracker_evaluations_on_evaluator_config_id"
+    t.index [ "evaluator_type", "created_at" ], name: "index_evaluations_on_type_and_created_at"
+    t.index [ "evaluator_type" ], name: "index_prompt_tracker_evaluations_on_evaluator_type"
+    t.index [ "llm_response_id" ], name: "index_prompt_tracker_evaluations_on_llm_response_id"
+    t.index [ "passed" ], name: "index_prompt_tracker_evaluations_on_passed"
+    t.index [ "prompt_test_run_id" ], name: "index_prompt_tracker_evaluations_on_prompt_test_run_id"
+    t.index [ "score" ], name: "index_evaluations_on_score"
   end
 
   create_table "prompt_tracker_evaluator_configs", force: :cascade do |t|
-    t.bigint "prompt_id", null: false
-    t.string "evaluator_key", null: false
+    t.string "evaluator_type", null: false
     t.boolean "enabled", default: true, null: false
     t.jsonb "config", default: {}, null: false
-    t.string "run_mode", default: "async", null: false
-    t.integer "priority", default: 0, null: false
-    t.decimal "weight", precision: 5, scale: 2, default: "1.0", null: false
-    t.string "depends_on"
-    t.integer "min_dependency_score"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["depends_on"], name: "index_evaluator_configs_on_depends_on"
-    t.index ["enabled"], name: "index_evaluator_configs_on_enabled"
-    t.index ["prompt_id", "evaluator_key"], name: "index_evaluator_configs_on_prompt_and_key", unique: true
-    t.index ["prompt_id", "priority"], name: "index_evaluator_configs_on_prompt_and_priority"
-    t.index ["prompt_id"], name: "index_prompt_tracker_evaluator_configs_on_prompt_id"
+    t.string "configurable_type"
+    t.bigint "configurable_id"
+    t.index [ "configurable_type", "configurable_id", "evaluator_type" ], name: "index_evaluator_configs_unique_per_configurable", unique: true
+    t.index [ "configurable_type", "configurable_id" ], name: "index_evaluator_configs_on_configurable"
+    t.index [ "enabled" ], name: "index_evaluator_configs_on_enabled"
+  end
+
+  create_table "prompt_tracker_human_evaluations", force: :cascade do |t|
+    t.bigint "evaluation_id"
+    t.decimal "score", precision: 10, scale: 2, null: false
+    t.text "feedback"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "llm_response_id"
+    t.bigint "prompt_test_run_id"
+    t.index [ "evaluation_id" ], name: "index_prompt_tracker_human_evaluations_on_evaluation_id"
+    t.index [ "llm_response_id" ], name: "index_prompt_tracker_human_evaluations_on_llm_response_id"
+    t.index [ "prompt_test_run_id" ], name: "index_prompt_tracker_human_evaluations_on_prompt_test_run_id"
+    t.check_constraint "evaluation_id IS NOT NULL AND llm_response_id IS NULL AND prompt_test_run_id IS NULL OR evaluation_id IS NULL AND llm_response_id IS NOT NULL AND prompt_test_run_id IS NULL OR evaluation_id IS NULL AND llm_response_id IS NULL AND prompt_test_run_id IS NOT NULL", name: "human_evaluation_belongs_to_one"
   end
 
   create_table "prompt_tracker_llm_responses", force: :cascade do |t|
@@ -104,24 +145,25 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
     t.datetime "updated_at", null: false
     t.bigint "ab_test_id"
     t.string "ab_variant"
-    t.index ["ab_test_id", "ab_variant"], name: "index_llm_responses_on_ab_test_and_variant"
-    t.index ["ab_test_id"], name: "index_prompt_tracker_llm_responses_on_ab_test_id"
-    t.index ["environment"], name: "index_prompt_tracker_llm_responses_on_environment"
-    t.index ["model"], name: "index_prompt_tracker_llm_responses_on_model"
-    t.index ["prompt_version_id"], name: "index_prompt_tracker_llm_responses_on_prompt_version_id"
-    t.index ["provider", "model", "created_at"], name: "index_llm_responses_on_provider_model_created_at"
-    t.index ["provider"], name: "index_prompt_tracker_llm_responses_on_provider"
-    t.index ["session_id"], name: "index_prompt_tracker_llm_responses_on_session_id"
-    t.index ["status", "created_at"], name: "index_llm_responses_on_status_and_created_at"
-    t.index ["status"], name: "index_prompt_tracker_llm_responses_on_status"
-    t.index ["user_id"], name: "index_prompt_tracker_llm_responses_on_user_id"
+    t.boolean "is_test_run", default: false, null: false
+    t.index [ "ab_test_id", "ab_variant" ], name: "index_llm_responses_on_ab_test_and_variant"
+    t.index [ "ab_test_id" ], name: "index_prompt_tracker_llm_responses_on_ab_test_id"
+    t.index [ "environment" ], name: "index_prompt_tracker_llm_responses_on_environment"
+    t.index [ "is_test_run" ], name: "index_prompt_tracker_llm_responses_on_is_test_run"
+    t.index [ "model" ], name: "index_prompt_tracker_llm_responses_on_model"
+    t.index [ "prompt_version_id" ], name: "index_prompt_tracker_llm_responses_on_prompt_version_id"
+    t.index [ "provider", "model", "created_at" ], name: "index_llm_responses_on_provider_model_created_at"
+    t.index [ "provider" ], name: "index_prompt_tracker_llm_responses_on_provider"
+    t.index [ "session_id" ], name: "index_prompt_tracker_llm_responses_on_session_id"
+    t.index [ "status", "created_at" ], name: "index_llm_responses_on_status_and_created_at"
+    t.index [ "status" ], name: "index_prompt_tracker_llm_responses_on_status"
+    t.index [ "user_id" ], name: "index_prompt_tracker_llm_responses_on_user_id"
   end
 
   create_table "prompt_tracker_prompt_test_runs", force: :cascade do |t|
     t.bigint "prompt_test_id", null: false
     t.bigint "prompt_version_id", null: false
     t.bigint "llm_response_id"
-    t.bigint "prompt_test_suite_run_id"
     t.string "status", default: "pending", null: false
     t.boolean "passed"
     t.text "error_message"
@@ -135,91 +177,53 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_prompt_tracker_prompt_test_runs_on_created_at"
-    t.index ["llm_response_id"], name: "index_prompt_tracker_prompt_test_runs_on_llm_response_id"
-    t.index ["passed"], name: "index_prompt_tracker_prompt_test_runs_on_passed"
-    t.index ["prompt_test_id", "created_at"], name: "idx_on_prompt_test_id_created_at_4bc08ca15a"
-    t.index ["prompt_test_id"], name: "index_prompt_tracker_prompt_test_runs_on_prompt_test_id"
-    t.index ["prompt_test_suite_run_id"], name: "idx_on_prompt_test_suite_run_id_26489db6a0"
-    t.index ["prompt_version_id"], name: "index_prompt_tracker_prompt_test_runs_on_prompt_version_id"
-    t.index ["status"], name: "index_prompt_tracker_prompt_test_runs_on_status"
-  end
-
-  create_table "prompt_tracker_prompt_test_suite_runs", force: :cascade do |t|
-    t.bigint "prompt_test_suite_id", null: false
-    t.string "status", default: "pending", null: false
-    t.integer "total_tests", default: 0, null: false
-    t.integer "passed_tests", default: 0, null: false
-    t.integer "failed_tests", default: 0, null: false
-    t.integer "skipped_tests", default: 0, null: false
-    t.integer "error_tests", default: 0, null: false
-    t.integer "total_duration_ms"
-    t.decimal "total_cost_usd", precision: 10, scale: 6
-    t.string "triggered_by"
-    t.jsonb "metadata", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["created_at"], name: "index_prompt_tracker_prompt_test_suite_runs_on_created_at"
-    t.index ["prompt_test_suite_id", "created_at"], name: "idx_on_prompt_test_suite_id_created_at_00b03ff2b9"
-    t.index ["prompt_test_suite_id"], name: "idx_on_prompt_test_suite_id_4251a091be"
-    t.index ["status"], name: "index_prompt_tracker_prompt_test_suite_runs_on_status"
-  end
-
-  create_table "prompt_tracker_prompt_test_suites", force: :cascade do |t|
-    t.string "name", null: false
-    t.text "description"
-    t.bigint "prompt_id"
-    t.boolean "enabled", default: true, null: false
-    t.jsonb "tags", default: [], null: false
-    t.jsonb "metadata", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["enabled"], name: "index_prompt_tracker_prompt_test_suites_on_enabled"
-    t.index ["name"], name: "index_prompt_tracker_prompt_test_suites_on_name", unique: true
-    t.index ["prompt_id"], name: "index_prompt_tracker_prompt_test_suites_on_prompt_id"
-    t.index ["tags"], name: "index_prompt_tracker_prompt_test_suites_on_tags", using: :gin
+    t.bigint "dataset_id"
+    t.bigint "dataset_row_id"
+    t.index [ "created_at" ], name: "index_prompt_tracker_prompt_test_runs_on_created_at"
+    t.index [ "dataset_id", "created_at" ], name: "index_prompt_test_runs_on_dataset_and_created_at"
+    t.index [ "dataset_id" ], name: "index_prompt_tracker_prompt_test_runs_on_dataset_id"
+    t.index [ "dataset_row_id" ], name: "index_prompt_tracker_prompt_test_runs_on_dataset_row_id"
+    t.index [ "llm_response_id" ], name: "index_prompt_tracker_prompt_test_runs_on_llm_response_id"
+    t.index [ "passed" ], name: "index_prompt_tracker_prompt_test_runs_on_passed"
+    t.index [ "prompt_test_id", "created_at" ], name: "idx_on_prompt_test_id_created_at_4bc08ca15a"
+    t.index [ "prompt_test_id" ], name: "index_prompt_tracker_prompt_test_runs_on_prompt_test_id"
+    t.index [ "prompt_version_id" ], name: "index_prompt_tracker_prompt_test_runs_on_prompt_version_id"
+    t.index [ "status" ], name: "index_prompt_tracker_prompt_test_runs_on_status"
   end
 
   create_table "prompt_tracker_prompt_tests", force: :cascade do |t|
     t.bigint "prompt_version_id", null: false
-    t.bigint "prompt_test_suite_id"
     t.string "name", null: false
     t.text "description"
-    t.jsonb "template_variables", default: {}, null: false
-    t.text "expected_output"
-    t.jsonb "expected_patterns", default: [], null: false
     t.jsonb "model_config", default: {}, null: false
-    t.jsonb "evaluator_configs", default: [], null: false
     t.boolean "enabled", default: true, null: false
     t.jsonb "tags", default: [], null: false
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["enabled"], name: "index_prompt_tracker_prompt_tests_on_enabled"
-    t.index ["name"], name: "index_prompt_tracker_prompt_tests_on_name"
-    t.index ["prompt_test_suite_id"], name: "index_prompt_tracker_prompt_tests_on_prompt_test_suite_id"
-    t.index ["prompt_version_id", "name"], name: "idx_on_prompt_version_id_name_8a1cf40215", unique: true
-    t.index ["prompt_version_id"], name: "index_prompt_tracker_prompt_tests_on_prompt_version_id"
-    t.index ["tags"], name: "index_prompt_tracker_prompt_tests_on_tags", using: :gin
+    t.index [ "enabled" ], name: "index_prompt_tracker_prompt_tests_on_enabled"
+    t.index [ "name" ], name: "index_prompt_tracker_prompt_tests_on_name"
+    t.index [ "prompt_version_id", "name" ], name: "idx_on_prompt_version_id_name_8a1cf40215", unique: true
+    t.index [ "prompt_version_id" ], name: "index_prompt_tracker_prompt_tests_on_prompt_version_id"
+    t.index [ "tags" ], name: "index_prompt_tracker_prompt_tests_on_tags", using: :gin
   end
 
   create_table "prompt_tracker_prompt_versions", force: :cascade do |t|
     t.bigint "prompt_id", null: false
-    t.text "template", null: false
+    t.text "user_prompt", null: false
     t.integer "version_number", null: false
     t.string "status", default: "draft", null: false
-    t.string "source", default: "file", null: false
     t.jsonb "variables_schema", default: []
     t.jsonb "model_config", default: {}
     t.text "notes"
     t.string "created_by"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["prompt_id", "status"], name: "index_prompt_versions_on_prompt_and_status"
-    t.index ["prompt_id", "version_number"], name: "index_prompt_versions_on_prompt_and_version_number", unique: true
-    t.index ["prompt_id"], name: "index_prompt_tracker_prompt_versions_on_prompt_id"
-    t.index ["source"], name: "index_prompt_tracker_prompt_versions_on_source"
-    t.index ["status"], name: "index_prompt_tracker_prompt_versions_on_status"
+    t.text "system_prompt"
+    t.index [ "prompt_id", "status" ], name: "index_prompt_versions_on_prompt_and_status"
+    t.index [ "prompt_id", "version_number" ], name: "index_prompt_versions_on_prompt_and_version_number", unique: true
+    t.index [ "prompt_id" ], name: "index_prompt_tracker_prompt_versions_on_prompt_id"
+    t.index [ "status" ], name: "index_prompt_tracker_prompt_versions_on_status"
   end
 
   create_table "prompt_tracker_prompts", force: :cascade do |t|
@@ -231,25 +235,26 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_15_000006) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "score_aggregation_strategy", default: "weighted_average"
-    t.index ["archived_at"], name: "index_prompt_tracker_prompts_on_archived_at"
-    t.index ["category"], name: "index_prompt_tracker_prompts_on_category"
-    t.index ["name"], name: "index_prompt_tracker_prompts_on_name", unique: true
-    t.index ["score_aggregation_strategy"], name: "index_prompts_on_aggregation_strategy"
+    t.index [ "archived_at" ], name: "index_prompt_tracker_prompts_on_archived_at"
+    t.index [ "category" ], name: "index_prompt_tracker_prompts_on_category"
+    t.index [ "name" ], name: "index_prompt_tracker_prompts_on_name", unique: true
   end
 
   add_foreign_key "prompt_tracker_ab_tests", "prompt_tracker_prompts", column: "prompt_id"
+  add_foreign_key "prompt_tracker_dataset_rows", "prompt_tracker_datasets", column: "dataset_id"
+  add_foreign_key "prompt_tracker_datasets", "prompt_tracker_prompt_versions", column: "prompt_version_id"
   add_foreign_key "prompt_tracker_evaluations", "prompt_tracker_llm_responses", column: "llm_response_id"
-  add_foreign_key "prompt_tracker_evaluator_configs", "prompt_tracker_prompts", column: "prompt_id"
+  add_foreign_key "prompt_tracker_evaluations", "prompt_tracker_prompt_test_runs", column: "prompt_test_run_id"
+  add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_evaluations", column: "evaluation_id"
+  add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_llm_responses", column: "llm_response_id"
+  add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_prompt_test_runs", column: "prompt_test_run_id"
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_ab_tests", column: "ab_test_id"
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_prompt_versions", column: "prompt_version_id"
+  add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_dataset_rows", column: "dataset_row_id"
+  add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_datasets", column: "dataset_id"
   add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_llm_responses", column: "llm_response_id"
-  add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_prompt_test_suite_runs", column: "prompt_test_suite_run_id"
   add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_prompt_tests", column: "prompt_test_id"
   add_foreign_key "prompt_tracker_prompt_test_runs", "prompt_tracker_prompt_versions", column: "prompt_version_id"
-  add_foreign_key "prompt_tracker_prompt_test_suite_runs", "prompt_tracker_prompt_test_suites", column: "prompt_test_suite_id"
-  add_foreign_key "prompt_tracker_prompt_test_suites", "prompt_tracker_prompts", column: "prompt_id"
-  add_foreign_key "prompt_tracker_prompt_tests", "prompt_tracker_prompt_test_suites", column: "prompt_test_suite_id"
   add_foreign_key "prompt_tracker_prompt_tests", "prompt_tracker_prompt_versions", column: "prompt_version_id"
   add_foreign_key "prompt_tracker_prompt_versions", "prompt_tracker_prompts", column: "prompt_id"
 end

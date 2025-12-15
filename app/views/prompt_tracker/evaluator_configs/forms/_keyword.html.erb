@@ -1,0 +1,74 @@
+<%# Unified form for Keyword Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'keyword' %>
+<% namespace ||= 'config' %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-search"></i>
+  <strong>Keyword Checker</strong>
+  <p class="mb-0 mt-1">Checks for required and forbidden keywords. Binary pass/fail: all required present AND no forbidden = pass.</p>
+</div>
+
+<!-- Hidden fields for evaluator type and context -->
+<input type="hidden" name="evaluation[evaluator_type]" value="automated">
+<input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+<input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+<!-- Required Keywords -->
+<div class="mb-3">
+  <label class="form-label">Required Keywords</label>
+  <%
+    required_keywords = config['required_keywords'] || config[:required_keywords] || []
+    required_keywords_text = required_keywords.is_a?(Array) ? required_keywords.join("\n") : required_keywords.to_s
+  %>
+  <textarea name="<%= namespace %>[required_keywords]"
+            class="form-control"
+            rows="3"
+            placeholder="Enter keywords, one per line"><%= required_keywords_text %></textarea>
+  <small class="form-text text-muted">
+    Keywords that must be present in the response. Enter one per line.
+  </small>
+</div>
+
+<!-- Forbidden Keywords -->
+<div class="mb-3">
+  <label class="form-label">Forbidden Keywords</label>
+  <%
+    forbidden_keywords = config['forbidden_keywords'] || config[:forbidden_keywords] || []
+    forbidden_keywords_text = forbidden_keywords.is_a?(Array) ? forbidden_keywords.join("\n") : forbidden_keywords.to_s
+  %>
+  <textarea name="<%= namespace %>[forbidden_keywords]"
+            class="form-control"
+            rows="3"
+            placeholder="Enter keywords, one per line"><%= forbidden_keywords_text %></textarea>
+  <small class="form-text text-muted">
+    Keywords that must NOT be present in the response. Enter one per line.
+  </small>
+</div>
+
+<!-- Case Sensitive -->
+<div class="mb-3">
+  <div class="form-check">
+    <input type="checkbox"
+           name="<%= namespace %>[case_sensitive]"
+           class="form-check-input"
+           id="<%= evaluator_key %>_case_sensitive"
+           value="true"
+           <%= 'checked' if config['case_sensitive'] || config[:case_sensitive] %>>
+    <label class="form-check-label" for="<%= evaluator_key %>_case_sensitive">
+      Case Sensitive
+    </label>
+    <small class="form-text text-muted d-block">
+      If checked, "Example" and "example" will be treated as different keywords.
+    </small>
+  </div>
+</div>
+
+<div class="alert alert-secondary">
+  <strong>Binary Scoring:</strong>
+  <ul class="mb-0 mt-2">
+    <li>All required keywords present AND no forbidden keywords: <strong>PASS (100 points)</strong></li>
+    <li>Any required keyword missing OR any forbidden keyword present: <strong>FAIL (0 points)</strong></li>
+  </ul>
+</div>

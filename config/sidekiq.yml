@@ -4,8 +4,8 @@
   - default
   - prompt_tracker_evaluators
   - prompt_tracker_tests
+  - prompt_tracker_dataset_generation
 
 # Redis connection
 :redis:
   url: <%= ENV.fetch("REDIS_URL", "redis://localhost:6379/0") %>
-

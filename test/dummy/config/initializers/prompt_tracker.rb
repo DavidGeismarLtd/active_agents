@@ -39,4 +39,3 @@ PromptTracker.configure do |config|
   config.basic_auth_username = nil
   config.basic_auth_password = nil
 end
-

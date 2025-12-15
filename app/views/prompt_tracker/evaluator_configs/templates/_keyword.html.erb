@@ -1,0 +1,46 @@
+<%# Display template for Keyword Evaluator configuration %>
+<% config ||= {} %>
+
+<div class="evaluator-display">
+  <h6 class="mb-2">
+    <i class="bi bi-search"></i>
+    Keyword Checker
+  </h6>
+  
+  <% required_keywords = config['required_keywords'] || config[:required_keywords] || [] %>
+  <% forbidden_keywords = config['forbidden_keywords'] || config[:forbidden_keywords] || [] %>
+  <% case_sensitive = config['case_sensitive'] || config[:case_sensitive] || false %>
+  
+  <% if required_keywords.any? %>
+    <div class="mb-2">
+      <strong class="text-success">Required Keywords:</strong>
+      <div class="mt-1">
+        <% required_keywords.each do |keyword| %>
+          <span class="badge bg-success-subtle text-success me-1"><%= keyword %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  
+  <% if forbidden_keywords.any? %>
+    <div class="mb-2">
+      <strong class="text-danger">Forbidden Keywords:</strong>
+      <div class="mt-1">
+        <% forbidden_keywords.each do |keyword| %>
+          <span class="badge bg-danger-subtle text-danger me-1"><%= keyword %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  
+  <% if case_sensitive %>
+    <div class="text-muted small">
+      <i class="bi bi-info-circle"></i> Case sensitive matching
+    </div>
+  <% end %>
+  
+  <% if required_keywords.empty? && forbidden_keywords.empty? %>
+    <p class="text-muted mb-0">No keywords configured</p>
+  <% end %>
+</div>
+

@@ -11,12 +11,12 @@ tags:
   - summarization
   - internal
 
-template: |
+user_prompt: |
   Summarize the following email thread in 2-3 sentences. Focus on:
   - Main topic/decision
   - Key action items
   - Important deadlines
-  
+
   Email Thread:
   {{email_thread}}
 
@@ -31,4 +31,3 @@ model_config:
   max_tokens: 200
 
 notes: Low temperature for factual, consistent summaries
-

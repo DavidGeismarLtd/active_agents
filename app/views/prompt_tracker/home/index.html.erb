@@ -1,0 +1,12 @@
+<!-- Hero Section -->
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem 2rem; border-radius: 12px; margin-bottom: 3rem; text-align: center;">
+  <h1 style="font-size: 2.5rem; font-weight: bold; margin-bottom: 1rem; color: white;">
+    <i class="bi bi-lightning-charge-fill" style="color: white;"></i> PromptTracker
+  </h1>
+  <p style="font-size: 1.25rem; opacity: 0.95; max-width: 800px; margin: 0 auto;">
+    Manage, test, and monitor your LLM prompts with confidence
+  </p>
+</div>
+
+<!-- Prompts Accordion -->
+<%= render "prompt_tracker/shared/prompts_accordion", prompts: @prompts, show_monitor_button: true, search_enabled: true %>

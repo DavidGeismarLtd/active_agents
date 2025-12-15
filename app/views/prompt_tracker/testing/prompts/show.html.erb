@@ -1,0 +1,136 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Prompts", testing_prompts_path %></li>
+  <li class="breadcrumb-item active"><%= @prompt.name %></li>
+<% end %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1>
+      <i class="bi bi-file-text"></i> <%= @prompt.name %>
+      <% if @prompt.archived_at.present? %>
+        <span class="badge bg-dark">Archived</span>
+      <% end %>
+    </h1>
+    <p class="text-muted"><%= @prompt.description %></p>
+  </div>
+
+</div>
+
+<!-- Details -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Details</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <tbody>
+            <tr>
+              <th style="width: 20%;">Name</th>
+              <td><code><%= @prompt.name %></code></td>
+            </tr>
+            <tr>
+              <th>Created</th>
+              <td><%= format_timestamp(@prompt.created_at) %></td>
+            </tr>
+            <tr>
+              <th>Updated</th>
+              <td><%= format_timestamp(@prompt.updated_at) %></td>
+            </tr>
+            <% if @prompt.archived_at.present? %>
+              <tr>
+                <th>Archived</th>
+                <td><%= format_timestamp(@prompt.archived_at) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Versions List -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">All Versions</h5>
+    <span class="badge bg-secondary"><%= @versions.count %></span>
+  </div>
+  <div class="card-body">
+    <% if @versions.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th class="text-end">Test Results</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%
+              # Sort versions: active first, then by version number descending
+              sorted_versions = @versions.sort_by do |v|
+                [v == @active_version ? 0 : 1, -v.version_number]
+              end
+            %>
+            <% sorted_versions.each do |version| %>
+              <tr class="<%= 'table-primary' if version == @active_version %>">
+                <td>
+                  <strong>v<%= version.version_number %></strong>
+                  <% if version == @active_version %>
+                    <span class="badge bg-success ms-2">Active</span>
+                  <% end %>
+                  <% if version == @latest_version && version != @active_version %>
+                    <span class="badge bg-info ms-2">Latest</span>
+                  <% end %>
+                </td>
+                <td><%= status_badge(version.status) %></td>
+                <td><%= format_timestamp(version.created_at) %></td>
+                <td class="text-end">
+                  <%
+                    # Get all test runs for this version
+                    test_runs = PromptTracker::PromptTestRun.where(prompt_version_id: version.id).completed
+                    total_tests = test_runs.count
+                    passed_tests = test_runs.passed.count
+                    failed_tests = test_runs.failed.count
+
+                    # Get the most recent test run
+                    last_run = test_runs.order(created_at: :desc).first
+                  %>
+                  <% if total_tests > 0 %>
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                      <span class="badge bg-success"><%= passed_tests %> passed</span>
+                      <span class="badge bg-danger"><%= failed_tests %> failed</span>
+                      <% if last_run %>
+                        <small class="text-muted">
+                          (<%= last_run.passed_evaluators %>/<%= last_run.total_evaluators %> evaluators)
+                        </small>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <span class="text-muted">No tests</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="btn-group" role="group">
+                    <%= link_to "View", testing_prompt_prompt_version_path(@prompt, version), class: "btn btn-sm btn-outline-primary" %>
+                    <%= link_to "Tests", testing_prompt_prompt_version_prompt_tests_path(@prompt, version), class: "btn btn-sm btn-outline-secondary", title: "View Tests" %>
+                    <% unless version.active? %>
+                      <%= button_to "Activate", activate_testing_prompt_prompt_version_path(@prompt, version), method: :post, class: "btn btn-sm btn-outline-success", title: "Activate", data: { confirm: "Activate this version? This will deprecate all other versions." } %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted">No versions yet</p>
+    <% end %>
+  </div>
+</div>

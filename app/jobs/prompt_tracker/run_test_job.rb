@@ -7,7 +7,7 @@ module PromptTracker
   # 1. Loads an existing PromptTestRun (created by controller with "running" status)
   # 2. Executes the LLM call (real or mock)
   # 3. Creates the LlmResponse
-  # 4. Runs evaluators and assertions
+  # 4. Runs evaluators
   # 5. Updates the test run with results
   # 6. Broadcasts completion via Turbo Streams
   #
@@ -31,16 +31,13 @@ module PromptTracker
 
       start_time = Time.current
 
-      llm_response = execute_llm_call(test, version, use_real_llm)
+      llm_response = execute_llm_call(test, version, test_run, use_real_llm)
 
       # Run evaluators
-      evaluator_results = run_evaluators(test, llm_response, use_real_llm)
+      evaluator_results = run_evaluators(test, llm_response, test_run)
 
-      # Check assertions
-      assertion_results = check_assertions(test, llm_response)
-
-      # Determine if test passed
-      passed = determine_pass_fail(evaluator_results, assertion_results)
+      # Determine if test passed (all evaluators must pass)
+      passed = evaluator_results.all? { |r| r[:passed] }
 
       # Calculate execution time
       execution_time = ((Time.current - start_time) * 1000).to_i
@@ -50,7 +47,6 @@ module PromptTracker
         test_run: test_run,
         llm_response: llm_response,
         evaluator_results: evaluator_results,
-        assertion_results: assertion_results,
         passed: passed,
         execution_time_ms: execution_time
       )
@@ -64,51 +60,74 @@ module PromptTracker
     #
     # @param test [PromptTest] the test to run
     # @param version [PromptVersion] the version to test
+    # @param test_run [PromptTestRun] the test run (contains dataset_row if applicable)
     # @param use_real_llm [Boolean] whether to use real LLM API
     # @return [LlmResponse] the LLM response record
-    def execute_llm_call(test, version, use_real_llm)
-      # Render the template
-      renderer = TemplateRenderer.new(version.template)
-      rendered_prompt = renderer.render(test.template_variables)
+    def execute_llm_call(test, version, test_run, use_real_llm)
+      # Determine which variables to use
+      template_vars = determine_template_variables(test_run)
+
+      # Render the user_prompt with variables
+      renderer = TemplateRenderer.new(version.user_prompt)
+      rendered_prompt = renderer.render(template_vars)
 
       # Get model config from test
       model_config = test.model_config.with_indifferent_access
       provider = model_config[:provider] || "openai"
       model = model_config[:model] || "gpt-4"
 
-      # Call LLM (real or mock)
+      # Call LLM (real or mock) with timing
+      start_time = Time.current
       if use_real_llm
         llm_api_response = call_real_llm(rendered_prompt, model_config)
       else
         llm_api_response = generate_mock_llm_response(rendered_prompt, model_config)
       end
+      response_time_ms = ((Time.current - start_time) * 1000).round
 
       # Extract token usage and response text
       tokens = extract_token_usage(llm_api_response)
       response_text = extract_response_text(llm_api_response)
 
-      # Create LlmResponse record
+      # Calculate cost using RubyLLM's model registry
+      cost = calculate_cost_from_response(llm_api_response)
+
+      # Create LlmResponse record (marked as test run to skip auto-evaluation)
       llm_response = LlmResponse.create!(
         prompt_version: version,
         rendered_prompt: rendered_prompt,
-        variables_used: test.template_variables,
+        variables_used: template_vars,
         provider: provider,
         model: model,
         response_text: response_text,
+        response_time_ms: response_time_ms,
         tokens_prompt: tokens[:prompt],
         tokens_completion: tokens[:completion],
         tokens_total: tokens[:total],
+        cost_usd: cost,
         status: "success",
+        is_test_run: true,
         response_metadata: { test_run: true }
       )
 
-      # Calculate and update cost
-      if tokens[:total] && tokens[:total] > 0
-        cost = calculate_cost(provider, model, tokens[:prompt], tokens[:completion])
-        llm_response.update!(cost_usd: cost) if cost
-      end
-
       llm_response
+    end
+
+    # Determine which template variables to use for this test run
+    #
+    # @param test_run [PromptTestRun] the test run
+    # @return [Hash] the template variables to use
+    def determine_template_variables(test_run)
+      if test_run.dataset_row.present?
+        # Use dataset row data
+        test_run.dataset_row.row_data
+      elsif test_run.metadata["custom_variables"].present?
+        # Use custom variables from modal (for single runs)
+        test_run.metadata["custom_variables"]
+      else
+        # Fallback to empty hash (no variables)
+        {}
+      end
     end
 
     # Call real LLM API
@@ -165,46 +184,33 @@ module PromptTracker
     #
     # @param test [PromptTest] the test
     # @param llm_response [LlmResponse] the LLM response to evaluate
-    # @param use_real_llm [Boolean] whether to use real LLM for judge evaluators
+    # @param test_run [PromptTestRun] the test run to associate evaluations with
     # @return [Array<Hash>] array of evaluator results
-    def run_evaluators(test, llm_response, use_real_llm)
-      evaluator_configs = test.evaluator_configs || []
+    def run_evaluators(test, llm_response, test_run)
+      evaluator_configs = test.evaluator_configs.enabled.order(:created_at)
       results = []
 
       evaluator_configs.each do |config|
-        config = config.with_indifferent_access
-        evaluator_key = config[:evaluator_key].to_sym
-        threshold = config[:threshold] || 0
-        evaluator_config = config[:config] || {}
+        evaluator_key = config.evaluator_key.to_sym
+        evaluator_config = config.config || {}
+
+        # Add test_run context to evaluator config
+        evaluator_config = evaluator_config.merge(
+          evaluation_context: "test_run",
+          prompt_test_run_id: test_run.id
+        )
 
         # Build and run evaluator
         evaluator = EvaluatorRegistry.build(evaluator_key, llm_response, evaluator_config)
 
-        # Check if this is an LLM judge evaluator that needs a block
-        evaluation = if evaluator.is_a?(PromptTracker::Evaluators::LlmJudgeEvaluator)
-          # Call with block to generate LLM judge response (real or mock)
-          evaluator.evaluate do |judge_prompt|
-            if use_real_llm
-              Rails.logger.info "🚀 Using REAL LLM Judge API"
-              call_real_llm_judge(judge_prompt, evaluator_config)
-            else
-              Rails.logger.info "🎭 Using MOCK LLM Judge response"
-              generate_mock_judge_response(judge_prompt, evaluator_config)
-            end
-          end
-        else
-          # Regular evaluators don't need a block
-          evaluator.evaluate
-        end
-
-        # Check if score meets threshold
-        passed = evaluation.score >= threshold
+        # All evaluators now use RubyLLM directly - no block needed!
+        # Evaluation is created with correct context and test_run association
+        evaluation = evaluator.evaluate
 
         results << {
           evaluator_key: evaluator_key.to_s,
           score: evaluation.score,
-          threshold: threshold,
-          passed: passed,
+          passed: evaluation.passed,
           feedback: evaluation.feedback
         }
       end
@@ -212,54 +218,14 @@ module PromptTracker
       results
     end
 
-    # Check assertions (expected patterns and expected output)
-    #
-    # @param test [PromptTest] the test
-    # @param llm_response [LlmResponse] the LLM response to check
-    # @return [Hash] hash of assertion name => passed (boolean)
-    def check_assertions(test, llm_response)
-      results = {}
-      response_text = llm_response.response_text || ""
-
-      # Check expected output (exact match)
-      if test.expected_output.present?
-        results["expected_output"] = response_text.strip == test.expected_output.strip
-      end
-
-      # Check expected patterns (regex)
-      expected_patterns = test.expected_patterns || []
-      expected_patterns.each_with_index do |pattern_str, index|
-        pattern = Regexp.new(pattern_str)
-        results["pattern_#{index + 1}"] = response_text.match?(pattern)
-      end
-
-      results
-    end
-
-    # Determine if test passed
-    #
-    # @param evaluator_results [Array<Hash>] evaluator results
-    # @param assertion_results [Hash] assertion results
-    # @return [Boolean] true if test passed
-    def determine_pass_fail(evaluator_results, assertion_results)
-      # All evaluators must pass their thresholds
-      evaluators_passed = evaluator_results.all? { |r| r[:passed] }
-
-      # All assertions must pass
-      assertions_passed = assertion_results.values.all? { |v| v == true }
-
-      evaluators_passed && assertions_passed
-    end
-
     # Update test run with success
     #
     # @param test_run [PromptTestRun] the test run to update
     # @param llm_response [LlmResponse] the LLM response
     # @param evaluator_results [Array<Hash>] evaluator results
-    # @param assertion_results [Hash] assertion results
     # @param passed [Boolean] whether test passed
     # @param execution_time_ms [Integer] execution time in milliseconds
-    def update_test_run_success(test_run:, llm_response:, evaluator_results:, assertion_results:, passed:, execution_time_ms:)
+    def update_test_run_success(test_run:, llm_response:, evaluator_results:, passed:, execution_time_ms:)
       passed_evaluators = evaluator_results.count { |r| r[:passed] }
       failed_evaluators = evaluator_results.count { |r| !r[:passed] }
 
@@ -268,7 +234,6 @@ module PromptTracker
         status: passed ? "passed" : "failed",
         passed: passed,
         evaluator_results: evaluator_results,
-        assertion_results: assertion_results,
         passed_evaluators: passed_evaluators,
         failed_evaluators: failed_evaluators,
         total_evaluators: evaluator_results.length,
@@ -281,28 +246,25 @@ module PromptTracker
 
     # Extract response text from LLM API response
     #
-    # @param llm_api_response [Object] the LLM API response
+    # @param llm_api_response [RubyLLM::Message, Hash] the LLM API response
     # @return [String] the response text
     def extract_response_text(llm_api_response)
-      if llm_api_response.is_a?(String)
-        llm_api_response
-      elsif llm_api_response.is_a?(RubyLLM::Message)
-        llm_api_response.content
-      elsif llm_api_response.respond_to?(:dig)
-        llm_api_response.dig("choices", 0, "message", "content") ||
-          llm_api_response.dig(:choices, 0, :message, :content) ||
-          llm_api_response.to_s
-      else
+      # Real LLM returns RubyLLM::Message
+      return llm_api_response.content if llm_api_response.respond_to?(:content)
+
+      # Mock LLM returns Hash
+      llm_api_response.dig("choices", 0, "message", "content") ||
+        llm_api_response.dig(:choices, 0, :message, :content) ||
         llm_api_response.to_s
-      end
     end
 
     # Extract token usage from LLM API response
     #
-    # @param llm_api_response [Object] the LLM API response
+    # @param llm_api_response [RubyLLM::Message, Hash] the LLM API response
     # @return [Hash] hash with :prompt, :completion, :total keys
     def extract_token_usage(llm_api_response)
-      if llm_api_response.is_a?(RubyLLM::Message)
+      # Real LLM returns RubyLLM::Message
+      if llm_api_response.respond_to?(:input_tokens)
         return {
           prompt: llm_api_response.input_tokens,
           completion: llm_api_response.output_tokens,
@@ -310,126 +272,28 @@ module PromptTracker
         }
       end
 
-      return { prompt: nil, completion: nil, total: nil } unless llm_api_response.respond_to?(:dig)
-
-      {
-        prompt: llm_api_response.dig("usage", "prompt_tokens") || llm_api_response.dig(:usage, :prompt_tokens),
-        completion: llm_api_response.dig("usage", "completion_tokens") || llm_api_response.dig(:usage, :completion_tokens),
-        total: llm_api_response.dig("usage", "total_tokens") || llm_api_response.dig(:usage, :total_tokens)
-      }
+      # Mock LLM returns Hash (no token usage)
+      { prompt: nil, completion: nil, total: nil }
     end
 
-    # Calculate cost based on provider, model, and token usage
+    # Calculate cost using RubyLLM's model registry
     #
-    # @param provider [String] the LLM provider
-    # @param model [String] the model name
-    # @param prompt_tokens [Integer] number of prompt tokens
-    # @param completion_tokens [Integer] number of completion tokens
+    # @param llm_api_response [RubyLLM::Message, Hash] the LLM API response
     # @return [Float, nil] cost in USD or nil if pricing not available
-    def calculate_cost(provider, model, prompt_tokens, completion_tokens)
-      return nil unless prompt_tokens && completion_tokens
+    def calculate_cost_from_response(llm_api_response)
+      # Mock LLM responses don't have token info
+      return nil unless llm_api_response.respond_to?(:input_tokens)
+      return nil unless llm_api_response.input_tokens && llm_api_response.output_tokens
 
-      # Pricing per 1M tokens (as of 2024)
-      pricing = case provider.to_s.downcase
-      when "openai"
-        case model.to_s.downcase
-        when /gpt-4o/
-          { prompt: 2.50, completion: 10.00 }
-        when /gpt-4-turbo/, /gpt-4-1106/, /gpt-4-0125/
-          { prompt: 10.00, completion: 30.00 }
-        when /gpt-4-32k/
-          { prompt: 60.00, completion: 120.00 }
-        when /gpt-4/
-          { prompt: 30.00, completion: 60.00 }
-        when /gpt-3.5-turbo/
-          { prompt: 0.50, completion: 1.50 }
-        else
-          nil
-        end
-      when "anthropic"
-        case model.to_s.downcase
-        when /claude-3-opus/
-          { prompt: 15.00, completion: 75.00 }
-        when /claude-3-sonnet/
-          { prompt: 3.00, completion: 15.00 }
-        when /claude-3-haiku/
-          { prompt: 0.25, completion: 1.25 }
-        else
-          nil
-        end
-      else
-        nil
-      end
-
-      return nil unless pricing
+      # Use RubyLLM's model registry to get pricing information
+      model_info = RubyLLM.models.find(llm_api_response.model_id)
+      return nil unless model_info&.input_price_per_million && model_info&.output_price_per_million
 
       # Calculate cost: (tokens / 1,000,000) * price_per_million
-      prompt_cost = (prompt_tokens / 1_000_000.0) * pricing[:prompt]
-      completion_cost = (completion_tokens / 1_000_000.0) * pricing[:completion]
+      input_cost = llm_api_response.input_tokens * model_info.input_price_per_million / 1_000_000.0
+      output_cost = llm_api_response.output_tokens * model_info.output_price_per_million / 1_000_000.0
 
-      prompt_cost + completion_cost
-    end
-
-    # Call real LLM API for judge evaluation
-    #
-    # @param judge_prompt [String] the prompt sent to the judge LLM
-    # @param evaluator_config [Hash] the evaluator configuration
-    # @return [String] judge response text
-    def call_real_llm_judge(judge_prompt, evaluator_config)
-      config = evaluator_config.with_indifferent_access
-      judge_model = config[:judge_model] || "gpt-4"
-
-      # Determine provider from model name
-      provider = if judge_model.start_with?("gpt-", "o1-")
-        "openai"
-      elsif judge_model.start_with?("claude-")
-        "anthropic"
-      elsif judge_model.start_with?("gemini-")
-        "google"
-      else
-        "openai"
-      end
-
-      response = LlmClientService.call(
-        provider: provider,
-        model: judge_model,
-        prompt: judge_prompt,
-        temperature: 0.3
-      )
-
-      response[:text]
-    end
-
-    # Generate a mock judge response for testing
-    #
-    # @param judge_prompt [String] the prompt sent to the judge LLM
-    # @param evaluator_config [Hash] the evaluator configuration
-    # @return [String] mock judge response with scores
-    def generate_mock_judge_response(judge_prompt, evaluator_config)
-      criteria = evaluator_config["criteria"] || evaluator_config[:criteria] || ["overall"]
-      score_max = evaluator_config["score_max"] || evaluator_config[:score_max] || 100
-
-      # Generate mock scores for each criterion (80-95% of max)
-      criterion_scores = criteria.map do |criterion|
-        score = rand(80..95) * score_max / 100.0
-        "#{criterion}: #{score.round(1)}/#{score_max}"
-      end.join("\n")
-
-      # Calculate overall score (average of criteria)
-      overall_score = (rand(80..95) * score_max / 100.0).round(1)
-
-      # Return a structured response that the judge evaluator can parse
-      <<~RESPONSE
-        EVALUATION RESULTS:
-
-        #{criterion_scores}
-
-        Overall Score: #{overall_score}/#{score_max}
-
-        Feedback: This is a mock evaluation for testing purposes. In production, this would be replaced with an actual LLM judge evaluation. The response meets the expected criteria and demonstrates good quality.
-
-        Reasoning: The mock evaluator assigns high scores to simulate a passing test. In a real scenario, the LLM judge would analyze the response based on the specified criteria and provide detailed feedback.
-      RESPONSE
+      input_cost + output_cost
     end
   end
 end

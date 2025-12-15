@@ -1,188 +1,388 @@
 <% content_for :breadcrumbs do %>
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Prompts", prompts_path %></li>
-      <li class="breadcrumb-item"><%= link_to "Evaluations", evaluations_path %></li>
+      <% if @monitoring_context %>
+        <%# Monitoring context - green theme %>
+        <li class="breadcrumb-item"><%= link_to "Monitoring", monitoring_root_path %></li>
+        <li class="breadcrumb-item"><%= link_to "Evaluations", monitoring_evaluations_path %></li>
+      <% else %>
+        <%# Testing context - no "Prompts" breadcrumb as requested %>
+        <li class="breadcrumb-item"><%= link_to "Evaluations", evaluations_path %></li>
+      <% end %>
       <li class="breadcrumb-item active" aria-current="page">Evaluation #<%= @evaluation.id %></li>
     </ol>
   </nav>
 <% end %>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h1><i class="bi bi-clipboard-check"></i> Evaluation #<%= @evaluation.id %></h1>
-    <p class="text-muted">
-      Evaluation for <%= link_to "Response ##{@response.id}", llm_response_path(@response) %>
-    </p>
+<%
+  # Score is already 0-100, no normalization needed
+  score = @evaluation.score
+%>
+
+<!-- Page Header with All Evaluation Info -->
+<div style="background: white; border: 2px solid #E5E7EB; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div style="flex: 1;">
+      <h1 style="color: #1F2937; margin: 0 0 1rem 0; font-size: 1.75rem;">
+        <i class="bi bi-clipboard-check"></i> Evaluation #<%= @evaluation.id %>
+      </h1>
+
+      <!-- Evaluation Metadata -->
+      <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
+        <!-- Timestamp -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="bi bi-clock" style="color: #6B7280;"></i>
+          <span style="color: #6B7280; font-size: 0.875rem;">
+            <%= time_ago_in_words(@evaluation.created_at) %> ago
+          </span>
+          <span style="color: #D1D5DB;">•</span>
+          <span style="color: #9CA3AF; font-size: 0.75rem;">
+            <%= @evaluation.created_at.strftime("%Y-%m-%d %H:%M") %>
+          </span>
+        </div>
+
+        <!-- Evaluator Type -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="bi bi-gear" style="color: #6B7280;"></i>
+          <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; background-color: #F3F4F6; color: #374151; font-weight: 500;">
+            <%= @evaluation.evaluator_name %>
+          </span>
+          <span style="color: #9CA3AF; font-size: 0.75rem;">
+            (<%= @evaluation.evaluator_type.demodulize.gsub("Evaluator", "").titleize %>)
+          </span>
+        </div>
+
+        <!-- Status Badge -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="bi bi-<%= @evaluation.passed? ? 'check-circle-fill' : 'x-circle-fill' %>" style="color: <%= @evaluation.passed? ? '#10B981' : '#EF4444' %>;"></i>
+          <span style="padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.875rem; background-color: <%= @evaluation.passed? ? '#D1FAE5' : '#FEE2E2' %>; color: <%= @evaluation.passed? ? '#065F46' : '#991B1B' %>; font-weight: 600;">
+            <%= @evaluation.passed? ? 'PASSED' : 'FAILED' %>
+          </span>
+        </div>
+
+        <!-- Score (0-100) -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="bi bi-star-fill" style="color: #6B7280;"></i>
+          <div style="display: flex; align-items: baseline; gap: 0.5rem;">
+            <span style="font-size: 1.5rem; font-weight: bold; color: <%= score >= 70 ? '#10B981' : (score >= 40 ? '#F59E0B' : '#EF4444') %>;">
+              <%= score.round(1) %>
+            </span>
+            <span style="color: #9CA3AF; font-size: 0.875rem;">
+              / 100
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Response Link -->
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #E5E7EB;">
+        <span style="color: #6B7280; font-size: 0.875rem;">
+          Evaluation for Response #<%= @response.id %>
+        </span>
+      </div>
+    </div>
+
+    <!-- Back Button -->
+    <div>
+      <%= link_to evaluations_path, class: "btn btn-outline-secondary" do %>
+        <i class="bi bi-arrow-left"></i> Back
+      <% end %>
+    </div>
   </div>
-  <%= link_to evaluations_path, class: "btn btn-outline-secondary" do %>
-    <i class="bi bi-arrow-left"></i> Back to Evaluations
-  <% end %>
 </div>
 
-<!-- Score Card -->
-<div class="card mb-4 border-primary">
-  <div class="card-header bg-primary text-white">
-    <h5 class="mb-0"><i class="bi bi-star-fill"></i> Evaluation Score</h5>
+<!-- Prompt Section -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-chat-left-text"></i> Prompt
+      <span class="badge bg-secondary ms-2">v<%= @version.version_number %></span>
+    </h5>
   </div>
   <div class="card-body">
-    <div class="row align-items-center">
-      <div class="col-md-4 text-center">
-        <% normalized_score = PromptTracker::EvaluationHelpers.normalize_score(
-             @evaluation.score,
-             min: @evaluation.score_min,
-             max: @evaluation.score_max
-           ) * 100 %>
-        <div style="font-size: 4rem; font-weight: bold;">
-          <%= score_badge(normalized_score, 0, 100) %>
+    <!-- Prompt Metadata -->
+    <div class="mb-3">
+      <div class="d-flex flex-wrap gap-3 mb-2">
+        <div>
+          <strong>Prompt:</strong>
+          <span class="text-dark"><%= @prompt.name %></span>
         </div>
-        <p class="text-muted mt-2">Normalized Score</p>
+        <div>
+          <strong>Version:</strong>
+          <span class="text-dark">v<%= @version.version_number %></span>
+        </div>
+        <% if @version.status.present? %>
+          <div>
+            <strong>Status:</strong>
+            <span class="badge <%= @version.status == 'active' ? 'bg-success' : (@version.status == 'deprecated' ? 'bg-warning' : 'bg-secondary') %>">
+              <%= @version.status.titleize %>
+            </span>
+          </div>
+        <% end %>
+        <% if @prompt.category.present? %>
+          <div>
+            <strong>Category:</strong>
+            <span class="badge bg-info"><%= @prompt.category %></span>
+          </div>
+        <% end %>
       </div>
-      <div class="col-md-8">
-        <table class="table table-sm mb-0">
-          <tr>
-            <th>Raw Score:</th>
-            <td><strong><%= @evaluation.score %></strong></td>
-          </tr>
-          <tr>
-            <th>Score Range:</th>
-            <td><%= @evaluation.score_min %> - <%= @evaluation.score_max %></td>
-          </tr>
-          <tr>
-            <th>Normalized:</th>
-            <td><strong><%= normalized_score.round(1) %>%</strong></td>
-          </tr>
-          <tr>
-            <th>Evaluator Type:</th>
-            <td><span class="badge bg-secondary"><%= @evaluation.evaluator_type %></span></td>
-          </tr>
-          <tr>
-            <th>Evaluator ID:</th>
-            <td>
-              <% if @evaluation.evaluator_id.present? %>
-                <%= @evaluation.evaluator_id %>
-              <% else %>
-                <span class="text-muted">Not specified</span>
-              <% end %>
-            </td>
-          </tr>
-        </table>
-      </div>
+      <% if @prompt.description.present? %>
+        <div class="text-muted small">
+          <%= @prompt.description %>
+        </div>
+      <% end %>
     </div>
+
+    <!-- Prompt -->
+    <div>
+      <strong class="d-block mb-2">Prompt:</strong>
+      <div class="bg-light p-3 rounded" style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+<% if @version.system_prompt.present? %>
+<div class="mb-2">
+<span class="badge bg-secondary">System</span>
+<%= @version.system_prompt %>
+</div>
+<% end %>
+<div>
+<span class="badge bg-primary">User</span>
+<%= @version.user_prompt %>
+</div>
+</div>
+    </div>
+
+    <!-- Variables Used (if any) -->
+    <% if @response.variables_used.present? && @response.variables_used.any? %>
+      <div class="mt-3">
+        <strong class="d-block mb-2">Variables Used:</strong>
+        <div class="bg-light p-3 rounded">
+          <% @response.variables_used.each do |key, value| %>
+            <div class="mb-2">
+              <code class="text-primary">{{<%= key %>}}</code>
+              <span class="text-muted">=</span>
+              <code class="text-success">"<%= value %>"</code>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Rendered Prompt (Final prompt sent to LLM) -->
+    <% if @response.rendered_prompt.present? %>
+      <div class="mt-3">
+        <strong class="d-block mb-2">Rendered Prompt (sent to LLM):</strong>
+        <div class="p-3 rounded" style="background-color: #f8f9fa; border-left: 4px solid #3B82F6; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+<%= @response.rendered_prompt %></div>
+      </div>
+    <% end %>
   </div>
 </div>
 
-<!-- Feedback -->
-<% if @evaluation.feedback.present? %>
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Feedback</h5>
-    </div>
-    <div class="card-body">
-      <div class="alert alert-info mb-0">
-        <%= simple_format(@evaluation.feedback) %>
+<!-- LLM Response Section -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-cpu"></i> LLM Response
+      <span class="badge <%= @response.status == 'success' ? 'bg-success' : (@response.status == 'error' ? 'bg-danger' : 'bg-warning') %> ms-2">
+        <%= @response.status.titleize %>
+      </span>
+    </h5>
+  </div>
+  <div class="card-body">
+    <!-- Response Metadata -->
+    <div class="mb-3">
+      <div class="d-flex flex-wrap gap-3 small text-muted">
+        <!-- Model -->
+        <div>
+          <i class="bi bi-gear"></i>
+          <strong>Model:</strong>
+          <code><%= @response.provider %>/<%= @response.model %></code>
+        </div>
+
+        <!-- Date -->
+        <div>
+          <i class="bi bi-calendar"></i>
+          <strong>Date:</strong>
+          <%= @response.created_at.strftime("%Y-%m-%d %H:%M:%S") %>
+          <span class="text-muted">(<%= time_ago_in_words(@response.created_at) %> ago)</span>
+        </div>
+
+        <!-- Environment -->
+        <% if @response.environment.present? %>
+          <div>
+            <i class="bi bi-server"></i>
+            <strong>Environment:</strong>
+            <span class="badge bg-secondary"><%= @response.environment %></span>
+          </div>
+        <% end %>
+
+        <!-- Response Time -->
+        <% if @response.response_time_ms.present? %>
+          <div>
+            <i class="bi bi-stopwatch"></i>
+            <strong>Response Time:</strong>
+            <%= @response.response_time_ms %>ms
+          </div>
+        <% end %>
+
+        <!-- Tokens -->
+        <% if @response.tokens_total.present? %>
+          <div>
+            <i class="bi bi-hash"></i>
+            <strong>Tokens:</strong>
+            <%= @response.tokens_total %>
+            <% if @response.tokens_prompt.present? && @response.tokens_completion.present? %>
+              <span class="text-muted">(<%= @response.tokens_prompt %> + <%= @response.tokens_completion %>)</span>
+            <% end %>
+          </div>
+        <% end %>
+
+        <!-- Cost -->
+        <% if @response.cost_usd.present? %>
+          <div>
+            <i class="bi bi-currency-dollar"></i>
+            <strong>Cost:</strong>
+            $<%= number_with_precision(@response.cost_usd, precision: 6) %>
+          </div>
+        <% end %>
       </div>
     </div>
-  </div>
-<% end %>
 
-<!-- Metadata -->
-<% if @evaluation.metadata.present? && @evaluation.metadata.any? %>
+    <!-- Response Text -->
+    <div>
+      <strong class="d-block mb-2">Response:</strong>
+      <% if @response.response_text.present? %>
+        <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+<%= @response.response_text %></div>
+      <% else %>
+        <p class="text-muted mb-0">No response text available</p>
+      <% end %>
+    </div>
+
+    <!-- Error Information (if failed) -->
+    <% if @response.status == 'error' && @response.error_message.present? %>
+      <div class="mt-3">
+        <div class="alert alert-danger mb-0">
+          <strong><i class="bi bi-exclamation-triangle"></i> Error:</strong>
+          <% if @response.error_type.present? %>
+            <code><%= @response.error_type %></code> -
+          <% end %>
+          <%= @response.error_message %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Evaluation Details -->
+<%
+  # Derive template name from evaluator class name by convention
+  # e.g., "PromptTracker::Evaluators::KeywordEvaluator" -> "keyword"
+  template_name = @evaluation.evaluator_key.to_s
+
+  # Build the template path
+  template_path = "prompt_tracker/evaluations/evaluators/#{template_name}"
+%>
+
+<% if lookup_context.exists?(template_path, [], true) %>
+  <%= render partial: template_path, locals: { evaluation: @evaluation } %>
+<% elsif @evaluation.metadata.present? && @evaluation.metadata.any? %>
+  <!-- Fallback: Raw Metadata Display -->
   <div class="card mb-4">
     <div class="card-header">
-      <h5 class="mb-0"><i class="bi bi-info-circle"></i> Metadata</h5>
+      <h5 class="mb-0"><i class="bi bi-info-circle"></i> Evaluation Details</h5>
     </div>
     <div class="card-body">
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>No template found for evaluator:</strong> <%= @evaluation.evaluator_name %> (<code><%= @evaluation.evaluator_type %></code>)
+      </div>
       <pre class="bg-light p-3 rounded"><code><%= JSON.pretty_generate(@evaluation.metadata) %></code></pre>
     </div>
   </div>
 <% end %>
 
-<!-- Related Response Details -->
+<!-- Human Evaluations Section -->
 <div class="card mb-4">
   <div class="card-header">
-    <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Related LLM Response</h5>
+    <h5 class="mb-0">
+      <i class="bi bi-people"></i> Human Evaluations
+      <span class="badge bg-secondary ms-2"><%= @evaluation.human_evaluations.count %></span>
+    </h5>
   </div>
   <div class="card-body">
-    <div class="row">
-      <div class="col-md-6">
-        <table class="table table-sm">
-          <tr>
-            <th>Response ID:</th>
-            <td><%= link_to "##{@response.id}", llm_response_path(@response) %></td>
-          </tr>
-          <tr>
-            <th>Prompt:</th>
-            <td><%= link_to @prompt.name, prompt_path(@prompt) %></td>
-          </tr>
-          <tr>
-            <th>Version:</th>
-            <td>
-              <%= link_to "v#{@version.version_number}", prompt_prompt_version_path(@prompt, @version) %>
-            </td>
-          </tr>
-          <tr>
-            <th>Provider:</th>
-            <td><%= provider_icon(@response.provider) %> <%= @response.provider %></td>
-          </tr>
-          <tr>
-            <th>Model:</th>
-            <td><code><%= @response.model %></code></td>
-          </tr>
-        </table>
+    <!-- Existing Human Evaluations -->
+    <% if @evaluation.human_evaluations.any? %>
+      <div class="mb-4">
+        <% @evaluation.human_evaluations.recent.each do |human_eval| %>
+          <div class="card mb-3" style="border-left: 4px solid #3B82F6;">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                  <h6 class="mb-1">
+                    <span class="badge bg-primary">
+                      Score: <%= human_eval.score %> / 100
+                    </span>
+                    <% if human_eval.agrees_with_evaluation? %>
+                      <span class="badge bg-info ms-2">
+                        <i class="bi bi-check-circle"></i> Agrees with automated evaluation
+                      </span>
+                    <% else %>
+                      <span class="badge bg-warning ms-2">
+                        <i class="bi bi-exclamation-circle"></i> Differs by <%= human_eval.score_difference.abs %> points
+                      </span>
+                    <% end %>
+                  </h6>
+                </div>
+                <small class="text-muted">
+                  <%= time_ago_in_words(human_eval.created_at) %> ago
+                </small>
+              </div>
+              <div class="mt-2">
+                <strong>Feedback:</strong>
+                <p class="mb-0 mt-1"><%= human_eval.feedback %></p>
+              </div>
+            </div>
+          </div>
+        <% end %>
       </div>
-      <div class="col-md-6">
-        <table class="table table-sm">
-          <tr>
-            <th>Status:</th>
-            <td><%= status_badge(@response.status) %></td>
-          </tr>
-          <tr>
-            <th>Response Time:</th>
-            <td><%= format_duration(@response.response_time_ms) %></td>
-          </tr>
-          <tr>
-            <th>Cost:</th>
-            <td><%= format_cost(@response.cost_usd) %></td>
-          </tr>
-          <tr>
-            <th>Tokens:</th>
-            <td><%= format_tokens(@response.tokens_total) %></td>
-          </tr>
-          <tr>
-            <th>Created:</th>
-            <td><%= format_timestamp(@response.created_at) %></td>
-          </tr>
-        </table>
-      </div>
-    </div>
-
-    <div class="mt-3">
-      <%= link_to llm_response_path(@response), class: "btn btn-outline-primary" do %>
-        <i class="bi bi-eye"></i> View Full Response
-      <% end %>
-    </div>
-  </div>
-</div>
-
-<!-- Response Preview -->
-<div class="card mb-4">
-  <div class="card-header">
-    <h5 class="mb-0"><i class="bi bi-file-text"></i> Response Preview</h5>
-  </div>
-  <div class="card-body">
-    <% if @response.response_text.present? %>
-      <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
-        <%= simple_format(truncate(@response.response_text, length: 1000)) %>
-      </div>
-      <% if @response.response_text.length > 1000 %>
-        <div class="mt-2">
-          <%= link_to "View full response", llm_response_path(@response), class: "btn btn-sm btn-outline-primary" %>
-        </div>
-      <% end %>
-    <% else %>
-      <p class="text-muted mb-0">No response text available</p>
+      <hr>
     <% end %>
+
+    <!-- Add New Human Evaluation Form -->
+    <div>
+      <h6 class="mb-3">
+        <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#humanEvaluationForm" aria-expanded="false">
+          <i class="bi bi-plus-circle"></i> Add Your Evaluation
+          <i class="bi bi-chevron-down ms-1"></i>
+        </button>
+      </h6>
+
+      <div class="collapse" id="humanEvaluationForm">
+        <% human_eval_path = @monitoring_context ? monitoring_evaluation_human_evaluations_path(@evaluation) : evaluation_human_evaluations_path(@evaluation) %>
+        <%= form_with model: PromptTracker::HumanEvaluation.new, url: human_eval_path, method: :post, local: true do |f| %>
+          <div class="mb-3">
+            <%= f.label :score, "Score (0-100)", class: "form-label" %>
+            <%= f.number_field :score, class: "form-control", min: 0, max: 100, step: 1, required: true, placeholder: "Enter score between 0 and 100" %>
+            <div class="form-text">
+              How would you score this evaluation? (Automated score: <%= @evaluation.score %>)
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :feedback, "Feedback", class: "form-label" %>
+            <%= f.text_area :feedback, class: "form-control", rows: 4, required: true, placeholder: "Explain your evaluation and why you agree or disagree with the automated score..." %>
+            <div class="form-text">
+              Provide detailed feedback about the automated evaluation's accuracy and quality.
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <%= f.submit "Submit Human Evaluation", class: "btn btn-primary" %>
+            <button type="button" class="btn btn-secondary" data-bs-toggle="collapse" data-bs-target="#humanEvaluationForm">Cancel</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -216,13 +416,13 @@
                  ) * 100 %>
               <tr>
                 <td><code>#<%= eval.id %></code></td>
-                <td><span class="badge bg-secondary"><%= eval.evaluator_type %></span></td>
-                <td><%= eval.evaluator_id || "—" %></td>
+                <td><span class="badge bg-secondary"><%= eval.evaluator_name %></span></td>
+                <td><code class="text-muted small"><%= eval.evaluator_type %></code></td>
                 <td class="text-end"><%= score_badge(normalized) %></td>
                 <td><%= truncate(eval.feedback, length: 50) || "—" %></td>
                 <td><%= format_relative_time(eval.created_at) %></td>
                 <td>
-                  <%= link_to evaluation_path(eval), class: "btn btn-sm btn-outline-primary" do %>
+                  <%= link_to (@monitoring_context ? monitoring_evaluation_path(eval) : evaluation_path(eval)), class: "btn btn-sm btn-outline-primary" do %>
                     <i class="bi bi-eye"></i>
                   <% end %>
                 </td>
@@ -234,22 +434,3 @@
     </div>
   </div>
 <% end %>
-
-<!-- Timestamps -->
-<div class="card">
-  <div class="card-header">
-    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Timestamps</h5>
-  </div>
-  <div class="card-body">
-    <table class="table table-sm mb-0">
-      <tr>
-        <th>Created:</th>
-        <td><%= format_timestamp(@evaluation.created_at) %></td>
-      </tr>
-      <tr>
-        <th>Updated:</th>
-        <td><%= format_timestamp(@evaluation.updated_at) %></td>
-      </tr>
-    </table>
-  </div>
-</div>

@@ -1,0 +1,161 @@
+<%# Unified form for Pattern Match Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'pattern_match' %>
+<% namespace ||= 'config' %>
+
+<div data-controller="pattern-match-form">
+  <div class="alert alert-info mb-3">
+    <i class="bi bi-regex"></i>
+    <strong>Pattern Match</strong>
+    <p class="mb-0 mt-1">Checks if response matches regex patterns. Binary pass/fail evaluator.</p>
+  </div>
+
+  <!-- Hidden fields for evaluator type and context -->
+  <input type="hidden" name="evaluation[evaluator_type]" value="automated">
+  <input type="hidden" name="evaluation[evaluator_id]" value="<%= evaluator_key %>">
+  <input type="hidden" name="evaluation[evaluation_context]" value="manual">
+
+  <!-- Patterns -->
+  <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <label class="form-label mb-0">
+        <i class="bi bi-regex"></i> Regex Patterns
+      </label>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-info" data-pattern-match-form-target="patternCount">0 patterns</span>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="collapse"
+                data-bs-target="#patternHelpers">
+          <i class="bi bi-lightbulb"></i> Quick Patterns
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Pattern Helpers (Collapsible) -->
+    <div class="collapse mb-2" id="patternHelpers">
+      <div class="card card-body bg-light">
+        <small class="text-muted mb-2"><strong>Common Patterns:</strong> Click to insert</small>
+        <div class="d-flex flex-wrap gap-1">
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/\w+@\w+\.\w+/">
+            <i class="bi bi-envelope"></i> Email
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/\d{3}-\d{3}-\d{4}/">
+            <i class="bi bi-telephone"></i> Phone (US)
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/https?:\/\/\S+/">
+            <i class="bi bi-link"></i> URL
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/\d{4}-\d{2}-\d{2}/">
+            <i class="bi bi-calendar"></i> Date (YYYY-MM-DD)
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/\$\d+(\.\d{2})?/">
+            <i class="bi bi-currency-dollar"></i> Price
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/\d+/">
+            <i class="bi bi-hash"></i> Number
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  data-action="click->pattern-match-form#insertPattern"
+                  data-pattern="/[A-Z]{2,}/">
+            <i class="bi bi-fonts"></i> Uppercase
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <textarea name="<%= namespace %>[patterns]"
+              class="form-control font-monospace"
+              rows="6"
+              data-pattern-match-form-target="patternsInput"
+              data-action="input->pattern-match-form#validatePatterns"
+              placeholder="Enter regex patterns, one per line&#10;Example:&#10;/Hello/&#10;/world/i&#10;/\d{3}-\d{4}/"
+              style="font-size: 13px; line-height: 1.6;"><%= (config['patterns'] || config[:patterns] || []).join("\n") %></textarea>
+
+    <!-- Validation feedback -->
+    <div class="mt-2" data-pattern-match-form-target="validationFeedback"></div>
+
+    <small class="form-text text-muted d-block mt-1">
+      <i class="bi bi-info-circle"></i>
+      Enter regex patterns, one per line. Use <code>/pattern/</code> or <code>/pattern/flags</code> format.
+      <br>
+      <strong>Flags:</strong> <code>i</code> = case-insensitive, <code>m</code> = multiline, <code>g</code> = global
+    </small>
+
+    <!-- Collapsible Examples -->
+    <div class="mt-2">
+      <a class="text-decoration-none small"
+         data-bs-toggle="collapse"
+         href="#patternExamples"
+         role="button">
+        <i class="bi bi-chevron-down"></i> Show Examples
+      </a>
+      <div class="collapse mt-2" id="patternExamples">
+        <div class="card card-body bg-light small">
+          <strong>Examples:</strong>
+          <ul class="mb-0 mt-1">
+            <li><code>/Hello/</code> - Matches "Hello" (case-sensitive)</li>
+            <li><code>/hello/i</code> - Matches "hello", "Hello", "HELLO" (case-insensitive)</li>
+            <li><code>/\d{3}-\d{4}/</code> - Matches "123-4567" (phone pattern)</li>
+            <li><code>/^Error:/</code> - Matches lines starting with "Error:"</li>
+            <li><code>/success|complete/i</code> - Matches "success" OR "complete" (case-insensitive)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match All -->
+  <div class="mb-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="form-check">
+          <!-- Hidden field to ensure false is sent when unchecked -->
+          <input type="hidden" name="<%= namespace %>[match_all]" value="false">
+          <input type="checkbox"
+                 name="<%= namespace %>[match_all]"
+                 class="form-check-input"
+                 id="<%= evaluator_key %>_match_all"
+                 value="true"
+                 <%= 'checked' if (config['match_all'] || config[:match_all]).nil? || (config['match_all'] || config[:match_all]) %>>
+          <label class="form-check-label" for="<%= evaluator_key %>_match_all">
+            <strong>All patterns must match</strong>
+          </label>
+        </div>
+        <div class="form-text mt-2">
+          <i class="bi bi-info-circle"></i>
+          <strong>Checked:</strong> ALL patterns must match for a pass (AND logic)<br>
+          <strong>Unchecked:</strong> ANY pattern matching will pass (OR logic)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-secondary">
+    <strong><i class="bi bi-award"></i> Binary Scoring:</strong>
+    <ul class="mb-0 mt-2">
+      <li><strong>Match All mode:</strong> <span class="badge bg-success">PASS (100)</span> if all patterns match, <span class="badge bg-danger">FAIL (0)</span> otherwise</li>
+      <li><strong>Match Any mode:</strong> <span class="badge bg-success">PASS (100)</span> if any pattern matches, <span class="badge bg-danger">FAIL (0)</span> otherwise</li>
+    </ul>
+  </div>
+</div>

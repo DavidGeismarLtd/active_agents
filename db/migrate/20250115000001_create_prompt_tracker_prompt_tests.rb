@@ -33,6 +33,6 @@ class CreatePromptTrackerPromptTests < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_tests, :name
     add_index :prompt_tracker_prompt_tests, :enabled
     add_index :prompt_tracker_prompt_tests, :tags, using: :gin
-    add_index :prompt_tracker_prompt_tests, [:prompt_id, :name], unique: true
+    add_index :prompt_tracker_prompt_tests, [ :prompt_id, :name ], unique: true
   end
 end

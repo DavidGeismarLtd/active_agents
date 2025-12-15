@@ -69,7 +69,7 @@ class CreatePromptTrackerEvaluations < ActiveRecord::Migration[7.2]
 
     # Index for finding evaluations by type and created_at
     add_index :prompt_tracker_evaluations,
-              [:evaluator_type, :created_at],
+              [ :evaluator_type, :created_at ],
               name: "index_evaluations_on_type_and_created_at"
 
     # Index for finding evaluations by score (for analytics)

@@ -5,91 +5,46 @@ import { Controller } from "@hotwired/stimulus"
  * Manages evaluator selection, configuration forms, and syncs to a hidden JSON field
  */
 export default class extends Controller {
-  static targets = ["checkbox", "config", "threshold", "weight", "configJson", "hiddenField", "configFormContainer"]
+  static targets = ["checkbox", "config", "configJson", "hiddenField", "configFormContainer"]
 
   connect() {
-    this.loadConfigForms()
+    this.attachEventListeners()
+    this.initializeRequiredFields()
     this.updateJson()
   }
 
   /**
-   * Load dynamic configuration forms for all evaluators with config_schema
+   * Initialize required fields state based on checkbox state
+   * Disable required fields for unchecked evaluators on page load
    */
-  loadConfigForms() {
-    this.configFormContainerTargets.forEach(container => {
-      const evaluatorKey = container.dataset.evaluatorKey
-      this.loadEvaluatorConfigForm(evaluatorKey, container)
+  initializeRequiredFields() {
+    this.checkboxTargets.forEach(checkbox => {
+      const key = checkbox.dataset.evaluatorKey
+      const configDiv = this.configTargets.find(
+        target => target.id === `config_${key}`
+      )
+
+      if (configDiv) {
+        // Disable required fields if evaluator is not checked
+        this.setRequiredFields(configDiv, checkbox.checked)
+      }
     })
   }
 
   /**
-   * Load configuration form for a specific evaluator
+   * Attach event listeners to all config form inputs
+   * Forms are now rendered server-side, so we just need to attach listeners
    */
-  loadEvaluatorConfigForm(evaluatorKey, container) {
-    const url = `/prompt_tracker/evaluator_configs/config_form?evaluator_key=${evaluatorKey}`
+  attachEventListeners() {
+    this.configFormContainerTargets.forEach(container => {
+      const evaluatorKey = container.dataset.evaluatorKey
 
-    fetch(url)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Configuration form not found')
-        }
-        return response.text()
+      // Add event listeners to all form inputs to sync with hidden field
+      container.querySelectorAll('input, select, textarea').forEach(input => {
+        input.addEventListener('change', () => this.syncEvaluatorConfig(evaluatorKey))
+        input.addEventListener('input', () => this.syncEvaluatorConfig(evaluatorKey))
       })
-      .then(html => {
-        container.innerHTML = html
-
-        // Add event listeners to all form inputs to sync with hidden field
-        container.querySelectorAll('input, select, textarea').forEach(input => {
-          input.addEventListener('change', () => this.syncEvaluatorConfig(evaluatorKey))
-          input.addEventListener('input', () => this.syncEvaluatorConfig(evaluatorKey))
-        })
-
-        // Load existing config values into the form
-        this.loadExistingConfigValues(evaluatorKey, container)
-      })
-      .catch(error => {
-        console.error('Error loading configuration form:', error)
-        container.innerHTML = `
-          <div class="alert alert-warning alert-sm">
-            <small>No custom form available. Using default configuration.</small>
-          </div>
-        `
-      })
-  }
-
-  /**
-   * Load existing configuration values into the form
-   */
-  loadExistingConfigValues(evaluatorKey, container) {
-    const hiddenField = this.configJsonTargets.find(
-      field => field.dataset.evaluatorKey === evaluatorKey
-    )
-
-    if (!hiddenField || !hiddenField.value) return
-
-    try {
-      const config = JSON.parse(hiddenField.value)
-
-      // Set values for all form inputs based on config
-      Object.keys(config).forEach(key => {
-        const input = container.querySelector(`[name="config[${key}]"]`)
-        if (input) {
-          if (input.type === 'checkbox') {
-            input.checked = config[key]
-          } else if (input.tagName === 'SELECT' && input.multiple) {
-            // Handle multi-select
-            const values = Array.isArray(config[key]) ? config[key] : [config[key]]
-            Array.from(input.options).forEach(option => {
-              option.selected = values.includes(option.value)
-            })
-          } else {
-            input.value = typeof config[key] === 'object' ? JSON.stringify(config[key]) : config[key]
-          }
-        }
-      })
-    } catch (e) {
-      console.error('Error loading existing config values:', e)
-    }
+    })
   }
 
   /**
@@ -121,6 +76,9 @@ export default class extends Controller {
         config[key] = Array.from(input.selectedOptions).map(opt => opt.value)
       } else if (input.type === 'number') {
         config[key] = parseFloat(input.value) || 0
+      } else if (key === 'patterns' || key === 'required_keywords' || key === 'forbidden_keywords') {
+        // Convert textarea input (one item per line) to array
+        config[key] = input.value.split('\n').map(line => line.trim()).filter(line => line.length > 0)
       } else {
         config[key] = input.value
       }
@@ -143,12 +101,30 @@ export default class extends Controller {
     if (configDiv) {
       if (checkbox.checked) {
         configDiv.classList.remove('collapse')
+        // Enable all required fields when evaluator is selected
+        this.setRequiredFields(configDiv, true)
       } else {
         configDiv.classList.add('collapse')
+        // Disable all required fields when evaluator is unchecked
+        this.setRequiredFields(configDiv, false)
       }
     }
 
     this.updateJson()
+  }
+
+  /**
+   * Enable or disable required fields in a config section
+   * Disabled fields are ignored by HTML5 form validation
+   */
+  setRequiredFields(container, enabled) {
+    container.querySelectorAll('[required]').forEach(field => {
+      if (enabled) {
+        field.removeAttribute('disabled')
+      } else {
+        field.setAttribute('disabled', 'disabled')
+      }
+    })
   }
 
   /**
@@ -161,12 +137,6 @@ export default class extends Controller {
       if (!checkbox.checked) return
 
       const key = checkbox.dataset.evaluatorKey
-      const thresholdInput = this.thresholdTargets.find(
-        t => t.dataset.evaluatorKey === key
-      )
-      const weightInput = this.weightTargets.find(
-        w => w.dataset.evaluatorKey === key
-      )
       const configHiddenField = this.configJsonTargets.find(
         field => field.dataset.evaluatorKey === key
       )
@@ -182,8 +152,6 @@ export default class extends Controller {
 
       configs.push({
         evaluator_key: key,
-        threshold: parseFloat(thresholdInput?.value || 80),
-        weight: parseFloat(weightInput?.value || 0.5),
         config: config
       })
     })

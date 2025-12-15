@@ -1,0 +1,52 @@
+<div class="dropdown">
+  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="bi bi-eye"></i> Columns
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end p-3" style="min-width: 250px;" onclick="event.stopPropagation();">
+    <li class="mb-2">
+      <strong class="dropdown-header px-0">Show/Hide Columns</strong>
+    </li>
+    <li><hr class="dropdown-divider"></li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-environment" data-column-visibility-target="checkbox" data-column-name="environment" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-environment">Environment</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-user-id" data-column-visibility-target="checkbox" data-column-name="user_id" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-user-id">User ID</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-status" data-column-visibility-target="checkbox" data-column-name="status" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-status">Status</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-tokens-cost" data-column-visibility-target="checkbox" data-column-name="tokens_cost" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-tokens-cost">Tokens / Cost</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-rendered-prompt" data-column-visibility-target="checkbox" data-column-name="rendered_prompt" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-rendered-prompt">Rendered Prompt</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-response-text" data-column-visibility-target="checkbox" data-column-name="response_text" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-response-text">Response</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-evaluations" data-column-visibility-target="checkbox" data-column-name="evaluations" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-evaluations">Evaluations</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-human-evaluations" data-column-visibility-target="checkbox" data-column-name="human_evaluations" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-human-evaluations">Human Evaluations</label>
+    </li>
+    <li class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="col-actions" data-column-visibility-target="checkbox" data-column-name="actions" data-action="change->column-visibility#toggle" checked>
+      <label class="form-check-label" for="col-actions">Actions</label>
+    </li>
+    <li><hr class="dropdown-divider"></li>
+    <li class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-primary flex-fill" data-action="click->column-visibility#showAll">Show All</button>
+      <button class="btn btn-sm btn-outline-secondary flex-fill" data-action="click->column-visibility#hideAll">Hide All</button>
+    </li>
+  </ul>
+</div>

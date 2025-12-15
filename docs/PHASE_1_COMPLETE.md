@@ -89,9 +89,8 @@ Phase 1 has been successfully implemented with all migrations, models, and compr
 **Key Features:**
 - Validations: score presence and within range, evaluator_type inclusion
 - Associations: belongs_to llm_response, has_one prompt_version, has_one prompt
-- Scopes: by_humans, automated, by_llm_judge, by_evaluator, above_score, below_score, recent
+- Scopes: by_evaluator, tracked, from_tests, manual_only, above_score, below_score, recent
 - Methods:
-  - Type checks: `human?`, `automated?`, `llm_judge?`
   - Score calculations: `normalized_score`, `score_percentage`, `passing?`
   - Criteria methods: `criterion_score`, `criteria_names`, `has_criteria_scores?`
   - `summary` - Human-readable summary
@@ -342,4 +341,3 @@ evaluation.score_percentage  # => 90.0
 ---
 
 Phase 1 is complete and ready for testing! 🎉
-
