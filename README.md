@@ -21,7 +21,20 @@ A comprehensive Rails 7.2 engine for managing, tracking, and analyzing LLM promp
 
 ## Quick Start
 
-### Development Setup (with Sidekiq + Redis)
+### Option 1: Docker (Recommended for Quick Setup)
+
+The easiest way to get started - no local dependencies required!
+
+```bash
+# Start everything with one command
+docker-compose up --build
+
+# Access the app at http://localhost:3000
+```
+
+See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for a quick guide or [DOCKER_SETUP.md](DOCKER_SETUP.md) for detailed documentation.
+
+### Option 2: Local Development Setup (with Sidekiq + Redis)
 
 For full async support with parallel job execution and real-time updates:
 
@@ -59,10 +72,14 @@ bin/test_all
 open coverage/index.html
 ```
 
-## Usage
+## Documentation
 
-See the comprehensive documentation:
-- [SIDEKIQ_SETUP.md](SIDEKIQ_SETUP.md) - **Sidekiq + Redis setup for async jobs and real-time updates**
+### Getting Started
+- [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) - **Quick Docker setup (recommended)**
+- [DOCKER_SETUP.md](DOCKER_SETUP.md) - **Detailed Docker documentation**
+- [SIDEKIQ_SETUP.md](SIDEKIQ_SETUP.md) - Local development setup with Sidekiq + Redis
+
+### Development
 - [TESTING.md](TESTING.md) - Testing guide
 - [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) - Implementation details
 - [docs/EVALUATOR_SYSTEM_DESIGN.md](docs/EVALUATOR_SYSTEM_DESIGN.md) - Evaluator system design

@@ -1,0 +1,87 @@
+name: Docker CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: prompt_tracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3.0'
+        bundler-cache: true
+
+    - name: Install dependencies
+      run: bundle install
+
+    - name: Setup database
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/prompt_tracker_test
+        REDIS_URL: redis://localhost:6379/0
+        RAILS_ENV: test
+      run: |
+        bundle exec rails db:create
+        bundle exec rails db:migrate
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/prompt_tracker_test
+        REDIS_URL: redis://localhost:6379/0
+        RAILS_ENV: test
+      run: bundle exec rspec
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker-compose build
+
+    - name: Start services
+      run: docker-compose up -d
+
+    - name: Wait for services to be ready
+      run: |
+        timeout 60 bash -c 'until docker-compose exec -T web curl -f http://localhost:3000 2>/dev/null; do sleep 2; done'
+
+    - name: Run tests in Docker
+      run: docker-compose exec -T web bundle exec rspec
+
+    - name: Stop services
+      run: docker-compose down
+

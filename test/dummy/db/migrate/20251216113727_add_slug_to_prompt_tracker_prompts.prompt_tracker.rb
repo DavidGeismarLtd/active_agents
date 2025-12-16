@@ -1,3 +1,4 @@
+# This migration comes from prompt_tracker (originally 20251215174018)
 class AddSlugToPromptTrackerPrompts < ActiveRecord::Migration[7.2]
   def up
     # Add slug column
