@@ -135,6 +135,8 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.jsonb :metadata, default: {}
       t.boolean :passed
       t.bigint :prompt_test_run_id
+      t.string :evaluation_context, null: false, default: "tracked_call"
+      t.bigint :evaluator_config_id
       t.timestamps
     end
 
@@ -143,6 +145,8 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_evaluations, :score, name: "index_evaluations_on_score"
     add_index :prompt_tracker_evaluations, [ :evaluator_type, :created_at ], name: "index_evaluations_on_type_and_created_at"
     add_index :prompt_tracker_evaluations, :prompt_test_run_id
+    add_index :prompt_tracker_evaluations, :evaluation_context
+    add_index :prompt_tracker_evaluations, :evaluator_config_id
 
     # ============================================================================
     # TABLE 5: ab_tests

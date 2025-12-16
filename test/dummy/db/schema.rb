@@ -10,56 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_16_203315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
-
-  create_table "action_mailbox_inbound_emails", force: :cascade do |t|
-    t.integer "status", default: 0, null: false
-    t.string "message_id", null: false
-    t.string "message_checksum", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index [ "message_id", "message_checksum" ], name: "index_action_mailbox_inbound_emails_uniqueness", unique: true
-  end
-
-  create_table "action_text_rich_texts", force: :cascade do |t|
-    t.string "name", null: false
-    t.text "body"
-    t.string "record_type", null: false
-    t.bigint "record_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index [ "record_type", "record_id", "name" ], name: "index_action_text_rich_texts_uniqueness", unique: true
-  end
-
-  create_table "active_storage_attachments", force: :cascade do |t|
-    t.string "name", null: false
-    t.string "record_type", null: false
-    t.bigint "record_id", null: false
-    t.bigint "blob_id", null: false
-    t.datetime "created_at", null: false
-    t.index [ "blob_id" ], name: "index_active_storage_attachments_on_blob_id"
-    t.index [ "record_type", "record_id", "name", "blob_id" ], name: "index_active_storage_attachments_uniqueness", unique: true
-  end
-
-  create_table "active_storage_blobs", force: :cascade do |t|
-    t.string "key", null: false
-    t.string "filename", null: false
-    t.string "content_type"
-    t.text "metadata"
-    t.string "service_name", null: false
-    t.bigint "byte_size", null: false
-    t.string "checksum"
-    t.datetime "created_at", null: false
-    t.index [ "key" ], name: "index_active_storage_blobs_on_key", unique: true
-  end
-
-  create_table "active_storage_variant_records", force: :cascade do |t|
-    t.bigint "blob_id", null: false
-    t.string "variation_digest", null: false
-    t.index [ "blob_id", "variation_digest" ], name: "index_active_storage_variant_records_uniqueness", unique: true
-  end
 
   create_table "prompt_tracker_ab_tests", force: :cascade do |t|
     t.bigint "prompt_id", null: false
@@ -127,10 +80,11 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
     t.jsonb "metadata", default: {}
     t.boolean "passed"
     t.bigint "prompt_test_run_id"
+    t.string "evaluation_context", default: "tracked_call", null: false
+    t.bigint "evaluator_config_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "evaluation_context", default: "tracked_call"
-    t.bigint "evaluator_config_id"
+    t.index [ "evaluation_context" ], name: "index_prompt_tracker_evaluations_on_evaluation_context"
     t.index [ "evaluator_config_id" ], name: "index_prompt_tracker_evaluations_on_evaluator_config_id"
     t.index [ "evaluator_type", "created_at" ], name: "index_evaluations_on_type_and_created_at"
     t.index [ "evaluator_type" ], name: "index_prompt_tracker_evaluations_on_evaluator_type"
@@ -140,6 +94,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
   end
 
   create_table "prompt_tracker_evaluator_configs", force: :cascade do |t|
+    t.string "configurable_type", null: false
+    t.bigint "configurable_id", null: false
     t.string "evaluator_type", null: false
     t.string "evaluator_key"
     t.boolean "enabled", default: true, null: false
@@ -149,8 +105,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
     t.jsonb "config", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "configurable_type", null: false
-    t.bigint "configurable_id", null: false
     t.index [ "configurable_type", "configurable_id" ], name: "index_evaluator_configs_on_configurable"
     t.index [ "depends_on" ], name: "index_prompt_tracker_evaluator_configs_on_depends_on"
     t.index [ "enabled" ], name: "index_prompt_tracker_evaluator_configs_on_enabled"
@@ -195,9 +149,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
     t.string "ab_variant"
     t.bigint "trace_id"
     t.bigint "span_id"
+    t.boolean "is_test_run", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "is_test_run", default: false, null: false
     t.index [ "ab_test_id", "ab_variant" ], name: "index_llm_responses_on_ab_test_and_variant"
     t.index [ "ab_test_id" ], name: "index_prompt_tracker_llm_responses_on_ab_test_id"
     t.index [ "environment" ], name: "index_prompt_tracker_llm_responses_on_environment"
@@ -314,6 +268,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
 
   create_table "prompt_tracker_prompts", force: :cascade do |t|
     t.string "name", null: false
+    t.string "slug", null: false
     t.text "description"
     t.string "category"
     t.jsonb "tags", default: []
@@ -322,7 +277,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
     t.string "score_aggregation_strategy", default: "weighted_average"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "slug", null: false
     t.index [ "archived_at" ], name: "index_prompt_tracker_prompts_on_archived_at"
     t.index [ "category" ], name: "index_prompt_tracker_prompts_on_category"
     t.index [ "name" ], name: "index_prompt_tracker_prompts_on_name", unique: true
@@ -369,8 +323,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_195725) do
     t.index [ "user_id" ], name: "index_prompt_tracker_traces_on_user_id"
   end
 
-  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "prompt_tracker_ab_tests", "prompt_tracker_prompts", column: "prompt_id"
   add_foreign_key "prompt_tracker_dataset_rows", "prompt_tracker_datasets", column: "dataset_id"
   add_foreign_key "prompt_tracker_datasets", "prompt_tracker_prompt_versions", column: "prompt_version_id"
