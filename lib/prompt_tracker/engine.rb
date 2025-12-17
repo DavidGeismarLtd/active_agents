@@ -33,9 +33,11 @@ module PromptTracker
     end
     # Register importmap configuration
     initializer "prompt_tracker.importmap", before: "importmap" do |app|
-      app.config.importmap.paths << root.join("config/importmap.rb")
-      # Add cache sweeper for development
-      app.config.importmap.cache_sweepers << root.join("app/javascript")
+      if app.config.respond_to?(:importmap)
+        app.config.importmap.paths << root.join("config/importmap.rb")
+        # Add cache sweeper for development
+        app.config.importmap.cache_sweepers << root.join("app/javascript")
+      end
     end
 
 
