@@ -15,6 +15,9 @@ gem "ostruct" # Required for Ruby 3.5+ compatibility
 # LLM API clients - unified interface for all providers
 gem "ruby_llm"
 
+# OpenAI gem for Assistants API (not covered by ruby_llm)
+gem "ruby-openai", "~> 7.0"
+
 # Background job processing
 gem "sidekiq", "~> 7.0"
 gem "redis", "~> 5.0"

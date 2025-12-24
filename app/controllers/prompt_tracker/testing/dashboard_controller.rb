@@ -4,33 +4,73 @@ module PromptTracker
   module Testing
     # Dashboard for the Testing section - pre-deployment validation
     #
-    # Shows overview of:
-    # - All prompts with their versions
-    # - Test results per version
-    # - Quick access to create new prompts
+    # Shows unified index of all testables:
+    # - PromptVersions (with their prompts)
+    # - OpenAI Assistants
+    #
+    # Supports filtering by testable type
     #
     class DashboardController < ApplicationController
       def index
-        # Load all prompts with their versions and test data
-        # Eager load to avoid N+1 queries
-        @prompts = Prompt.includes(
-          prompt_versions: [
-            :prompt_tests,
-            { prompt_tests: :prompt_test_runs }
-          ]
-        ).order(created_at: :desc)
+        # Filter by testable type (all, prompts, assistants)
+        @filter = params[:filter] || "all"
 
+        # Load prompts with their versions and test data
+        if @filter.in?([ "all", "prompts" ])
+          @prompts = Prompt.includes(
+            prompt_versions: [
+              :tests,
+              { tests: :test_runs }
+            ]
+          ).order(created_at: :desc)
+        else
+          @prompts = []
+        end
+
+        # Load assistants with their tests
+        if @filter.in?([ "all", "assistants" ])
+          @assistants = PromptTracker::Openai::Assistant.includes(
+            :tests,
+            { tests: :test_runs }
+          ).order(created_at: :desc)
+        else
+          @assistants = []
+        end
+
+        # Calculate statistics
+        calculate_statistics
+      end
+
+      # POST /testing/sync_openai_assistants
+      # Sync all assistants from OpenAI API
+      def sync_openai_assistants
+        result = SyncOpenaiAssistantsService.call
+
+        redirect_to testing_root_path(filter: "assistants"),
+                    notice: "Synced #{result[:total]} assistants from OpenAI (#{result[:created]} created, #{result[:updated]} updated)."
+      rescue SyncOpenaiAssistantsService::SyncError => e
+        redirect_to testing_root_path,
+                    alert: "Failed to sync assistants: #{e.message}"
+      end
+
+      private
+
+      def calculate_statistics
         # Test statistics for summary
-        @total_tests = PromptTest.count
-        @total_runs_today = PromptTestRun.where("created_at >= ?", Time.current.beginning_of_day).count
+        @total_tests = Test.count
+        @total_runs_today = TestRun.where("created_at >= ?", Time.current.beginning_of_day).count
 
         # Pass/fail rates (last 100 runs)
-        recent_runs = PromptTestRun.order(created_at: :desc).limit(100)
+        recent_runs = TestRun.order(created_at: :desc).limit(100)
         @pass_rate = if recent_runs.any?
           (recent_runs.where(status: "passed").count.to_f / recent_runs.count * 100).round(1)
         else
           0
         end
+
+        # Count by testable type
+        @prompt_count = Prompt.count
+        @assistant_count = PromptTracker::Openai::Assistant.count
       end
     end
   end

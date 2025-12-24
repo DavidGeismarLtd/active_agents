@@ -4,73 +4,88 @@
 #
 # Table name: prompt_tracker_datasets
 #
-#  created_at        :datetime         not null
-#  created_by        :string
-#  description       :text
-#  id                :bigint           not null, primary key
-#  metadata          :jsonb            not null
-#  name              :string           not null
-#  prompt_version_id :bigint           not null
-#  schema            :jsonb            not null
-#  updated_at        :datetime         not null
+#  id                 :bigint           not null, primary key
+#  name               :string           not null
+#  description        :text
+#  schema             :jsonb            not null
+#  created_by         :string
+#  metadata           :jsonb            not null
+#  testable_type      :string
+#  testable_id        :bigint
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
 #
 module PromptTracker
-  # Represents a reusable collection of test data for a prompt version.
+  # Represents a reusable collection of test data for any testable (PromptVersion or Assistant).
   #
-  # A Dataset stores multiple rows of variable values that can be used
-  # to run tests at scale. Each dataset is tied to a specific prompt version
-  # and validates that its schema matches the version's variables_schema.
+  # A Dataset stores multiple rows of test scenario data that can be used
+  # to run tests at scale. Each dataset is tied to a specific testable
+  # and validates that its schema matches the testable's expected schema.
   #
-  # @example Create a dataset
+  # For PromptVersions: schema matches variables_schema
+  # For Assistants: schema includes user_prompt, max_turns, etc.
+  #
+  # @example Create a dataset for a PromptVersion
   #   dataset = Dataset.create!(
-  #     prompt_version: version,
+  #     testable: prompt_version,
   #     name: "customer_scenarios",
   #     description: "Common customer support scenarios",
-  #     schema: version.variables_schema
+  #     schema: prompt_version.variables_schema
+  #   )
+  #
+  # @example Create a dataset for an Assistant
+  #   dataset = Dataset.create!(
+  #     testable: assistant,
+  #     name: "headache_scenarios",
+  #     description: "Different headache complaint scenarios",
+  #     schema: [
+  #       { "name" => "user_prompt", "type" => "string", "required" => true },
+  #       { "name" => "max_turns", "type" => "integer", "required" => false }
+  #     ]
   #   )
   #
   # @example Add rows to dataset
   #   dataset.dataset_rows.create!(
-  #     row_data: { customer_name: "Alice", issue: "billing" },
+  #     row_data: { user_prompt: "I have a severe headache...", max_turns: 10 },
   #     source: "manual"
   #   )
   #
   class Dataset < ApplicationRecord
-    # Associations
-    belongs_to :prompt_version,
-               class_name: "PromptTracker::PromptVersion",
-               inverse_of: :datasets
+    # Polymorphic association - can belong to PromptVersion or Assistant
+    belongs_to :testable, polymorphic: true
 
     has_many :dataset_rows,
              class_name: "PromptTracker::DatasetRow",
              dependent: :destroy,
              inverse_of: :dataset
 
-    has_many :prompt_test_runs,
-             class_name: "PromptTracker::PromptTestRun",
+    has_many :test_runs,
+             class_name: "PromptTracker::TestRun",
              dependent: :nullify,
              inverse_of: :dataset
 
-    # Delegate to get the prompt through prompt_version
-    has_one :prompt, through: :prompt_version
+    # Backward compatibility
+    has_many :prompt_test_runs,
+             class_name: "PromptTracker::TestRun",
+             foreign_key: :dataset_id,
+             dependent: :nullify
 
     # Validations
     validates :name, presence: true
-    validates :name, uniqueness: { scope: :prompt_version_id }
+    validates :testable, presence: true
     validates :schema, presence: true
 
     validate :schema_must_be_array
-    validate :schema_matches_prompt_version
-
-    # Scopes
-    scope :recent, -> { order(created_at: :desc) }
-
-    # Callbacks
-    before_validation :copy_schema_from_version, on: :create, if: -> { schema.blank? }
+    validate :schema_matches_testable
 
     # Scopes
     scope :recent, -> { order(created_at: :desc) }
     scope :by_name, -> { order(:name) }
+    scope :for_prompt_versions, -> { where(testable_type: "PromptTracker::PromptVersion") }
+    scope :for_assistants, -> { where(testable_type: "PromptTracker::Openai::Assistant") }
+
+    # Callbacks
+    before_validation :copy_schema_from_testable, on: :create, if: -> { schema.blank? }
 
     # Get row count
     #
@@ -79,14 +94,29 @@ module PromptTracker
       dataset_rows.count
     end
 
-    # Check if dataset schema is still valid for its prompt version
+    # Check if dataset schema is still valid for its testable
     #
-    # @return [Boolean] true if schema matches current version schema
+    # @return [Boolean] true if schema matches current testable schema
     def schema_valid?
-      return false if prompt_version.variables_schema.blank?
+      return false unless testable
 
-      # Schema is valid if it matches the current version's schema
-      normalize_schema(schema) == normalize_schema(prompt_version.variables_schema)
+      expected_schema = case testable
+      when PromptVersion
+        testable.variables_schema
+      when Openai::Assistant
+        # Assistants have a fixed schema for conversation scenarios
+        [
+          { "name" => "user_prompt", "type" => "string", "required" => true },
+          { "name" => "max_turns", "type" => "integer", "required" => false }
+        ]
+      else
+        []
+      end
+
+      return false if expected_schema.blank?
+
+      # Schema is valid if it matches the expected schema
+      normalize_schema(schema) == normalize_schema(expected_schema)
     end
 
     # Get variable names from schema
@@ -98,9 +128,21 @@ module PromptTracker
 
     private
 
-    # Copy schema from prompt version on creation
-    def copy_schema_from_version
-      self.schema = prompt_version.variables_schema if prompt_version
+    # Copy schema from testable on creation
+    def copy_schema_from_testable
+      return unless testable
+
+      self.schema = case testable
+      when PromptVersion
+        testable.variables_schema
+      when Openai::Assistant
+        [
+          { "name" => "user_prompt", "type" => "string", "required" => true },
+          { "name" => "max_turns", "type" => "integer", "required" => false }
+        ]
+      else
+        []
+      end
     end
 
     # Validate that schema is an array
@@ -110,14 +152,13 @@ module PromptTracker
       errors.add(:schema, "must be an array")
     end
 
-    # Validate that schema matches prompt version's variables_schema
-    def schema_matches_prompt_version
-      return if prompt_version.blank?
-      return if prompt_version.variables_schema.blank?
+    # Validate that schema matches testable's expected schema
+    def schema_matches_testable
+      return unless testable
       return unless schema.is_a?(Array) # Skip if schema is not an array (handled by schema_must_be_array)
 
       unless schema_valid?
-        errors.add(:schema, "does not match prompt version's variables schema. Dataset is invalid.")
+        errors.add(:schema, "does not match testable's expected schema. Dataset is invalid.")
       end
     end
 

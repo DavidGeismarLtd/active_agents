@@ -1,0 +1,15 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "OpenAI Assistants", testing_openai_assistants_path %></li>
+  <li class="breadcrumb-item active">New Assistant</li>
+<% end %>
+
+<div class="row">
+  <div class="col-lg-8">
+    <h1 class="mb-4">
+      <i class="bi bi-plus-circle"></i> Add OpenAI Assistant
+    </h1>
+
+    <%= render "form", assistant: @assistant %>
+  </div>
+</div>
+

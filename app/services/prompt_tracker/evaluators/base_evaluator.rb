@@ -159,7 +159,7 @@ module PromptTracker
           feedback: feedback_text,
           metadata: metadata,
           evaluation_context: config[:evaluation_context] || "tracked_call",
-          prompt_test_run_id: config[:prompt_test_run_id]
+          test_run_id: config[:test_run_id]
         )
       end
 

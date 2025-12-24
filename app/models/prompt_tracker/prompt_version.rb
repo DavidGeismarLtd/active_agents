@@ -64,20 +64,22 @@ module PromptTracker
              through: :llm_responses,
              class_name: "PromptTracker::Evaluation"
 
-    has_many :prompt_tests,
-             class_name: "PromptTracker::PromptTest",
-             dependent: :destroy,
-             inverse_of: :prompt_version
+    # New polymorphic association
+    has_many :tests,
+             as: :testable,
+             class_name: "PromptTracker::Test",
+             dependent: :destroy
 
     has_many :evaluator_configs,
              as: :configurable,
              class_name: "PromptTracker::EvaluatorConfig",
              dependent: :destroy
 
+    # New polymorphic association for datasets
     has_many :datasets,
+             as: :testable,
              class_name: "PromptTracker::Dataset",
-             dependent: :destroy,
-             inverse_of: :prompt_version
+             dependent: :destroy
 
     # Validations
     validates :user_prompt, presence: true
@@ -241,6 +243,21 @@ module PromptTracker
     # @return [Boolean] true if any evaluator configs exist
     def has_monitoring_enabled?
       evaluator_configs.enabled.exists?
+    end
+
+    # Run a test with a dataset row (for polymorphic testable interface)
+    #
+    # @param test [Test] the test to run
+    # @param dataset_row [DatasetRow] the dataset row with test variables
+    # @return [TestRun] the created test run
+    def run_test(test:, dataset_row:)
+      # This will be implemented by PromptTestRunner service
+      # For now, just create a pending test run
+      test.test_runs.create!(
+        dataset_id: dataset_row.dataset_id,
+        dataset_row_id: dataset_row.id,
+        status: "pending"
+      )
     end
 
     private

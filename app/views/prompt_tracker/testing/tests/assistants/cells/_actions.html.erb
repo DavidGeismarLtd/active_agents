@@ -1,0 +1,10 @@
+<td data-column="actions">
+  <%= link_to "View", testing_openai_assistant_test_path(assistant, test), class: "btn btn-sm btn-outline-primary me-1" %>
+  <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#edit-test-modal-<%= test.id %>">
+    Edit
+  </button>
+  <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#runTestModal-<%= test.id %>">
+    Run
+  </button>
+</td>
+

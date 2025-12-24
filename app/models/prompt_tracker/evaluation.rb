@@ -13,7 +13,7 @@
 #  llm_response_id        :bigint           not null
 #  metadata               :jsonb
 #  passed                 :boolean
-#  prompt_test_run_id     :bigint
+#  test_run_id            :bigint           (renamed from prompt_test_run_id)
 #  score                  :decimal(10, 2)   not null
 #  score_max              :decimal(10, 2)   default(5.0)
 #  score_min              :decimal(10, 2)   default(0.0)
@@ -57,11 +57,18 @@ module PromptTracker
     # Associations
     belongs_to :llm_response,
                class_name: "PromptTracker::LlmResponse",
-               inverse_of: :evaluations
-
-    belongs_to :prompt_test_run,
-               class_name: "PromptTracker::PromptTestRun",
+               inverse_of: :evaluations,
                optional: true
+
+    # Association to test run (renamed from prompt_test_run)
+    belongs_to :test_run,
+               class_name: "PromptTracker::TestRun",
+               optional: true
+
+    # Backward compatibility alias
+    def prompt_test_run
+      test_run
+    end
 
     belongs_to :evaluator_config,
                class_name: "PromptTracker::EvaluatorConfig",

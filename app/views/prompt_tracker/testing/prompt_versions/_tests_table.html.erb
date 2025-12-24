@@ -13,7 +13,7 @@
     </thead>
     <tbody>
       <% tests.each do |test| %>
-        <%= render "prompt_tracker/testing/prompt_tests/test_row", test: test, prompt: prompt, version: version %>
+        <%= render "prompt_tracker/testing/tests/prompt_versions/test_row", test: test, prompt: prompt, version: version %>
         <%= render "prompt_tracker/testing/prompt_tests/test_runs_accordion", test: test %>
       <% end %>
     </tbody>

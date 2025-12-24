@@ -96,7 +96,7 @@ module PromptTracker
         # Add test_run context to evaluator config
         evaluator_config = evaluator_config.merge(
           evaluation_context: "test_run",
-          prompt_test_run_id: test_run.id
+          test_run_id: test_run.id
         )
 
         # Build and run evaluator
@@ -128,7 +128,7 @@ module PromptTracker
       broadcast_turbo_stream_replace(
         stream: "prompt_version_#{version.id}",
         target: "test_row_#{test.id}",
-        partial: "prompt_tracker/testing/prompt_tests/test_row",
+        partial: "prompt_tracker/testing/tests/prompt_versions/test_row",
         locals: { test: test, prompt: prompt, version: version }
       )
 
@@ -153,7 +153,7 @@ module PromptTracker
       broadcast_turbo_stream_replace(
         stream: "prompt_test_#{test.id}",
         target: "test_run_row_#{test_run.id}",
-        partial: "prompt_tracker/testing/prompt_tests/test_run_row",
+        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
         locals: { run: test_run }
       )
     end

@@ -27,7 +27,7 @@
   </div>
 </div>
 
-<%= render "prompt_tracker/testing/prompt_tests/run_test_modal", test: @test, prompt: @prompt, version: @version %>
+<%= render "prompt_tracker/testing/tests/prompt_versions/run_test_modal", test: @test, prompt: @prompt, version: @version %>
 
 <!-- Test Stats -->
 <div class="row mb-4">
@@ -153,7 +153,7 @@
         <tbody id="recent_runs_tbody">
           <% if @recent_runs.any? %>
             <% @recent_runs.each do |run| %>
-              <%= render "test_run_row", run: run %>
+              <%= render "prompt_tracker/testing/test_runs/prompt_versions/row", run: run %>
             <% end %>
           <% else %>
             <tr id="no_runs_placeholder">
@@ -223,7 +223,7 @@
                  record: run,
                  form_url: testing_run_human_evaluations_path(run),
                  context: 'testing' %>
-      <%= render "prompt_tracker/testing/prompt_tests/all_human_evaluations_modal",
+      <%= render "prompt_tracker/testing/tests/shared/all_human_evaluations_modal",
                  run: run %>
     <% end %>
   </div>

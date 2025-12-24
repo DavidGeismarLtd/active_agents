@@ -1,34 +1,62 @@
 # frozen_string_literal: true
 
 module PromptTracker
-  # Background job to run a single prompt test.
+  # Background job to run a single test (prompt version or assistant).
   #
   # This job:
-  # 1. Loads an existing PromptTestRun (created by controller with "running" status)
-  # 2. Executes the LLM call (real or mock)
-  # 3. Creates the LlmResponse
-  # 4. Runs evaluators
+  # 1. Loads an existing TestRun (created by controller with "running" status)
+  # 2. Detects test type (prompt version or assistant)
+  # 3. Routes to appropriate runner (PromptTestRunner or AssistantTestRunner)
+  # 4. Executes the test
   # 5. Updates the test run with results
   # 6. Broadcasts completion via Turbo Streams
   #
-  # @example Enqueue a test run
-  #   test_run = PromptTestRun.create!(prompt_test: test, prompt_version: version, status: "running")
+  # @example Enqueue a prompt version test run
+  #   test_run = TestRun.create!(test: test, prompt_version: version, status: "running")
   #   RunTestJob.perform_later(test_run.id, use_real_llm: true)
+  #
+  # @example Enqueue an assistant test run
+  #   test_run = TestRun.create!(test: test, status: "running")
+  #   RunTestJob.perform_later(test_run.id)
   #
   class RunTestJob < ApplicationJob
     queue_as :prompt_tracker_tests
 
+    # Disable retries for now to avoid noise in logs
+    sidekiq_options retry: false
+
     # Execute the test run
     #
-    # @param test_run_id [Integer] ID of the PromptTestRun to execute
-    # @param use_real_llm [Boolean] whether to use real LLM API or mock
+    # @param test_run_id [Integer] ID of the TestRun to execute
+    # @param use_real_llm [Boolean] whether to use real LLM API or mock (for prompt tests)
     def perform(test_run_id, use_real_llm: false)
       Rails.logger.info "🚀 RunTestJob started for test_run #{test_run_id}"
 
-      test_run = PromptTestRun.find(test_run_id)
-      test = test_run.prompt_test
-      version = test_run.prompt_version
+      test_run = TestRun.find(test_run_id)
+      test = test_run.test
+      testable = test.testable
 
+      # Route to appropriate runner based on testable type
+      if testable.is_a?(PromptVersion)
+        run_prompt_test(test_run, test, testable, use_real_llm)
+      elsif testable.is_a?(Openai::Assistant)
+        run_assistant_test(test_run, test, testable)
+      else
+        raise ArgumentError, "Unknown testable type: #{testable.class}"
+      end
+
+      Rails.logger.info "✅ RunTestJob completed for test_run #{test_run_id}"
+    end
+
+    private
+
+    # Run a prompt version test
+    #
+    # @param test_run [TestRun] the test run
+    # @param test [Test] the test
+    # @param version [PromptVersion] the prompt version
+    # @param use_real_llm [Boolean] whether to use real LLM API
+    def run_prompt_test(test_run, test, version, use_real_llm)
       start_time = Time.current
 
       llm_response = execute_llm_call(test, version, test_run, use_real_llm)
@@ -50,8 +78,66 @@ module PromptTracker
         passed: passed,
         execution_time_ms: execution_time
       )
+    end
 
-      Rails.logger.info "✅ RunTestJob completed for test_run #{test_run_id}: #{passed ? 'PASSED' : 'FAILED'}"
+    # Run an assistant test
+    #
+    # @param test_run [TestRun] the test run
+    # @param test [Test] the test
+    # @param assistant [Openai::Assistant] the assistant
+    def run_assistant_test(test_run, test, assistant)
+      # Assistant tests can run with either dataset_row or custom_variables
+      start_time = Time.current
+
+      # Extract test scenario from dataset row OR custom variables
+      if test_run.dataset_row.present?
+        # Dataset mode: extract from dataset row
+        row_data = test_run.dataset_row.row_data.with_indifferent_access
+        interlocutor_prompt = row_data[:interlocutor_simulation_prompt] || row_data["interlocutor_simulation_prompt"]
+        max_turns = row_data[:max_turns] || row_data["max_turns"] || 5
+      elsif test_run.metadata.dig("custom_variables").present?
+        # Custom mode: extract from metadata
+        custom_vars = test_run.metadata["custom_variables"].with_indifferent_access
+        interlocutor_prompt = custom_vars[:user_prompt] || custom_vars["user_prompt"]
+        max_turns = custom_vars[:max_turns] || custom_vars["max_turns"] || 3
+      else
+        raise ArgumentError, "Assistant test requires either dataset_row or custom_variables"
+      end
+
+      raise ArgumentError, "interlocutor_simulation_prompt is required" if interlocutor_prompt.blank?
+
+      # Run the conversation
+      conversation_runner = Openai::ConversationRunner.new(
+        assistant_id: assistant.assistant_id,
+        interlocutor_simulation_prompt: interlocutor_prompt,
+        max_turns: max_turns
+      )
+
+      conversation_result = conversation_runner.run!
+
+      # Store conversation data
+      test_run.update!(conversation_data: conversation_result)
+
+      # Run evaluators
+      evaluator_results = run_assistant_evaluators(test, test_run)
+
+      # Calculate pass/fail
+      passed = evaluator_results.all? { |r| r[:passed] }
+
+      # Update test run
+      execution_time = ((Time.current - start_time) * 1000).to_i
+      test_run.update!(
+        status: passed ? "passed" : "failed",
+        passed: passed,
+        execution_time_ms: execution_time,
+        metadata: test_run.metadata.merge(
+          completed_at: Time.current.iso8601,
+          evaluator_results: evaluator_results
+        )
+      )
+
+      # Note: Broadcasts are handled by after_update_commit callback in TestRun model
+      # Assistant test broadcasts are currently disabled (see broadcast_changes method)
     end
 
     private
@@ -115,7 +201,7 @@ module PromptTracker
 
     # Determine which template variables to use for this test run
     #
-    # @param test_run [PromptTestRun] the test run
+    # @param test_run [TestRun] the test run
     # @return [Hash] the template variables to use
     def determine_template_variables(test_run)
       if test_run.dataset_row.present?
@@ -180,11 +266,11 @@ module PromptTracker
       }
     end
 
-    # Run evaluators
+    # Run evaluators for prompt tests
     #
-    # @param test [PromptTest] the test
+    # @param test [Test] the test
     # @param llm_response [LlmResponse] the LLM response to evaluate
-    # @param test_run [PromptTestRun] the test run to associate evaluations with
+    # @param test_run [TestRun] the test run to associate evaluations with
     # @return [Array<Hash>] array of evaluator results
     def run_evaluators(test, llm_response, test_run)
       evaluator_configs = test.evaluator_configs.enabled.order(:created_at)
@@ -197,7 +283,7 @@ module PromptTracker
         # Add test_run context to evaluator config
         evaluator_config = evaluator_config.merge(
           evaluation_context: "test_run",
-          prompt_test_run_id: test_run.id
+          test_run_id: test_run.id
         )
 
         # Build and run evaluator
@@ -209,6 +295,41 @@ module PromptTracker
 
         results << {
           evaluator_key: evaluator_key.to_s,
+          score: evaluation.score,
+          passed: evaluation.passed,
+          feedback: evaluation.feedback
+        }
+      end
+
+      results
+    end
+
+    # Run evaluators for assistant tests
+    #
+    # @param test [Test] the test
+    # @param test_run [TestRun] the test run with conversation_data
+    # @return [Array<Hash>] array of evaluator results
+    def run_assistant_evaluators(test, test_run)
+      evaluator_configs = test.evaluator_configs.enabled.order(:created_at)
+      results = []
+
+      evaluator_configs.each do |config|
+        evaluator_type = config.evaluator_type
+        evaluator_config = config.config || {}
+
+        # Add evaluator_config_id to the config
+        evaluator_config = evaluator_config.merge(
+          evaluator_config_id: config.id,
+          evaluation_context: "test_run"
+        )
+
+        # Build and run the evaluator
+        evaluator_class = evaluator_type.constantize
+        evaluator = evaluator_class.new(test_run, evaluator_config)
+        evaluation = evaluator.evaluate
+
+        results << {
+          evaluator_type: evaluator_type,
           score: evaluation.score,
           passed: evaluation.passed,
           feedback: evaluation.feedback

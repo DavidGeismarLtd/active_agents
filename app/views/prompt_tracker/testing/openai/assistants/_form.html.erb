@@ -1,0 +1,62 @@
+<%= form_with model: assistant, url: assistant.persisted? ? testing_openai_assistant_path(assistant) : testing_openai_assistants_path, local: true do |f| %>
+  <% if assistant.errors.any? %>
+    <div class="alert alert-danger">
+      <h5><%= pluralize(assistant.errors.count, "error") %> prohibited this assistant from being saved:</h5>
+      <ul class="mb-0">
+        <% assistant.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Basic Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <%= f.label :assistant_id, "OpenAI Assistant ID", class: "form-label" %>
+        <%= f.text_field :assistant_id, class: "form-control", placeholder: "asst_...", required: true %>
+        <div class="form-text">
+          The OpenAI Assistant ID (e.g., asst_abc123). You can find this in the OpenAI platform.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :name, class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "Customer Support Assistant", required: true %>
+        <div class="form-text">
+          A descriptive name for this assistant.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Helps customers with common support questions..." %>
+        <div class="form-text">
+          Optional description of what this assistant does.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :category, class: "form-label" %>
+        <%= f.text_field :category, class: "form-control", placeholder: "support, sales, code, etc." %>
+        <div class="form-text">
+          Optional category for organizing assistants (e.g., support, sales, code).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    <strong>Note:</strong> After creating the assistant, you can sync its instructions, model, and tools from OpenAI using the "Sync from OpenAI" button.
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit assistant.persisted? ? "Update Assistant" : "Create Assistant", class: "btn btn-primary" %>
+    <%= link_to "Cancel", assistant.persisted? ? testing_openai_assistant_path(assistant) : testing_openai_assistants_path, class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>
+

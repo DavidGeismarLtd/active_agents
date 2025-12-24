@@ -23,18 +23,23 @@ module PromptTracker
   #   test_run = runner.run!  # Uses model_config from test
   #
   class PromptTestRunner
-    attr_reader :prompt_test, :prompt_version, :metadata, :test_run
+    attr_reader :test, :prompt_version, :metadata, :test_run
 
     # Initialize the test runner
     #
-    # @param prompt_test [PromptTest] the test to run
+    # @param test [Test] the test to run
     # @param prompt_version [PromptVersion] the version to test
     # @param metadata [Hash] additional metadata for the test run
-    def initialize(prompt_test, prompt_version, metadata: {})
-      @prompt_test = prompt_test
+    def initialize(test, prompt_version, metadata: {})
+      @test = test
       @prompt_version = prompt_version
       @metadata = metadata || {}
       @test_run = nil
+    end
+
+    # Backward compatibility alias
+    def prompt_test
+      @test
     end
 
     # Run the test synchronously (for backward compatibility)
@@ -42,13 +47,12 @@ module PromptTracker
     # @yield [rendered_prompt] optional block to execute LLM call
     # @yieldparam rendered_prompt [String] the rendered prompt
     # @yieldreturn [Object] the LLM response object
-    # @return [PromptTestRun] the test run result
+    # @return [TestRun] the test run result
     def run!(&block)
       start_time = Time.current
       # Create test run record
-      @test_run = PromptTestRun.create!(
-        prompt_test: prompt_test,
-        prompt_version: prompt_version,
+      @test_run = TestRun.create!(
+        test: test,
         status: "running",
         metadata: metadata
       )
@@ -85,14 +89,13 @@ module PromptTracker
     # @yield [rendered_prompt] optional block to execute LLM call
     # @yieldparam rendered_prompt [String] the rendered prompt
     # @yieldreturn [Object] the LLM response object
-    # @return [PromptTestRun] the test run result (in "running" state)
+    # @return [TestRun] the test run result (in "running" state)
     def run_async!(&block)
       start_time = Time.current
 
       # Create test run record
-      @test_run = PromptTestRun.create!(
-        prompt_test: prompt_test,
-        prompt_version: prompt_version,
+      @test_run = TestRun.create!(
+        test: test,
         status: "running",
         metadata: metadata.merge(async: true, started_at: start_time.iso8601)
       )

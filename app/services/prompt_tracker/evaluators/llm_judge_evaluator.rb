@@ -111,7 +111,7 @@ module PromptTracker
           passed: passed,
           feedback: parsed[:feedback],
           evaluation_context: config[:evaluation_context] || "tracked_call",
-          prompt_test_run_id: config[:prompt_test_run_id],
+          test_run_id: config[:test_run_id],
           metadata: {
             judge_model: config[:judge_model],
             custom_instructions: config[:custom_instructions],

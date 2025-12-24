@@ -1,0 +1,10 @@
+<tr id="test_run_row_<%= run.id %>">
+  <%= render "prompt_tracker/testing/test_runs/run_cells/status", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/run_time", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/response_time", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/cost", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/conversation", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/evaluations_assistant", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/human_evaluations", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/run_cells/actions", run: run %>
+</tr>

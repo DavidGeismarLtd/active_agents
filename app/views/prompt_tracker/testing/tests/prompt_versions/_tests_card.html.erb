@@ -1,0 +1,47 @@
+<!-- Tests -->
+<div class="card mb-4" id="tests" style="border: 2px solid #DBEAFE;" data-controller="column-visibility">
+  <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #EFF6FF; border-bottom: 2px solid #DBEAFE;">
+    <div>
+      <h5 class="mb-0" style="color: #1E40AF;">
+        <i class="bi bi-flask"></i> Tests
+      </h5>
+      <small class="text-muted">
+        Validate prompt behavior with test cases before deploying to production
+      </small>
+    </div>
+    <div class="d-flex gap-2">
+      <% if tests.any? %>
+        <%= render "prompt_tracker/testing/prompt_versions/column_visibility_dropdown" %>
+        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllTestsModal">
+          <i class="bi bi-play-circle"></i> Run All
+        </button>
+      <% end %>
+      <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#new-test-modal">
+        <i class="bi bi-plus-circle"></i> New Test
+      </button>
+    </div>
+  </div>
+  
+  <div class="card-body">
+    <!-- Info Alert -->
+    <div class="alert alert-info mb-3">
+      <h6 class="alert-heading"><i class="bi bi-info-circle"></i> How Tests Work</h6>
+      <ul class="mb-0">
+        <li><strong>Manual execution:</strong> Tests run on-demand when you click "Run" or "Run All" to validate prompt behavior</li>
+        <li><strong>Test environment only:</strong> Tests use the <code>is_test_run: true</code> flag and don't affect production metrics</li>
+        <li><strong>Quality assurance:</strong> Validate prompts with specific inputs and expected outputs before deploying to production</li>
+      </ul>
+    </div>
+
+    <% if tests.any? %>
+      <%= render "prompt_tracker/testing/tests/prompt_versions/tests_table", tests: tests, prompt: prompt, version: version %>
+    <% else %>
+      <!-- Empty state -->
+      <div class="text-center py-5">
+        <i class="bi bi-flask" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">No tests yet. Create your first test to validate this prompt version.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+

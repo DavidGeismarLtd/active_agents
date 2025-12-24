@@ -1,0 +1,22 @@
+<!-- New Test Modal -->
+<div class="modal fade" id="new-test-modal" tabindex="-1" aria-labelledby="new-test-modal-label" aria-hidden="true" data-controller="modal-fix" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="new-test-modal-label">
+          <i class="bi bi-plus-circle"></i> Create New Test
+          <span class="badge bg-primary">v<%= version.version_number %></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <%= render "prompt_tracker/testing/tests/prompt_versions/form", 
+                   prompt: prompt, 
+                   version: version, 
+                   test: PromptTracker::Test.new(testable: version, enabled: true), 
+                   in_modal: true %>
+      </div>
+    </div>
+  </div>
+</div>
+

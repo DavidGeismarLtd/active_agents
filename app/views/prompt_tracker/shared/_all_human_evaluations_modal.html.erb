@@ -1,6 +1,6 @@
 <%# Reusable Modal to display all human evaluations %>
 <%# Parameters:
-  - record: The record with human evaluations (PromptTestRun or LlmResponse)
+  - record: The record with human evaluations (TestRun or LlmResponse)
   - context: 'testing' or 'monitoring' (for color scheme)
   - title: Optional custom title
 %>
@@ -14,11 +14,11 @@
     header_bg = '#D1FAE5'
     header_border = '#10B981'
   end
-  
+
   # Determine title
   if local_assigns[:title].present?
     modal_title = title
-  elsif record.is_a?(PromptTracker::PromptTestRun)
+  elsif record.is_a?(PromptTracker::TestRun)
     modal_title = "All Human Evaluations for Test Run ##{record.id}"
   else # LlmResponse
     modal_title = "All Human Evaluations for Tracked Call ##{record.id}"
@@ -50,4 +50,3 @@
     </div>
   </div>
 </div>
-

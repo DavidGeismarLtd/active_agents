@@ -1,0 +1,12 @@
+<td data-column="name">
+  <strong>
+    <%= link_to test.name, testing_prompt_prompt_version_prompt_test_path(prompt, version, test), class: "text-decoration-none" %>
+  </strong>
+  <% unless test.enabled? %>
+    <span class="badge bg-secondary ms-2">Disabled</span>
+  <% end %>
+  <% if test.description.present? %>
+    <br><small class="text-muted"><%= truncate(test.description, length: 80) %></small>
+  <% end %>
+</td>
+

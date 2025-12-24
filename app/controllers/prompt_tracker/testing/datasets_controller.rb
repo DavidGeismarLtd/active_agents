@@ -26,6 +26,11 @@ module PromptTracker
         @dataset = @version.datasets.build(dataset_params)
         @dataset.created_by = "web_ui" # TODO: Replace with current_user when auth is added
 
+        # Parse schema if it's a JSON string
+        if @dataset.schema.is_a?(String)
+          @dataset.schema = JSON.parse(@dataset.schema)
+        end
+
         if @dataset.save
           redirect_to testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset),
                       notice: "Dataset created successfully."
@@ -45,7 +50,14 @@ module PromptTracker
 
       # PATCH/PUT /testing/prompts/:prompt_id/versions/:prompt_version_id/datasets/:id
       def update
-        if @dataset.update(dataset_params)
+        params_to_update = dataset_params
+
+        # Parse schema if it's a JSON string
+        if params_to_update[:schema].is_a?(String)
+          params_to_update[:schema] = JSON.parse(params_to_update[:schema])
+        end
+
+        if @dataset.update(params_to_update)
           redirect_to testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset),
                       notice: "Dataset updated successfully."
         else

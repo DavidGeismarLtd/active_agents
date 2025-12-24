@@ -1,0 +1,21 @@
+<!-- New Test Modal -->
+<div class="modal fade" id="new-test-modal" tabindex="-1" aria-labelledby="new-test-modal-label" aria-hidden="true" data-controller="modal-fix" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="new-test-modal-label">
+          <i class="bi bi-plus-circle"></i> Create New Test
+          <span class="badge bg-info"><i class="bi bi-robot"></i> <%= assistant.name %></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <%= render "prompt_tracker/testing/tests/assistants/form", 
+                   assistant: assistant, 
+                   test: PromptTracker::Test.new(testable: assistant, enabled: true), 
+                   in_modal: true %>
+      </div>
+    </div>
+  </div>
+</div>
+

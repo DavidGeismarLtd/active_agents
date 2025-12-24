@@ -1,0 +1,103 @@
+<!-- Run Test Modal -->
+<div class="modal fade" id="runTestModal-<%= test.id %>" tabindex="-1"
+     data-controller="modal-fix run-test-modal"
+     data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Run Test: <%= test.name %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <%= form_with(url: run_testing_openai_assistant_test_path(assistant, test), method: :post, data: { turbo: false }) do |f| %>
+        <div class="modal-body">
+          <p class="text-muted mb-3">
+            Choose how to run this test:
+          </p>
+
+          <!-- Run Mode Selection -->
+          <div class="mb-4">
+            <div class="form-check mb-3">
+              <%= f.radio_button :run_mode, "dataset",
+                  checked: true,
+                  class: "form-check-input",
+                  data: {
+                    action: "change->run-test-modal#toggleMode",
+                    "run-test-modal-target": "modeRadio"
+                  } %>
+              <%= f.label :run_mode_dataset, class: "form-check-label" do %>
+                <strong>Run against dataset</strong>
+                <small class="d-block text-muted">Execute test for all rows in a dataset</small>
+              <% end %>
+            </div>
+
+            <div class="form-check">
+              <%= f.radio_button :run_mode, "single",
+                  class: "form-check-input",
+                  data: {
+                    action: "change->run-test-modal#toggleMode",
+                    "run-test-modal-target": "modeRadio"
+                  } %>
+              <%= f.label :run_mode_single, class: "form-check-label" do %>
+                <strong>Single run with custom variables</strong>
+                <small class="d-block text-muted">Execute test once with manually entered values</small>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Dataset Selection (shown when run_mode=dataset) -->
+          <div data-run-test-modal-target="datasetSection">
+            <div class="mb-3">
+              <%= f.label :dataset_id, "Select Dataset", class: "form-label" %>
+              <%= f.select :dataset_id,
+                  options_from_collection_for_select(assistant.datasets, :id, :name),
+                  { prompt: "Choose a dataset..." },
+                  class: "form-select",
+                  data: { "run-test-modal-target": "datasetSelect" } %>
+              <small class="form-text text-muted">
+                The test will run once for each row in the selected dataset.
+              </small>
+            </div>
+
+            <% if assistant.datasets.empty? %>
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                No datasets available for this assistant.
+                <%= link_to "Create a dataset", testing_openai_assistant_datasets_path(assistant), class: "alert-link" %>
+                to run tests against multiple data rows.
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Custom Variables (shown when run_mode=single) -->
+          <div data-run-test-modal-target="customSection" style="display: none;">
+            <div class="mb-3">
+              <%= label_tag :user_prompt, "User Prompt", class: "form-label" %>
+              <%= text_area_tag :user_prompt,
+                  nil,
+                  class: "form-control",
+                  rows: 4,
+                  placeholder: "Enter the message to send to the assistant..." %>
+              <small class="form-text text-muted">The message that will be sent to the assistant</small>
+            </div>
+
+            <div class="mb-3">
+              <%= label_tag :max_turns, "Max Conversation Turns", class: "form-label" %>
+              <%= number_field_tag :max_turns,
+                  3,
+                  class: "form-control",
+                  min: 1,
+                  max: 10 %>
+              <small class="form-text text-muted">Maximum number of back-and-forth exchanges (default: 3)</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Run Test", class: "btn btn-success", data: { "run-test-modal-target": "submitButton" } %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

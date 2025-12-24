@@ -10,7 +10,7 @@ module PromptTracker
     # GET /prompts/:prompt_id/versions/:id
     # Show version details with tests
     def show
-      @tests = @version.prompt_tests.includes(:prompt_test_runs).order(created_at: :desc)
+      @tests = @version.tests.includes(:test_runs).order(created_at: :desc)
 
       # Calculate metrics scoped to test calls only (not production tracked calls)
       test_responses = @version.llm_responses.test_calls

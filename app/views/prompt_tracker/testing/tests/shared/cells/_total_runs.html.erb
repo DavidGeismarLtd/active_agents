@@ -1,0 +1,9 @@
+<td class="text-end" data-column="total_runs">
+  <%= test.test_runs.count %>
+  <% if test.test_runs.any? %>
+    <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#test-runs-<%= test.id %>" aria-expanded="false" aria-controls="test-runs-<%= test.id %>">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  <% end %>
+</td>
+

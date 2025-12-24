@@ -1,0 +1,26 @@
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th style="width: 30%;" data-column="name">Test Name</th>
+        <th style="width: 25%;" data-column="evaluator_configs">Evaluator Configs</th>
+        <th style="width: 10%;" data-column="status">Last Status</th>
+        <th style="width: 12%;" data-column="last_run">Last Run</th>
+        <th style="width: 10%;" class="text-end" data-column="total_runs">Total Runs</th>
+        <th style="width: 13%;" data-column="actions">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% tests.each do |test| %>
+        <%= render "prompt_tracker/testing/tests/assistants/test_row", test: test, assistant: assistant %>
+        <tr class="collapse" id="test-runs-<%= test.id %>">
+          <td colspan="8" class="p-0">
+            <div id="test-runs-content-<%= test.id %>">
+              <%= render "prompt_tracker/testing/tests/assistants/test_runs_accordion_content", test: test, assistant: assistant %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

@@ -88,7 +88,7 @@ module PromptTracker
 
     # Broadcast updates when a human evaluation is created
     def broadcast_human_evaluation_created
-      if prompt_test_run_id.present?
+      if test_run_id.present?
         broadcast_test_run_updates
       elsif llm_response_id.present?
         broadcast_llm_response_updates
@@ -98,16 +98,16 @@ module PromptTracker
     # Broadcast updates for test run human evaluations
     def broadcast_test_run_updates
       # Reload the run and force reload of human_evaluations association
-      run = PromptTestRun.find(prompt_test_run_id)
+      run = TestRun.find(test_run_id)
       run.human_evaluations.reload
       version = run.prompt_version
-      test = run.prompt_test
+      test = run.test
 
       # Update the test run row on the prompt version page
       broadcast_replace(
         stream: "prompt_version_#{version.id}",
         target: "test_run_row_#{run.id}",
-        partial: "prompt_tracker/testing/prompt_tests/test_run_row",
+        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
         locals: { run: run }
       )
 
@@ -115,7 +115,7 @@ module PromptTracker
       broadcast_replace(
         stream: "prompt_version_#{version.id}",
         target: "test_row_#{test.id}",
-        partial: "prompt_tracker/testing/prompt_tests/test_row",
+        partial: "prompt_tracker/testing/tests/prompt_versions/test_row",
         locals: { test: test, prompt: version.prompt, version: version }
       )
 

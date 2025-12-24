@@ -1,0 +1,174 @@
+# frozen_string_literal: true
+
+# == Schema Information
+#
+# Table name: prompt_tracker_openai_assistants
+#
+#  id            :bigint           not null, primary key
+#  assistant_id  :string           not null
+#  name          :string           not null
+#  description   :text
+#  category      :string
+#  metadata      :jsonb            not null
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
+#
+module PromptTracker
+  module Openai
+    # Represents an OpenAI Assistant that can be tested through conversations.
+    #
+    # An Assistant:
+    # - Is synced from OpenAI API (instructions, model, tools stored in metadata)
+    # - Can have multiple tests with different evaluators
+    # - Can have multiple datasets for testing different scenarios
+    # - Runs conversations with LLM-simulated users
+    #
+    # @example Create an assistant
+    #   assistant = PromptTracker::Openai::Assistant.create!(
+    #     assistant_id: "asst_abc123",
+    #     name: "Medical Support Assistant",
+    #     description: "Provides medical advice and support"
+    #   )
+    #
+    # @example Fetch details from OpenAI
+    #   assistant.fetch_from_openai!
+    #   # Updates metadata with instructions, model, tools, etc.
+    #
+    class Assistant < ApplicationRecord
+      self.table_name = "prompt_tracker_openai_assistants"
+
+      # Associations
+      has_many :tests,
+               as: :testable,
+               class_name: "PromptTracker::Test",
+               dependent: :destroy
+
+      has_many :test_runs,
+               through: :tests,
+               class_name: "PromptTracker::TestRun"
+
+      has_many :datasets,
+               as: :testable,
+               class_name: "PromptTracker::Dataset",
+               dependent: :destroy
+
+      has_many :dataset_rows,
+               through: :datasets,
+               class_name: "PromptTracker::DatasetRow"
+
+      # Validations
+      validates :assistant_id, presence: true, uniqueness: true
+      validates :name, presence: true
+
+      # Allow skipping the fetch_from_openai callback (useful for seeding)
+      attr_accessor :skip_fetch_from_openai
+
+      # Callbacks
+      after_create :fetch_from_openai, unless: :skip_fetch_from_openai
+
+      # Scopes
+      scope :recent, -> { order(created_at: :desc) }
+
+      # Accessor methods for metadata fields
+      def instructions
+        metadata["instructions"]
+      end
+
+      def model
+        metadata["model"]
+      end
+
+      def tools
+        metadata["tools"] || []
+      end
+
+      def file_ids
+        metadata["file_ids"] || []
+      end
+
+      def last_synced_at
+        metadata["last_synced_at"]
+      end
+
+      # Fetch assistant details from OpenAI API
+      #
+      # @return [Boolean] true if successful
+      # @raise [StandardError] if API call fails
+      def fetch_from_openai!
+        client = ::OpenAI::Client.new(access_token: ENV["OPENAI_LOUNA_API_KEY"])
+        response = client.assistants.retrieve(id: assistant_id)
+        update!(
+          name: response["name"] || name,
+          description: response["description"] || description,
+          metadata: metadata.merge(
+            instructions: response["instructions"],
+            model: response["model"],
+            tools: response["tools"] || [],
+            file_ids: response["file_ids"] || [],
+            temperature: response["temperature"],
+            top_p: response["top_p"],
+            response_format: response["response_format"],
+            tool_resources: response["tool_resources"] || {},
+            last_synced_at: Time.current.iso8601
+          )
+        )
+      end
+
+      # Run a test with a dataset row
+      #
+      # @param test [Test] the test to run
+      # @param dataset_row [DatasetRow] the dataset row with test scenario
+      # @return [TestRun] the created test run
+      def run_test(test:, dataset_row:)
+        # This will be implemented by AssistantTestRunner service
+        # For now, just create a pending test run
+        test.test_runs.create!(
+          dataset_id: dataset_row.dataset_id,
+          dataset_row_id: dataset_row.id,
+          status: "pending"
+        )
+      end
+
+      # Get recent test runs
+      #
+      # @param limit [Integer] number of runs to return
+      # @return [ActiveRecord::Relation<TestRun>]
+      def recent_runs(limit = 10)
+        test_runs.order(created_at: :desc).limit(limit)
+      end
+
+      # Calculate pass rate across all tests
+      #
+      # @param limit [Integer] number of recent runs to consider
+      # @return [Float] pass rate as percentage (0-100)
+      def pass_rate(limit: 30)
+        runs = recent_runs(limit).where.not(passed: nil)
+        return 0.0 if runs.empty?
+
+        passed_count = runs.where(passed: true).count
+        (passed_count.to_f / runs.count * 100).round(2)
+      end
+
+      # Get last test run across all tests
+      #
+      # @return [TestRun, nil]
+      def last_run
+        test_runs.order(created_at: :desc).first
+      end
+
+      # Display name for UI
+      #
+      # @return [String]
+      def display_name
+        name
+      end
+
+      private
+
+      # Callback to fetch from OpenAI after creation
+      def fetch_from_openai
+        fetch_from_openai!
+      end
+    end
+  end
+end

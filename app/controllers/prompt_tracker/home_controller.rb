@@ -9,8 +9,8 @@ module PromptTracker
       # Load all prompts with their versions for the accordion
       @prompts = Prompt.includes(
         prompt_versions: [
-          :prompt_tests,
-          { prompt_tests: :prompt_test_runs }
+          :tests,
+          { tests: :test_runs }
         ]
       ).order(created_at: :desc)
     end

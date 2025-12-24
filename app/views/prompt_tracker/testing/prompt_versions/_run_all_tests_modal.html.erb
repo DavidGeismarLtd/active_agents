@@ -83,21 +83,26 @@
                 Enter values for the prompt variables (will be used for all tests):
               </p>
 
-              <% @version.variables_schema.each do |var_name, var_config| %>
-                <% var_config ||= {} %>
+              <% @version.variables_schema.each do |var_config| %>
+                <% var_name = var_config["name"] %>
                 <div class="mb-3">
                   <%= label_tag "custom_variables[#{var_name}]", var_name.to_s.humanize, class: "form-label" %>
+                  <% if var_config["required"] %>
+                    <span class="text-danger">*</span>
+                  <% end %>
 
                   <% if var_config["type"] == "text" %>
                     <%= text_area_tag "custom_variables[#{var_name}]",
                         nil,
                         class: "form-control",
                         rows: 3,
+                        required: var_config["required"],
                         placeholder: var_config["description"] %>
                   <% else %>
                     <%= text_field_tag "custom_variables[#{var_name}]",
                         nil,
                         class: "form-control",
+                        required: var_config["required"],
                         placeholder: var_config["description"] %>
                   <% end %>
 

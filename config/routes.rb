@@ -6,6 +6,7 @@ PromptTracker::Engine.routes.draw do
   # ========================================
   namespace :testing do
     get "/", to: "dashboard#index", as: :root
+    post "sync_openai_assistants", to: "dashboard#sync_openai_assistants", as: :sync_openai_assistants_root
 
     # Standalone playground (not tied to a specific prompt)
     resource :playground, only: [ :show ], controller: "playground" do
@@ -63,6 +64,36 @@ PromptTracker::Engine.routes.draw do
     resources :runs, controller: "prompt_test_runs", only: [ :index, :show ] do
       # Human evaluations nested under test runs
       resources :human_evaluations, only: [ :create ]
+    end
+
+    # OpenAI Assistants
+    namespace :openai do
+      resources :assistants, only: [ :index, :show, :new, :create, :edit, :update, :destroy ] do
+        member do
+          post :sync # Sync assistant from OpenAI API
+        end
+
+        # Tests nested under assistants
+        resources :tests, controller: "assistant_tests", only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
+          collection do
+            post :run_all
+          end
+          member do
+            post :run
+            get :load_more_runs
+          end
+        end
+
+        # Datasets nested under assistants
+        resources :datasets, controller: "assistant_datasets", only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
+          member do
+            post :generate_rows # LLM-powered row generation
+          end
+
+          # Dataset rows nested under datasets
+          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows"
+        end
+      end
     end
   end
 

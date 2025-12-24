@@ -1,0 +1,50 @@
+<!-- Evaluation Modals for Assistant Tests -->
+<div data-controller="modal-fix">
+  <% test.test_runs.includes(:evaluations).order(created_at: :desc).limit(5).each do |run| %>
+    <% if run.evaluations&.any? %>
+      <% run.evaluations.each do |evaluation| %>
+        <% template_name = evaluation.evaluator_key.to_s %>
+        <% template_path = "prompt_tracker/evaluations/evaluators/#{template_name}" %>
+
+        <div class="modal fade" id="evaluation-modal-<%= evaluation.id %>" tabindex="-1" aria-labelledby="evaluation-modal-label-<%= evaluation.id %>" aria-hidden="true" data-modal-fix-target="modal">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="evaluation-modal-label-<%= evaluation.id %>">
+                  <i class="bi bi-clipboard-check"></i>
+                  <%= evaluation.evaluator_key.to_s.titleize %> Evaluation
+                  <% if evaluation.passed? %>
+                    <span class="badge bg-success ms-2">PASSED</span>
+                  <% else %>
+                    <span class="badge bg-danger ms-2">FAILED</span>
+                  <% end %>
+                  <span class="badge bg-secondary ms-2">Score: <%= number_with_precision(evaluation.score, precision: 0) %></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <% if lookup_context.exists?(template_path, [], true) %>
+                  <%= render partial: template_path, locals: { evaluation: evaluation } %>
+                <% elsif evaluation.metadata.present? && evaluation.metadata.any? %>
+                  <!-- Fallback: Raw Metadata Display -->
+                  <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>No template found for evaluator:</strong> <%= evaluation.evaluator_key %>
+                  </div>
+                  <pre class="bg-light p-3 rounded"><code><%= JSON.pretty_generate(evaluation.metadata) %></code></pre>
+                <% else %>
+                  <p class="text-muted">No evaluation details available.</p>
+                <% end %>
+              </div>
+              <div class="modal-footer">
+                <%= link_to "View Full Evaluation", evaluation_path(evaluation), class: "btn btn-primary", target: "_blank" %>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>
+

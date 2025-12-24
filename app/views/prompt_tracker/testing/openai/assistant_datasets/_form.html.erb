@@ -1,0 +1,62 @@
+<%= form_with model: dataset, url: dataset.persisted? ? testing_openai_assistant_dataset_path(assistant, dataset) : testing_openai_assistant_datasets_path(assistant), local: true do |f| %>
+  <% if dataset.errors.any? %>
+    <div class="alert alert-danger">
+      <h5><%= pluralize(dataset.errors.count, "error") %> prohibited this dataset from being saved:</h5>
+      <ul class="mb-0">
+        <% dataset.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Basic Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <%= f.label :name, class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "Customer Support Scenarios", required: true %>
+        <div class="form-text">
+          A descriptive name for this dataset.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Test scenarios for customer support conversations..." %>
+        <div class="form-text">
+          Optional description of what this dataset contains.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Schema</h6>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <strong>Fixed Schema for Assistants:</strong> All assistant datasets use the same schema with two fields:
+        <ul class="mb-0 mt-2">
+          <li><code>user_prompt</code> (string, required) - The initial user message</li>
+          <li><code>max_turns</code> (integer, optional) - Maximum conversation turns (default: 3)</li>
+        </ul>
+      </div>
+
+      <%= f.hidden_field :schema, value: [
+        { "name" => "user_prompt", "type" => "string", "required" => true },
+        { "name" => "max_turns", "type" => "integer", "required" => false }
+      ].to_json %>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit dataset.persisted? ? "Update Dataset" : "Create Dataset", class: "btn btn-primary" %>
+    <%= link_to "Cancel", dataset.persisted? ? testing_openai_assistant_dataset_path(assistant, dataset) : testing_openai_assistant_datasets_path(assistant), class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>
+

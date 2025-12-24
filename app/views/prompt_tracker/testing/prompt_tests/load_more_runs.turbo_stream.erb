@@ -1,7 +1,7 @@
 <%# Append new rows to the tbody %>
 <%= turbo_stream.append "test-runs-tbody-#{@test.id}" do %>
   <% @additional_runs.each do |run| %>
-    <%= render "prompt_tracker/testing/prompt_tests/test_run_row", run: run %>
+    <%= render "prompt_tracker/testing/test_runs/prompt_versions/row", run: run %>
   <% end %>
 <% end %>
 
@@ -36,7 +36,7 @@
                record: run,
                form_url: testing_run_human_evaluations_path(run),
                context: 'testing' %>
-    <%= render "prompt_tracker/testing/prompt_tests/all_human_evaluations_modal",
+    <%= render "prompt_tracker/testing/tests/shared/all_human_evaluations_modal",
                run: run %>
   <% end %>
 <% end %>

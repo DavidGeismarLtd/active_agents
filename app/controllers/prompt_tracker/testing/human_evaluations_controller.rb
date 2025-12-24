@@ -53,7 +53,7 @@ module PromptTracker
       private
 
       def set_prompt_test_run
-        @prompt_test_run = PromptTestRun.find(params[:run_id])
+        @prompt_test_run = TestRun.find(params[:run_id])
       end
 
       def human_evaluation_params

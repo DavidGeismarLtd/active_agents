@@ -1,10 +1,19 @@
 <% dataset ||= @dataset # Support both local and instance variable %>
-<% prompt_version = dataset.prompt_version %>
-<% prompt = prompt_version.prompt %>
 <%
-  # Use engine routes explicitly for background job context compatibility
-  delete_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, dataset, row)
-  update_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, dataset, row)
+  # Handle both PromptVersion and Assistant datasets
+  if dataset.testable.is_a?(PromptTracker::PromptVersion)
+    prompt_version = dataset.testable
+    prompt = prompt_version.prompt
+    # Use engine routes explicitly for background job context compatibility
+    delete_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, dataset, row)
+    update_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, dataset, row)
+  elsif dataset.testable.is_a?(PromptTracker::Openai::Assistant)
+    assistant = dataset.testable
+    # For assistants, we'll need different routes (to be implemented in UI phase)
+    # For now, just set nil to prevent errors during Turbo Stream broadcasts
+    delete_path = nil
+    update_path = nil
+  end
 %>
 <tr id="dataset-row-<%= row.id %>">
   <td class="text-muted"><%= index %></td>
@@ -35,28 +44,31 @@
       <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRowModal-<%= row.id %>" title="Edit">
         <i class="bi bi-pencil"></i>
       </button>
-      <%= button_to delete_path,
-                    method: :delete,
-                    class: "btn btn-outline-danger btn-sm",
-                    data: { confirm: "Delete this row?", turbo_method: :delete },
-                    form: { data: { turbo_frame: "_top" } } do %>
-        <i class="bi bi-trash"></i>
+      <% if delete_path.present? %>
+        <%= button_to delete_path,
+                      method: :delete,
+                      class: "btn btn-outline-danger btn-sm",
+                      data: { confirm: "Delete this row?", turbo_method: :delete },
+                      form: { data: { turbo_frame: "_top" } } do %>
+          <i class="bi bi-trash"></i>
+        <% end %>
       <% end %>
     </div>
   </td>
 </tr>
 
 <!-- Edit Row Modal -->
-<div class="modal fade" id="editRowModal-<%= row.id %>" tabindex="-1" data-controller="modal-fix" data-modal-fix-target="modal">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Edit Row #<%= index %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <%= form_with(model: row,
-                    url: update_path,
-                    method: :patch) do |f| %>
+<% if update_path.present? %>
+  <div class="modal fade" id="editRowModal-<%= row.id %>" tabindex="-1" data-controller="modal-fix" data-modal-fix-target="modal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Row #<%= index %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <%= form_with(model: row,
+                      url: update_path,
+                      method: :patch) do |f| %>
         <div class="modal-body">
           <%= f.hidden_field :source, value: row.source %>
 
@@ -87,11 +99,12 @@
             </div>
           <% end %>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= f.submit "Update Row", class: "btn btn-primary" %>
-        </div>
-      <% end %>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <%= f.submit "Update Row", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </div>
     </div>
   </div>
-</div>
+<% end %>

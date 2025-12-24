@@ -1,0 +1,10 @@
+<tr id="test_row_<%= test.id %>">
+  <%= render "prompt_tracker/testing/tests/assistants/cells/name", test: test, assistant: assistant %>
+  <%= render "prompt_tracker/testing/tests/shared/cells/evaluator_configs", test: test %>
+  <%= render "prompt_tracker/testing/tests/shared/cells/status", test: test %>
+  <%= render "prompt_tracker/testing/tests/shared/cells/last_run", test: test %>
+  <%= render "prompt_tracker/testing/tests/shared/cells/total_runs", test: test %>
+  <%= render "prompt_tracker/testing/tests/assistants/cells/actions", test: test, assistant: assistant %>
+</tr>
+
+<%= render "prompt_tracker/testing/tests/assistants/run_test_modal", test: test, assistant: assistant %>

@@ -7,10 +7,10 @@ module PromptTracker
 
     # GET /test-runs
     def index
-      @test_runs = PromptTestRun.includes(:prompt_test, :prompt_version)
-                                 .order(created_at: :desc)
-                                 .page(params[:page])
-                                 .per(50)
+      @test_runs = TestRun.includes(:test, :prompt_version)
+                          .order(created_at: :desc)
+                          .page(params[:page])
+                          .per(50)
 
       # Filter by status if provided
       if params[:status].present?
@@ -25,7 +25,7 @@ module PromptTracker
 
     # GET /test-runs/:id
     def show
-      @test = @test_run.prompt_test
+      @test = @test_run.test
       @version = @test_run.prompt_version
       @llm_response = @test_run.llm_response
     end
@@ -33,7 +33,7 @@ module PromptTracker
     private
 
     def set_test_run
-      @test_run = PromptTestRun.find(params[:id])
+      @test_run = TestRun.find(params[:id])
     end
   end
 end

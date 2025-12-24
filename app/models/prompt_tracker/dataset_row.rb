@@ -40,8 +40,8 @@ module PromptTracker
                class_name: "PromptTracker::Dataset",
                inverse_of: :dataset_rows
 
-    has_many :prompt_test_runs,
-             class_name: "PromptTracker::PromptTestRun",
+    has_many :test_runs,
+             class_name: "PromptTracker::TestRun",
              dependent: :nullify,
              inverse_of: :dataset_row
 

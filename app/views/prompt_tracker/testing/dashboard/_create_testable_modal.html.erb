@@ -1,0 +1,84 @@
+<div class="modal fade" id="createTestableModal" tabindex="-1" data-controller="modal-fix" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-plus-circle"></i> Create New Testable
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-4">
+          Choose the type of testable you want to create. Each type has different testing capabilities.
+        </p>
+
+        <div class="row g-3">
+          <!-- Prompt Option -->
+          <div class="col-md-6">
+            <%= link_to testing_playground_path, class: "text-decoration-none" do %>
+              <div class="card h-100 border-primary" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,123,255,0.2)'" onmouseout="this.style.boxShadow='none'">
+                <div class="card-body text-center p-4">
+                  <div class="mb-3">
+                    <i class="bi bi-chat-text" style="font-size: 3rem; color: #0d6efd;"></i>
+                  </div>
+                  <h4 class="card-title text-primary">Prompt</h4>
+                  <p class="card-text text-muted">
+                    Test single LLM completions with different inputs and evaluators.
+                  </p>
+                  <ul class="list-unstyled text-start mt-3 small text-muted">
+                    <li><i class="bi bi-check-circle text-success"></i> Single-turn completions</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Template variables</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Multiple evaluators</li>
+                    <li><i class="bi bi-check-circle text-success"></i> A/B testing</li>
+                  </ul>
+                  <div class="mt-3">
+                    <span class="badge bg-primary">Most Common</span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Assistant Option -->
+          <div class="col-md-6">
+            <%= link_to new_testing_openai_assistant_path, class: "text-decoration-none" do %>
+              <div class="card h-100 border-info" style="cursor: pointer; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(13,202,240,0.2)'" onmouseout="this.style.boxShadow='none'">
+                <div class="card-body text-center p-4">
+                  <div class="mb-3">
+                    <i class="bi bi-robot" style="font-size: 3rem; color: #0dcaf0;"></i>
+                  </div>
+                  <h4 class="card-title text-info">OpenAI Assistant</h4>
+                  <p class="card-text text-muted">
+                    Test multi-turn conversations with OpenAI Assistants API.
+                  </p>
+                  <ul class="list-unstyled text-start mt-3 small text-muted">
+                    <li><i class="bi bi-check-circle text-success"></i> Multi-turn conversations</li>
+                    <li><i class="bi bi-check-circle text-success"></i> LLM-simulated users</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Per-message scoring</li>
+                    <li><i class="bi bi-check-circle text-success"></i> Tool call support</li>
+                  </ul>
+                  <div class="mt-3">
+                    <span class="badge bg-info">Advanced</span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="alert alert-light mt-4 mb-0">
+          <i class="bi bi-lightbulb"></i>
+          <strong>Not sure which to choose?</strong>
+          <ul class="mb-0 mt-2 small">
+            <li>Use <strong>Prompt</strong> for simple text generation, classification, or extraction tasks</li>
+            <li>Use <strong>Assistant</strong> for complex conversations, customer support, or interactive scenarios</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+

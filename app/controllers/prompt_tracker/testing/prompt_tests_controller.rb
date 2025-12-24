@@ -9,12 +9,12 @@ module PromptTracker
 
     # GET /prompts/:prompt_id/versions/:prompt_version_id/tests
     def index
-      @tests = @version.prompt_tests.order(created_at: :desc)
+      @tests = @version.tests.order(created_at: :desc)
     end
 
     # POST /prompts/:prompt_id/versions/:prompt_version_id/tests/run_all
     def run_all
-      enabled_tests = @version.prompt_tests.enabled
+      enabled_tests = @version.tests.enabled
 
       if enabled_tests.empty?
         redirect_to testing_prompt_prompt_version_path(@prompt, @version),
@@ -38,12 +38,12 @@ module PromptTracker
 
     # GET /prompts/:prompt_id/versions/:prompt_version_id/tests/new
     def new
-      @test = @version.prompt_tests.build
+      @test = @version.tests.build
     end
 
     # POST /prompts/:prompt_id/versions/:prompt_version_id/tests
     def create
-      @test = @version.prompt_tests.build(test_params)
+      @test = @version.tests.build(test_params)
 
       if @test.save
         respond_to do |format|
@@ -104,13 +104,13 @@ module PromptTracker
       offset = params[:offset].present? ? params[:offset].to_i : 5
       limit = params[:limit].present? ? params[:limit].to_i : 5
 
-      @additional_runs = @test.prompt_test_runs
-                              .includes(:human_evaluations, llm_response: :evaluations)
+      @additional_runs = @test.test_runs
+                              .includes(:evaluations)
                               .order(created_at: :desc)
                               .offset(offset)
                               .limit(limit)
 
-      @total_runs_count = @test.prompt_test_runs.count
+      @total_runs_count = @test.test_runs.count
       @next_offset = offset + limit
 
       respond_to do |format|
@@ -126,11 +126,11 @@ module PromptTracker
     end
 
     def set_test
-      @test = @version.prompt_tests.find(params[:id])
+      @test = @version.tests.find(params[:id])
     end
 
     def test_params
-      permitted = params.require(:prompt_test).permit(
+      permitted = params.require(:test).permit(
         :name,
         :description,
         :enabled,
@@ -207,7 +207,7 @@ module PromptTracker
       dataset_id = params[:dataset_id]
 
       unless dataset_id.present?
-        redirect_to testing_prompt_prompt_version_prompt_test_path(@prompt, @version, test),
+        redirect_to testing_prompt_prompt_version_path(@prompt, @version),
                     alert: "Please select a dataset."
         return
       end
@@ -217,9 +217,8 @@ module PromptTracker
 
       # Create one test run for each dataset row
       dataset.dataset_rows.each do |row|
-        test_run = PromptTestRun.create!(
-          prompt_test: test,
-          prompt_version: @version,
+        test_run = TestRun.create!(
+          test: test,
           dataset: dataset,
           dataset_row: row,
           status: "running",
@@ -231,7 +230,7 @@ module PromptTracker
         total_runs += 1
       end
 
-      redirect_to testing_prompt_prompt_version_prompt_test_path(@prompt, @version, test),
+      redirect_to testing_prompt_prompt_version_path(@prompt, @version),
                   notice: "Started #{total_runs} test run#{total_runs > 1 ? 's' : ''} (one per dataset row)!"
     end
 
@@ -239,9 +238,8 @@ module PromptTracker
     def run_with_custom_variables(test)
       custom_vars = params[:custom_variables] || {}
 
-      test_run = PromptTestRun.create!(
-        prompt_test: test,
-        prompt_version: @version,
+      test_run = TestRun.create!(
+        test: test,
         status: "running",
         metadata: {
           triggered_by: "manual",
@@ -253,7 +251,7 @@ module PromptTracker
 
       RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
 
-      redirect_to testing_prompt_prompt_version_prompt_test_path(@prompt, @version, test),
+      redirect_to testing_prompt_prompt_version_path(@prompt, @version),
                   notice: "Test started in the background!"
     end
 
@@ -273,9 +271,8 @@ module PromptTracker
       # Create test runs for each test × each dataset row
       tests.each do |test|
         dataset.dataset_rows.each do |row|
-          test_run = PromptTestRun.create!(
-            prompt_test: test,
-            prompt_version: @version,
+          test_run = TestRun.create!(
+            test: test,
             dataset: dataset,
             dataset_row: row,
             status: "running",
@@ -297,9 +294,8 @@ module PromptTracker
       total_runs = 0
 
       tests.each do |test|
-        test_run = PromptTestRun.create!(
-          prompt_test: test,
-          prompt_version: @version,
+        test_run = TestRun.create!(
+          test: test,
           status: "running",
           metadata: {
             triggered_by: "run_all",

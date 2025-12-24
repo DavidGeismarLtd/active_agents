@@ -136,10 +136,12 @@ module PromptTracker
       chat = chat.with_temperature(temperature) if temperature
 
       # Apply max_tokens and other options via with_params
-      params = {}
-      params[:max_tokens] = max_tokens if max_tokens
-      params.merge!(options) if options.any?
-      chat = chat.with_params(params) if params.any?
+      if max_tokens || options.any?
+        chat = chat.with_params do |p|
+          p[:max_tokens] = max_tokens if max_tokens
+          options.each { |k, v| p[k] = v } if options.any?
+        end
+      end
 
       chat
     end
