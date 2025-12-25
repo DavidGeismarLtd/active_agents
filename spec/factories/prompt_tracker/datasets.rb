@@ -23,10 +23,7 @@ FactoryBot.define do
         if dataset.testable.is_a?(PromptTracker::PromptVersion)
           dataset.schema = dataset.testable.variables_schema if dataset.testable.variables_schema.present?
         elsif dataset.testable.is_a?(PromptTracker::Openai::Assistant)
-          dataset.schema = [
-            { "name" => "interlocutor_simulation_prompt", "type" => "string", "required" => true },
-            { "name" => "max_turns", "type" => "integer", "required" => false }
-          ]
+          dataset.schema = dataset.testable.variables_schema
         end
       end
     end
@@ -39,12 +36,7 @@ FactoryBot.define do
     # Trait for assistant datasets
     trait :for_assistant do
       association :testable, factory: :openai_assistant
-      after(:build) do |dataset|
-        dataset.schema = [
-          { "name" => "interlocutor_simulation_prompt", "type" => "string", "required" => true },
-          { "name" => "max_turns", "type" => "integer", "required" => false }
-        ]
-      end
+      # Schema is automatically set from testable.variables_schema in after(:build) above
     end
 
     trait :with_rows do

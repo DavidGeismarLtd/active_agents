@@ -9,10 +9,9 @@
     update_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, dataset, row)
   elsif dataset.testable.is_a?(PromptTracker::Openai::Assistant)
     assistant = dataset.testable
-    # For assistants, we'll need different routes (to be implemented in UI phase)
-    # For now, just set nil to prevent errors during Turbo Stream broadcasts
-    delete_path = nil
-    update_path = nil
+    # Use engine routes explicitly for background job context compatibility
+    delete_path = PromptTracker::Engine.routes.url_helpers.testing_openai_assistant_dataset_dataset_row_path(assistant, dataset, row)
+    update_path = PromptTracker::Engine.routes.url_helpers.testing_openai_assistant_dataset_dataset_row_path(assistant, dataset, row)
   end
 %>
 <tr id="dataset-row-<%= row.id %>">

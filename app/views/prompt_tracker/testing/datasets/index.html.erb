@@ -1,5 +1,5 @@
 <% content_for :breadcrumbs do %>
-  <li class="breadcrumb-item"><%= link_to @prompt.name, testing_prompt_prompt_version_path(@prompt, @version) %></li>
+  <li class="breadcrumb-item"><%= link_to @testable.name, testable_show_path(@testable) %></li>
   <li class="breadcrumb-item active">Datasets</li>
 <% end %>
 
@@ -8,17 +8,17 @@
     <div>
       <h1 style="color: #1E40AF; margin: 0;">
         <i class="bi bi-database"></i> Datasets
-        <span class="badge bg-primary">v<%= @version.version_number %></span>
+        <%= testable_badge(@testable) %>
       </h1>
       <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
-        Reusable test data collections for <%= @prompt.name %>
+        Reusable test data collections for <%= @testable.name %>
       </p>
     </div>
     <div class="d-flex gap-2">
-      <%= link_to testing_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-primary" do %>
-        <i class="bi bi-arrow-left"></i> Back to Tests
+      <%= link_to testable_show_path(@testable), class: "btn btn-outline-primary" do %>
+        <i class="bi bi-arrow-left"></i> Back
       <% end %>
-      <%= link_to new_testing_prompt_prompt_version_dataset_path(@prompt, @version), class: "btn btn-primary" do %>
+      <%= link_to new_dataset_path(@testable), class: "btn btn-primary" do %>
         <i class="bi bi-plus-circle"></i> New Dataset
       <% end %>
     </div>
@@ -38,83 +38,9 @@
 <% if @datasets.any? %>
   <div class="row">
     <% @datasets.each do |dataset| %>
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-              <i class="bi bi-database"></i> <%= dataset.name %>
-            </h5>
-            <% if !dataset.schema_valid? %>
-              <span class="badge bg-danger" title="Schema no longer matches prompt version">
-                <i class="bi bi-exclamation-triangle"></i> Invalid
-              </span>
-            <% end %>
-          </div>
-          <div class="card-body">
-            <% if dataset.description.present? %>
-              <p class="text-muted small"><%= dataset.description %></p>
-            <% end %>
-
-            <div class="mb-3">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small">Rows</span>
-                <span class="badge bg-primary"><%= dataset.row_count %></span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted small">Variables</span>
-                <span class="badge bg-secondary"><%= dataset.variable_names.count %></span>
-              </div>
-            </div>
-
-            <% if dataset.variable_names.any? %>
-              <div class="mb-3">
-                <small class="text-muted d-block mb-1">Variables:</small>
-                <div class="d-flex flex-wrap gap-1">
-                  <% dataset.variable_names.first(5).each do |var_name| %>
-                    <span class="badge bg-light text-dark"><%= var_name %></span>
-                  <% end %>
-                  <% if dataset.variable_names.count > 5 %>
-                    <span class="badge bg-light text-dark">+<%= dataset.variable_names.count - 5 %> more</span>
-                  <% end %>
-                </div>
-              </div>
-            <% end %>
-
-            <small class="text-muted">
-              Created <%= time_ago_in_words(dataset.created_at) %> ago
-              <% if dataset.created_by.present? %>
-                by <%= dataset.created_by %>
-              <% end %>
-            </small>
-          </div>
-          <div class="card-footer">
-            <div class="d-flex gap-2">
-              <%= link_to testing_prompt_prompt_version_dataset_path(@prompt, @version, dataset), class: "btn btn-sm btn-primary flex-grow-1" do %>
-                <i class="bi bi-eye"></i> View
-              <% end %>
-              <%= link_to edit_testing_prompt_prompt_version_dataset_path(@prompt, @version, dataset), class: "btn btn-sm btn-outline-secondary" do %>
-                <i class="bi bi-pencil"></i>
-              <% end %>
-              <%= button_to testing_prompt_prompt_version_dataset_path(@prompt, @version, dataset),
-                            method: :delete,
-                            class: "btn btn-sm btn-outline-danger",
-                            data: { confirm: "Delete this dataset? This will also delete all #{dataset.row_count} rows." } do %>
-                <i class="bi bi-trash"></i>
-              <% end %>
-            </div>
-          </div>
-        </div>
-      </div>
+      <%= render "dataset_card", dataset: dataset %>
     <% end %>
   </div>
 <% else %>
-  <div class="text-center py-5">
-    <i class="bi bi-database text-muted" style="font-size: 3rem;"></i>
-    <p class="text-muted mt-3">No datasets yet for this version</p>
-    <p class="text-muted">Datasets help you run tests at scale with multiple data rows.</p>
-    <%= link_to new_testing_prompt_prompt_version_dataset_path(@prompt, @version), class: "btn btn-primary mt-2" do %>
-      <i class="bi bi-plus-circle"></i> Create Your First Dataset
-    <% end %>
-  </div>
+  <%= render "empty_state", testable: @testable %>
 <% end %>
-

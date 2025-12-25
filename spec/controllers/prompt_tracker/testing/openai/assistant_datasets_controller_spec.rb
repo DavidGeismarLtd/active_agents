@@ -53,13 +53,10 @@ module PromptTracker
             expect(assigns(:dataset)).to be_a_new(Dataset)
           end
 
-          it "sets default schema for assistants" do
+          it "initializes dataset with empty schema (set on save)" do
             get :new, params: { assistant_id: assistant.id }
-            expected_schema = [
-              { "name" => "user_prompt", "type" => "string", "required" => true },
-              { "name" => "max_turns", "type" => "integer", "required" => false }
-            ]
-            expect(assigns(:dataset).schema).to eq(expected_schema)
+            # Schema is set by before_validation callback on create, not on build
+            expect(assigns(:dataset).schema).to eq([])
           end
         end
 
@@ -85,7 +82,7 @@ module PromptTracker
             dataset = Dataset.last
             expect(dataset.schema.length).to eq(2)
             expect(dataset.schema[0]["name"]).to eq("interlocutor_simulation_prompt")
-            expect(dataset.schema[0]["type"]).to eq("string")
+            expect(dataset.schema[0]["type"]).to eq("text")
             expect(dataset.schema[0]["required"]).to eq(true)
             expect(dataset.schema[1]["name"]).to eq("max_turns")
             expect(dataset.schema[1]["type"]).to eq("integer")

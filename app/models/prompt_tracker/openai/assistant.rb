@@ -35,23 +35,14 @@ module PromptTracker
     #   # Updates metadata with instructions, model, tools, etc.
     #
     class Assistant < ApplicationRecord
+      # Include Testable concern for polymorphic interface
+      include Testable
+
       self.table_name = "prompt_tracker_openai_assistants"
 
-      # Associations
-      has_many :tests,
-               as: :testable,
-               class_name: "PromptTracker::Test",
-               dependent: :destroy
+      # Note: tests, datasets, and test_runs associations are provided by Testable concern
 
-      has_many :test_runs,
-               through: :tests,
-               class_name: "PromptTracker::TestRun"
-
-      has_many :datasets,
-               as: :testable,
-               class_name: "PromptTracker::Dataset",
-               dependent: :destroy
-
+      # Additional associations specific to Assistant
       has_many :dataset_rows,
                through: :datasets,
                class_name: "PromptTracker::DatasetRow"
@@ -162,6 +153,29 @@ module PromptTracker
       # @return [String]
       def display_name
         name
+      end
+
+      # Returns the variables schema for assistant datasets
+      #
+      # Assistants have a fixed schema for conversation testing scenarios.
+      # This schema is used when creating datasets for this assistant.
+      #
+      # @return [Array<Hash>] array of variable definitions
+      def variables_schema
+        [
+          {
+            "name" => "interlocutor_simulation_prompt",
+            "type" => "text",
+            "required" => true,
+            "description" => "A detailed prompt that simulates the user/patient/customer in the conversation. Should describe their situation, emotional state, concerns, and how they should behave. Example: 'You are a patient experiencing a severe headache with sensitivity to light. You're worried it might be a migraine. Be concerned but cooperative.'"
+          },
+          {
+            "name" => "max_turns",
+            "type" => "integer",
+            "required" => false,
+            "description" => "Maximum number of conversation turns (back-and-forth exchanges) to simulate. Typically 2-5 turns. Leave blank to use default."
+          }
+        ]
       end
 
       private

@@ -32,10 +32,9 @@ module PromptTracker
     end
 
     describe "associations" do
-      it { is_expected.to belong_to(:prompt_version) }
+      it { is_expected.to belong_to(:testable) }
       it { is_expected.to have_many(:dataset_rows).dependent(:destroy) }
       it { is_expected.to have_many(:prompt_test_runs).dependent(:nullify) }
-      it { is_expected.to have_one(:prompt).through(:prompt_version) }
     end
 
     describe "validations" do
@@ -79,7 +78,7 @@ module PromptTracker
         )
 
         expect(dataset).not_to be_valid
-        expect(dataset.errors[:schema]).to include("does not match prompt version's variables schema. Dataset is invalid.")
+        expect(dataset.errors[:schema]).to include("does not match testable's expected schema. Dataset is invalid.")
       end
     end
 

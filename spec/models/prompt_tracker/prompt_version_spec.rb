@@ -429,15 +429,22 @@ module PromptTracker
 
     # Display & Utility Methods
 
-    describe "#display_name" do
+    describe "#name" do
       it "returns formatted name without status for active versions" do
         version = PromptVersion.create!(valid_attributes.merge(version_number: 1, status: "active"))
-        expect(version.display_name).to eq("v1")
+        expect(version.name).to eq("v1")
       end
 
       it "returns formatted name with status for non-active versions" do
         version = PromptVersion.create!(valid_attributes.merge(version_number: 2, status: "draft"))
-        expect(version.display_name).to eq("v2 (draft)")
+        expect(version.name).to eq("v2 (draft)")
+      end
+    end
+
+    describe "#display_name" do
+      it "is an alias for #name" do
+        version = PromptVersion.create!(valid_attributes.merge(version_number: 1, status: "active"))
+        expect(version.display_name).to eq(version.name)
       end
     end
 

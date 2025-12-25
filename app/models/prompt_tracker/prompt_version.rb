@@ -47,6 +47,9 @@ module PromptTracker
   #   # Marks this version as active and deprecates others
   #
   class PromptVersion < ApplicationRecord
+    # Include Testable concern for polymorphic interface
+    include Testable
+
     # Constants
     STATUSES = %w[active deprecated draft].freeze
 
@@ -64,21 +67,11 @@ module PromptTracker
              through: :llm_responses,
              class_name: "PromptTracker::Evaluation"
 
-    # New polymorphic association
-    has_many :tests,
-             as: :testable,
-             class_name: "PromptTracker::Test",
-             dependent: :destroy
+    # Note: tests, datasets, and test_runs associations are provided by Testable concern
 
     has_many :evaluator_configs,
              as: :configurable,
              class_name: "PromptTracker::EvaluatorConfig",
-             dependent: :destroy
-
-    # New polymorphic association for datasets
-    has_many :datasets,
-             as: :testable,
-             class_name: "PromptTracker::Dataset",
              dependent: :destroy
 
     # Validations
@@ -182,17 +175,21 @@ module PromptTracker
       status == "draft"
     end
 
-    # Returns a display name for this version.
+    # Returns a human-readable name for this version.
+    # This provides a consistent interface with Assistant.name
     #
     # @return [String] formatted version name
     #
     # @example
-    #   version.display_name  # => "v1 (active)"
-    def display_name
-      name = "v#{version_number}"
-      name += " (#{status})" if status != "active"
-      name
+    #   version.name  # => "v1 (active)"
+    def name
+      display_name = "v#{version_number}"
+      display_name += " (#{status})" if status != "active"
+      display_name
     end
+
+    # Alias for backwards compatibility
+    alias_method :display_name, :name
 
     # Checks if this version has any LLM responses.
     #

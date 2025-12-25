@@ -149,6 +149,33 @@ module PromptTracker
           expect(Assistant.table_name).to eq("prompt_tracker_openai_assistants")
         end
       end
+
+      describe "#variables_schema" do
+        let(:assistant) { create(:openai_assistant) }
+
+        it "returns schema with interlocutor_simulation_prompt and max_turns" do
+          schema = assistant.variables_schema
+
+          expect(schema).to be_an(Array)
+          expect(schema.length).to eq(2)
+
+          # Check interlocutor_simulation_prompt
+          interlocutor_field = schema.find { |f| f["name"] == "interlocutor_simulation_prompt" }
+          expect(interlocutor_field).to be_present
+          expect(interlocutor_field["type"]).to eq("text")
+          expect(interlocutor_field["required"]).to eq(true)
+          expect(interlocutor_field["description"]).to be_present
+          expect(interlocutor_field["description"]).to include("simulates the user")
+
+          # Check max_turns
+          max_turns_field = schema.find { |f| f["name"] == "max_turns" }
+          expect(max_turns_field).to be_present
+          expect(max_turns_field["type"]).to eq("integer")
+          expect(max_turns_field["required"]).to eq(false)
+          expect(max_turns_field["description"]).to be_present
+          expect(max_turns_field["description"]).to include("conversation turns")
+        end
+      end
     end
   end
 end

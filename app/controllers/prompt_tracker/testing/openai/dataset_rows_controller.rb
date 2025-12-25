@@ -13,10 +13,7 @@ module PromptTracker
 
         # POST /testing/openai/assistants/:assistant_id/datasets/:dataset_id/rows
         def create
-          @row = @dataset.dataset_rows.build(
-            row_data: params[:row_data].to_unsafe_h,
-            source: "manual"
-          )
+          @row = @dataset.dataset_rows.build(row_params)
 
           if @row.save
             respond_to do |format|
@@ -33,7 +30,7 @@ module PromptTracker
 
         # PATCH/PUT /testing/openai/assistants/:assistant_id/datasets/:dataset_id/rows/:id
         def update
-          if @row.update(row_data: params[:row_data].to_unsafe_h)
+          if @row.update(row_params)
             respond_to do |format|
               format.html { redirect_to testing_openai_assistant_dataset_path(@assistant, @dataset), notice: "Row updated successfully." }
               format.turbo_stream { flash.now[:notice] = "Row updated successfully." }
@@ -64,6 +61,10 @@ module PromptTracker
 
         def set_row
           @row = @dataset.dataset_rows.find(params[:id])
+        end
+
+        def row_params
+          params.require(:dataset_row).permit(:source, row_data: {}, metadata: {})
         end
       end
     end

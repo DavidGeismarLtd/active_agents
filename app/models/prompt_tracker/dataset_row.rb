@@ -102,17 +102,6 @@ module PromptTracker
         html: dataset.dataset_rows.count.to_s
       )
 
-      # Broadcast the edit modal for this new row (for assistant datasets)
-      if dataset.testable.is_a?(PromptTracker::Openai::Assistant)
-        assistant = dataset.testable
-        broadcast_append_to(
-          "dataset_#{dataset_id}_rows",
-          target: "edit-modals-container",
-          partial: "prompt_tracker/testing/openai/assistant_datasets/edit_row_modal",
-          locals: { dataset_row: self, assistant: assistant, dataset: dataset }
-        )
-      end
-
       # Remove empty state if this is the first row
       if dataset.dataset_rows.count == 1
         broadcast_remove_to(
@@ -148,33 +137,21 @@ module PromptTracker
         html: dataset.dataset_rows.count.to_s
       )
 
-      # Remove the edit modal for this row (for assistant datasets)
-      if dataset.testable.is_a?(PromptTracker::Openai::Assistant)
-        broadcast_remove_to(
-          "dataset_#{dataset_id}_rows",
-          target: "editRowModal-#{id}"
-        )
-      end
+      # Remove the edit modal for this row
+      broadcast_remove_to(
+        "dataset_#{dataset_id}_rows",
+        target: "editRowModal-#{id}"
+      )
     end
 
-    # Get the correct partial path and locals based on testable type
+    # Get the correct partial path and locals for Turbo Stream broadcasts
+    # All testable types now use the same unified partial
     def row_partial_and_locals
-      if dataset.testable.is_a?(PromptTracker::Openai::Assistant)
-        # For assistant datasets
-        assistant = dataset.testable
-        # Calculate index based on creation order
-        index = dataset.dataset_rows.where("id <= ?", id).count
-        [
-          "prompt_tracker/testing/openai/assistant_datasets/dataset_row",
-          { dataset_row: self, assistant: assistant, dataset: dataset, index: index }
-        ]
-      else
-        # For prompt version datasets
-        [
-          "prompt_tracker/testing/datasets/row",
-          { row: self, index: dataset.dataset_rows.where("id <= ?", id).count, dataset: dataset }
-        ]
-      end
+      index = dataset.dataset_rows.where("id <= ?", id).count
+      [
+        "prompt_tracker/testing/datasets/row",
+        { row: self, index: index, dataset: dataset }
+      ]
     end
 
     # Validate that row_data is a hash

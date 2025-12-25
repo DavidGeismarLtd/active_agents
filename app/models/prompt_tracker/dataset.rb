@@ -20,28 +20,25 @@ module PromptTracker
   #
   # A Dataset stores multiple rows of test scenario data that can be used
   # to run tests at scale. Each dataset is tied to a specific testable
-  # and validates that its schema matches the testable's expected schema.
+  # and validates that its schema matches the testable's variables_schema.
   #
-  # For PromptVersions: schema matches variables_schema
-  # For Assistants: schema includes interlocutor_simulation_prompt, max_turns, etc.
+  # The schema is automatically copied from testable.variables_schema on creation.
+  # All testables must implement the variables_schema method (via Testable concern).
   #
   # @example Create a dataset for a PromptVersion
   #   dataset = Dataset.create!(
   #     testable: prompt_version,
   #     name: "customer_scenarios",
-  #     description: "Common customer support scenarios",
-  #     schema: prompt_version.variables_schema
+  #     description: "Common customer support scenarios"
+  #     # schema is automatically set from prompt_version.variables_schema
   #   )
   #
   # @example Create a dataset for an Assistant
   #   dataset = Dataset.create!(
   #     testable: assistant,
   #     name: "headache_scenarios",
-  #     description: "Different headache complaint scenarios",
-  #     schema: [
-  #       { "name" => "interlocutor_simulation_prompt", "type" => "string", "required" => true },
-  #       { "name" => "max_turns", "type" => "integer", "required" => false }
-  #     ]
+  #     description: "Different headache complaint scenarios"
+  #     # schema is automatically set from assistant.variables_schema
   #   )
   #
   # @example Add rows to dataset
@@ -71,7 +68,7 @@ module PromptTracker
              dependent: :nullify
 
     # Validations
-    validates :name, presence: true
+    validates :name, presence: true, uniqueness: { scope: [ :testable_type, :testable_id ] }
     validates :testable, presence: true
     validates :schema, presence: true
 
@@ -99,24 +96,10 @@ module PromptTracker
     # @return [Boolean] true if schema matches current testable schema
     def schema_valid?
       return false unless testable
-
-      expected_schema = case testable
-      when PromptVersion
-        testable.variables_schema
-      when Openai::Assistant
-        # Assistants have a fixed schema for conversation scenarios
-        [
-          { "name" => "interlocutor_simulation_prompt", "type" => "string", "required" => true },
-          { "name" => "max_turns", "type" => "integer", "required" => false }
-        ]
-      else
-        []
-      end
-
-      return false if expected_schema.blank?
+      return false if testable.variables_schema.blank?
 
       # Schema is valid if it matches the expected schema (excluding description field)
-      normalize_schema(schema) == normalize_schema(expected_schema)
+      normalize_schema(schema) == normalize_schema(testable.variables_schema)
     end
 
     # Get variable names from schema
@@ -132,17 +115,7 @@ module PromptTracker
     def copy_schema_from_testable
       return unless testable
 
-      self.schema = case testable
-      when PromptVersion
-        testable.variables_schema
-      when Openai::Assistant
-        [
-          { "name" => "interlocutor_simulation_prompt", "type" => "string", "required" => true },
-          { "name" => "max_turns", "type" => "integer", "required" => false }
-        ]
-      else
-        []
-      end
+      self.schema = testable.variables_schema
     end
 
     # Validate that schema is an array

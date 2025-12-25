@@ -1,14 +1,14 @@
 <% content_for :breadcrumbs do %>
-  <li class="breadcrumb-item"><%= link_to @prompt.name, testing_prompt_prompt_version_path(@prompt, @version) %></li>
-  <li class="breadcrumb-item"><%= link_to "Datasets", testing_prompt_prompt_version_datasets_path(@prompt, @version) %></li>
-  <li class="breadcrumb-item"><%= link_to @dataset.name, testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset) %></li>
+  <li class="breadcrumb-item"><%= link_to @testable.name, testable_show_path(@testable) %></li>
+  <li class="breadcrumb-item"><%= link_to "Datasets", datasets_index_path(@testable) %></li>
+  <li class="breadcrumb-item"><%= link_to @dataset.name, dataset_path(@dataset) %></li>
   <li class="breadcrumb-item active">Edit</li>
 <% end %>
 
 <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
   <h1 style="color: #1E40AF; margin: 0;">
     <i class="bi bi-pencil"></i> Edit Dataset
-    <span class="badge bg-primary">v<%= @version.version_number %></span>
+    <%= testable_badge(@testable) %>
   </h1>
   <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
     Update <%= @dataset.name %>
@@ -21,10 +21,10 @@
       <div class="card-body">
         <%= render "form",
                    dataset: @dataset,
-                   url: testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset),
+                   url: dataset_path(@dataset),
                    method: :patch,
                    submit_text: "Update Dataset",
-                   cancel_path: testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset) %>
+                   cancel_path: dataset_path(@dataset) %>
       </div>
     </div>
   </div>
@@ -49,4 +49,3 @@
     </div>
   </div>
 </div>
-

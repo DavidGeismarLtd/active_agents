@@ -1,16 +1,16 @@
 <% content_for :breadcrumbs do %>
-  <li class="breadcrumb-item"><%= link_to @prompt.name, testing_prompt_prompt_version_path(@prompt, @version) %></li>
-  <li class="breadcrumb-item"><%= link_to "Datasets", testing_prompt_prompt_version_datasets_path(@prompt, @version) %></li>
+  <li class="breadcrumb-item"><%= link_to @testable.name, testable_show_path(@testable) %></li>
+  <li class="breadcrumb-item"><%= link_to "Datasets", datasets_index_path(@testable) %></li>
   <li class="breadcrumb-item active">New Dataset</li>
 <% end %>
 
 <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
   <h1 style="color: #1E40AF; margin: 0;">
     <i class="bi bi-database"></i> New Dataset
-    <span class="badge bg-primary">v<%= @version.version_number %></span>
+    <%= testable_badge(@testable) %>
   </h1>
   <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
-    Create a new test data collection for <%= @prompt.name %>
+    Create a new test data collection for <%= @testable.name %>
   </p>
 </div>
 
@@ -20,10 +20,10 @@
       <div class="card-body">
         <%= render "form",
                    dataset: @dataset,
-                   url: testing_prompt_prompt_version_datasets_path(@prompt, @version),
+                   url: datasets_index_path(@testable),
                    method: :post,
                    submit_text: "Create Dataset",
-                   cancel_path: testing_prompt_prompt_version_datasets_path(@prompt, @version) %>
+                   cancel_path: datasets_index_path(@testable) %>
       </div>
     </div>
   </div>
@@ -36,11 +36,10 @@
       <div class="card-body">
         <ul class="small mb-0">
           <li>After creating the dataset, you can add rows manually or generate them with AI</li>
-          <li>Each row must match the prompt version's variable schema</li>
-          <li>Datasets are version-specific and become invalid if the schema changes</li>
+          <li>Each row must match the schema</li>
+          <li>Datasets become invalid if the schema changes</li>
         </ul>
       </div>
     </div>
   </div>
 </div>
-
