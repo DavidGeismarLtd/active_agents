@@ -38,9 +38,9 @@ module PromptTracker
       test_run = TestRun.find(test_run_id)
       test = test_run.test
       testable = test.testable
-
       # Route to appropriate runner based on testable type using convention
       runner_class = resolve_runner_class(testable)
+
       runner = runner_class.new(
         test_run: test_run,
         test: test,

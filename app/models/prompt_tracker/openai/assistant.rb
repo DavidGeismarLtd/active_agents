@@ -214,6 +214,14 @@ module PromptTracker
         ]
       end
 
+      # Returns the locals hash needed for rendering the test row partial
+      #
+      # @param test [Test] the test to render
+      # @return [Hash] the locals hash with test and assistant
+      def test_row_locals(test)
+        { test: test, assistant: self }
+      end
+
       private
 
       # Set default metadata for new records

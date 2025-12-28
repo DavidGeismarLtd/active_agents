@@ -10,8 +10,20 @@ export default class extends Controller {
     // If dataset select exists, update row count when changed
     if (this.hasDatasetSelectTarget) {
       this.datasetSelectTarget.addEventListener('change', this.updateRowCount.bind(this))
+      this.datasetSelectTarget.addEventListener('change', this.validateForm.bind(this))
       this.updateRowCount()
     }
+
+    // Add validation listeners to custom fields
+    if (this.hasCustomSectionTarget) {
+      const customInputs = this.customSectionTarget.querySelectorAll('input, textarea')
+      customInputs.forEach(input => {
+        input.addEventListener('input', this.validateForm.bind(this))
+      })
+    }
+
+    // Initial validation
+    this.validateForm()
   }
 
   toggleMode() {
@@ -29,6 +41,9 @@ export default class extends Controller {
         this.showDatasetMode()
       }
     }
+
+    // Validate after mode change
+    this.validateForm()
   }
 
   showDatasetMode() {
@@ -97,5 +112,25 @@ export default class extends Controller {
     } else {
       this.rowCountTarget.textContent = '?'
     }
+  }
+
+  validateForm() {
+    if (!this.hasSubmitButtonTarget) return
+
+    const selectedMode = this.modeRadioTargets.find(radio => radio.checked)?.value
+    let isValid = false
+
+    if (selectedMode === "dataset") {
+      // Dataset mode: require a dataset to be selected
+      isValid = this.hasDatasetSelectTarget && this.datasetSelectTarget.value !== ""
+    } else if (selectedMode === "single") {
+      // Single mode: require all required custom fields to be filled
+      if (this.hasCustomSectionTarget) {
+        const requiredInputs = this.customSectionTarget.querySelectorAll('[required]')
+        isValid = Array.from(requiredInputs).every(input => input.value.trim() !== "")
+      }
+    }
+
+    this.submitButtonTarget.disabled = !isValid
   }
 }

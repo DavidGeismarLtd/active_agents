@@ -34,7 +34,7 @@ module PromptTracker
       describe "#evaluate_score" do
         it "returns 100 for exact match" do
           response = create_response("Hello World")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "Hello World",
             case_sensitive: true,
             trim_whitespace: false
@@ -44,7 +44,7 @@ module PromptTracker
 
         it "returns 0 for non-match" do
           response = create_response("Hello World")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "Goodbye World",
             case_sensitive: true,
             trim_whitespace: false
@@ -54,7 +54,7 @@ module PromptTracker
 
         it "handles case-insensitive matching" do
           response = create_response("hello world")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "HELLO WORLD",
             case_sensitive: false,
             trim_whitespace: false
@@ -64,7 +64,7 @@ module PromptTracker
 
         it "handles whitespace trimming" do
           response = create_response("  Hello World  ")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "Hello World",
             case_sensitive: true,
             trim_whitespace: true
@@ -76,7 +76,7 @@ module PromptTracker
       describe "#passed?" do
         it "passes for exact match" do
           response = create_response("Hello World")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "Hello World"
           })
           expect(evaluator.passed?).to be true
@@ -84,7 +84,7 @@ module PromptTracker
 
         it "fails for non-match" do
           response = create_response("Hello World")
-          evaluator = ExactMatchEvaluator.new(response, {
+          evaluator = ExactMatchEvaluator.new(response.response_text, {
             expected_text: "Goodbye"
           })
           expect(evaluator.passed?).to be false

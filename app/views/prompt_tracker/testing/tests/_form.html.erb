@@ -1,9 +1,9 @@
 <% test ||= @test %>
 <% in_modal ||= false %>
 
-<%= form_with(model: test, 
-              url: form_url, 
-              local: !in_modal, 
+<%= form_with(model: test,
+              url: form_url,
+              local: !in_modal,
               data: in_modal ? { turbo_stream: true } : {}) do |f| %>
   <% if test.errors.any? %>
     <div class="alert alert-danger">
@@ -52,7 +52,7 @@
     <div class="card-body">
       <p class="text-muted small">Select evaluators to run for this test</p>
 
-      <% available_evaluators = PromptTracker::EvaluatorRegistry.all %>
+      <% available_evaluators = PromptTracker::EvaluatorRegistry.for_testable(test.testable) %>
       <% current_evaluators = test.evaluator_configs.to_a %>
 
       <div id="evaluators-list" class="row">
@@ -114,4 +114,3 @@
     <%= f.submit test.new_record? ? "Create Test" : "Update Test", class: "btn btn-primary" %>
   </div>
 <% end %>
-

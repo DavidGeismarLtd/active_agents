@@ -12,13 +12,7 @@
     </thead>
     <tbody>
       <% tests.each do |test| %>
-        <% # Convention: derive partial path from class name
-           # PromptTracker::PromptVersion -> prompt_versions
-           # PromptTracker::Openai::Assistant -> openai_assistants
-           testable_path = test.testable.class.name.gsub('PromptTracker::', '').underscore.gsub('/', '_').pluralize
-           partial_path = "prompt_tracker/testing/tests/#{testable_path}/test_row"
-        %>
-        <%= render partial_path, test: test %>
+        <%= render test.testable.test_row_partial, test: test %>
         <tr class="collapse" id="test-runs-<%= test.id %>">
           <td colspan="8" class="p-0">
             <div id="test-runs-content-<%= test.id %>">

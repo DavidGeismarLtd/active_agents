@@ -43,7 +43,18 @@ module PromptTracker
         registry
       end
 
-
+      # Returns evaluators compatible with a specific testable
+      #
+      # @param testable [Object] the testable to filter by (e.g., PromptVersion, Assistant)
+      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
+      # @example
+      #   EvaluatorRegistry.for_testable(prompt_version)
+      #   # => { length: {...}, keyword: {...}, llm_judge: {...} }
+      #   EvaluatorRegistry.for_testable(assistant)
+      #   # => { conversation_judge: {...} }
+      def for_testable(testable)
+        all.select { |_key, meta| meta[:evaluator_class].compatible_with?(testable) }
+      end
 
       # Gets metadata for a specific evaluator
       #
@@ -145,8 +156,10 @@ module PromptTracker
         evaluators_path = File.join(File.dirname(__FILE__), "evaluators", "*.rb")
 
         Dir.glob(evaluators_path).each do |file|
-          # Skip base evaluator
+          # Skip base evaluator classes
           next if file.end_with?("base_evaluator.rb")
+          next if file.end_with?("base_prompt_version_evaluator.rb")
+          next if file.end_with?("base_openai_assistant_evaluator.rb")
 
           # Extract class name from filename
           filename = File.basename(file, ".rb")

@@ -63,7 +63,6 @@ FactoryBot.define do
     # Trait for assistant test runs
     trait :for_assistant do
       association :test, factory: :test, trait: :for_assistant
-      prompt_version { nil }
       llm_response { nil }
       conversation_data do
         {

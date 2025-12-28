@@ -2,33 +2,29 @@
 
 module PromptTracker
   module Evaluators
-    # Base class for automated evaluators.
+    # Abstract base class for all automated evaluators.
     #
-    # Automated evaluators analyze LLM responses using rule-based logic
-    # and assign scores based on specific criteria.
+    # This class provides the core evaluation infrastructure:
+    # - Creates Evaluation records (single responsibility)
+    # - Defines the evaluator interface
+    # - Provides parameter schema processing
     #
-    # Subclasses should implement:
-    # - #evaluate_score: Calculate the numeric score
-    # - .metadata: Class method providing evaluator metadata (optional)
+    # Do NOT inherit from this class directly. Instead, inherit from:
+    # - BasePromptVersionEvaluator (for text-based evaluations)
+    # - BaseOpenAiAssistantEvaluator (for conversation-based evaluations)
     #
-    # @example Creating a custom evaluator
-    #   class MyEvaluator < BaseEvaluator
-    #     def self.metadata
-    #       {
-    #         name: "My Evaluator",
-    #         description: "Evaluates response length",
-    #         category: :custom,
-    #         icon: "gear"
-    #       }
-    #     end
+    # Subclasses must implement:
+    # - #evaluate_score: Calculate the numeric score (0-100)
+    # - .compatible_with: Class method returning array of compatible testable classes
+    # - .metadata: Class method providing evaluator metadata
     #
-    #     def evaluate_score
-    #       response_text.length > 100 ? 100 : 50
-    #     end
-    #   end
+    # Subclasses can optionally override:
+    # - #generate_feedback: Generate feedback text
+    # - #metadata: Add custom metadata
+    # - #passed?: Custom pass/fail logic
     #
     class BaseEvaluator
-      attr_reader :llm_response, :config
+      attr_reader :config
 
       # Class Methods for Parameter Schema
 
@@ -129,18 +125,40 @@ module PromptTracker
         end
       end
 
+      # Class Methods for Compatibility
+
+      # Returns array of testable classes this evaluator is compatible with
+      # Subclasses MUST override this method
+      #
+      # @return [Array<Class>] array of compatible testable classes
+      # @example
+      #   def self.compatible_with
+      #     [PromptTracker::PromptVersion]
+      #   end
+      def self.compatible_with
+        raise NotImplementedError, "Subclasses must implement .compatible_with"
+      end
+
+      # Check if this evaluator is compatible with a given testable
+      #
+      # @param testable [Object] the testable to check compatibility with
+      # @return [Boolean] true if compatible
+      def self.compatible_with?(testable)
+        compatible_with.any? { |klass| testable.is_a?(klass) }
+      end
+
       # Instance Methods
 
       # Initialize the evaluator
+      # Subclasses should call super(config) after setting their own instance variables
       #
-      # @param llm_response [LlmResponse] the response to evaluate
-      # @param config [Hash] optional configuration for the evaluator
-      def initialize(llm_response, config = {})
-        @llm_response = llm_response
+      # @param config [Hash] configuration for the evaluator
+      def initialize(config = {})
         @config = config
       end
 
-      # Evaluate the response and create an Evaluation record
+      # Evaluate and create an Evaluation record
+      # This is the ONLY place where Evaluation.create! should be called
       # All scores are 0-100
       #
       # @return [Evaluation] the created evaluation
@@ -149,7 +167,8 @@ module PromptTracker
         feedback_text = generate_feedback
 
         Evaluation.create!(
-          llm_response: llm_response,
+          llm_response: config[:llm_response],
+          test_run: config[:test_run],
           evaluator_type: self.class.name,
           evaluator_config_id: config[:evaluator_config_id],
           score: score,
@@ -158,8 +177,7 @@ module PromptTracker
           passed: passed?,
           feedback: feedback_text,
           metadata: metadata,
-          evaluation_context: config[:evaluation_context] || "tracked_call",
-          test_run_id: config[:test_run_id]
+          evaluation_context: config[:evaluation_context] || "tracked_call"
         )
       end
 
@@ -196,30 +214,24 @@ module PromptTracker
         normalized_score >= 0.8
       end
 
-      protected
+      private
 
       # Calculate normalized score (0.0 to 1.0)
+      # Used by default #passed? implementation
       #
       # @return [Float] normalized score
       def normalized_score
-        return 0.0 if score_max == score_min
-
         score = evaluate_score
-        (score - score_min) / (score_max - score_min).to_f
+        score / 100.0  # All scores are 0-100
       end
 
-      # Helper to get the response text
-      #
-      # @return [String] the response text
-      def response_text
-        llm_response.response_text || ""
+      # Score range helpers (for backward compatibility)
+      def score_min
+        0
       end
 
-      # Helper to get the rendered prompt
-      #
-      # @return [String] the rendered prompt
-      def rendered_prompt
-        llm_response.rendered_prompt || ""
+      def score_max
+        100
       end
     end
   end

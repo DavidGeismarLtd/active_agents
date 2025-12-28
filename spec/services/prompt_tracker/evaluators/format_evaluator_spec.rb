@@ -59,21 +59,21 @@ module PromptTracker
       describe "JSON format" do
         it "scores 100 for valid JSON" do
           response = create_response('{"name": "John", "age": 30}')
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           expect(evaluator.evaluate_score).to eq(100)
         end
 
         it "scores 0 for invalid JSON" do
           response = create_response("not json")
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           expect(evaluator.evaluate_score).to eq(0)
         end
 
         it "validates required keys" do
           response = create_response('{"name": "John", "age": 30}')
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :json,
             required_keys: [ "name", "age" ]
           })
@@ -83,7 +83,7 @@ module PromptTracker
 
         it "scores 50 when half of required keys missing" do
           response = create_response('{"name": "John"}')
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :json,
             required_keys: [ "name", "age" ]
           })
@@ -93,7 +93,7 @@ module PromptTracker
 
         it "provides partial scoring for some required keys" do
           response = create_response('{"name": "John"}')
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :json,
             required_keys: [ "name", "age", "email" ]
           })
@@ -105,7 +105,7 @@ module PromptTracker
 
         it "generates appropriate feedback for valid JSON" do
           response = create_response('{"name": "John"}')
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           feedback = evaluator.generate_feedback
           expect(feedback).to match(/valid json/i)
@@ -113,7 +113,7 @@ module PromptTracker
 
         it "generates appropriate feedback for invalid JSON" do
           response = create_response("not json")
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           feedback = evaluator.generate_feedback
           expect(feedback).to match(/invalid json/i)
@@ -122,7 +122,7 @@ module PromptTracker
         it "handles complex nested JSON" do
           json = '{"user": {"name": "John", "address": {"city": "NYC"}}}'
           response = create_response(json)
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           expect(evaluator.evaluate_score).to eq(100)
         end
@@ -130,7 +130,7 @@ module PromptTracker
         it "handles JSON arrays" do
           json = '[{"name": "John"}, {"name": "Jane"}]'
           response = create_response(json)
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           expect(evaluator.evaluate_score).to eq(100)
         end
@@ -139,7 +139,7 @@ module PromptTracker
       describe "Markdown format" do
         it "scores 100 when headers required and present" do
           response = create_response("# Title\n\nContent here")
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :markdown,
             require_headers: true
           })
@@ -149,7 +149,7 @@ module PromptTracker
 
         it "scores 50 when headers required but missing" do
           response = create_response("Just plain text")
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :markdown,
             require_headers: true
           })
@@ -159,7 +159,7 @@ module PromptTracker
 
         it "scores 100 when headers not required" do
           response = create_response("Just plain text")
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :markdown,
             require_headers: false
           })
@@ -170,7 +170,7 @@ module PromptTracker
         it "handles multiple header levels" do
           markdown = "# H1\n## H2\n### H3\nContent"
           response = create_response(markdown)
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :markdown,
             require_headers: true
           })
@@ -182,14 +182,14 @@ module PromptTracker
       describe "Plain text format" do
         it "scores 100 for non-empty text" do
           response = create_response("Some plain text")
-          evaluator = FormatEvaluator.new(response, { format: :plain_text })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :plain_text })
 
           expect(evaluator.evaluate_score).to eq(100)
         end
 
         it "scores 0 for empty text" do
           response = create_response("")
-          evaluator = FormatEvaluator.new(response, { format: :plain_text })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :plain_text })
 
           expect(evaluator.evaluate_score).to eq(0)
         end
@@ -200,13 +200,13 @@ module PromptTracker
           response = create_response("text")
 
           expect {
-            FormatEvaluator.new(response, { format: :invalid })
+            FormatEvaluator.new(response.response_text, { format: :invalid })
           }.to raise_error(ArgumentError, /invalid format/i)
         end
 
         it "creates evaluation record" do
           response = create_response('{"name": "John"}')
-          evaluator = FormatEvaluator.new(response, { format: :json })
+          evaluator = FormatEvaluator.new(response.response_text, { format: :json })
 
           evaluation = evaluator.evaluate
 
@@ -217,7 +217,7 @@ module PromptTracker
 
         it "includes metadata" do
           response = create_response('{"name": "John"}')
-          evaluator = FormatEvaluator.new(response, {
+          evaluator = FormatEvaluator.new(response.response_text, {
             format: :json,
             required_keys: [ "name" ]
           })

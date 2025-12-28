@@ -35,7 +35,38 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
     end
   end
 
+  describe ".for_testable" do
+    it "returns only evaluators compatible with PromptVersion" do
+      prompt = create(:prompt)
+      version = create(:prompt_version, prompt: prompt)
 
+      evaluators = described_class.for_testable(version)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators.keys).to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
+      expect(evaluators.keys).not_to include(:conversation_judge)
+    end
+
+    it "returns only evaluators compatible with Assistant" do
+      assistant = create(:openai_assistant)
+
+      evaluators = described_class.for_testable(assistant)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators.keys).to include(:conversation_judge)
+      expect(evaluators.keys).not_to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
+    end
+
+    it "returns empty hash for incompatible testable" do
+      # Create a mock testable that no evaluators are compatible with
+      incompatible_testable = double("IncompatibleTestable")
+
+      evaluators = described_class.for_testable(incompatible_testable)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators).to be_empty
+    end
+  end
 
   describe ".get" do
     it "returns metadata for a specific evaluator by symbol" do

@@ -89,8 +89,8 @@ module PromptTracker
     scope :completed, -> { where(status: [ "passed", "failed", "error" ]) }
     scope :recent, -> { order(created_at: :desc) }
 
-    after_create_commit :broadcast_creation
-    after_update_commit :broadcast_changes
+    # broadcast change only if status changes
+    after_update_commit :broadcast_changes, if: :status_changed?
 
     # Status helpers
     def pending?
@@ -158,137 +158,53 @@ module PromptTracker
 
     private
 
-    def broadcast_creation
-      # Only broadcast for prompt version tests (assistant tests have different UI)
-      return unless prompt_version_test?
-
-      # Reload test to get fresh last_run association
+    def broadcast_changes
+      # Reload test to get fresh associations
       test_obj = test.reload
-      version = prompt_version
-      prompt = version.prompt
 
-      # If this is the first run, remove the placeholder row
-      if test_obj.test_runs.count == 1
-        broadcast_remove(
-          stream: "prompt_test_#{test.id}",
-          target: "no_runs_placeholder"
-        )
-      end
+      # Broadcast updates to the testable's show page (PromptVersion or Assistant)
+      broadcast_to_testable_show_page
 
-      # Update the recent runs table on the Test#show page
-      broadcast_prepend(
-        stream: "prompt_test_#{test.id}",
-        target: "recent_runs_tbody",
-        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
-        locals: { run: self }
-      )
+      # Broadcast updates specific to PromptVersion (if applicable)
+      broadcast_to_prompt_version_modals if prompt_version_test?
+    end
 
-      # Update the status card on Test#show page (pass rate, counts, etc.)
+    # Broadcasts updates to the testable's show page
+    # This works for both PromptVersion and Assistant (and any future testable types)
+    def broadcast_to_testable_show_page
+      test_obj = test
+      testable = test_obj.testable
+      stream_name = testable.testable_stream_name
+
+      # Update the accordion content (test runs table)
       broadcast_replace(
-        stream: "prompt_test_#{test.id}",
-        target: "test_status_card",
-        partial: "prompt_tracker/testing/prompt_tests/test_status_card",
+        stream: stream_name,
+        target: "test-runs-content-#{test_obj.id}",
+        partial: "prompt_tracker/testing/tests/test_runs_accordion_content",
         locals: { test: test_obj }
       )
 
-      # Update the test row on the tests index page (shows last_run status)
+      # Update the test row in the tests table (status, last run, run count)
       broadcast_replace(
-        stream: "prompt_version_#{version.id}",
+        stream: stream_name,
         target: "test_row_#{test_obj.id}",
-        partial: "prompt_tracker/testing/tests/prompt_versions/test_row",
-        locals: { test: test_obj, prompt: prompt, version: version }
-      )
-
-      # Update the accordion content (preserves open/closed state)
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test-runs-content-#{test_obj.id}",
-        partial: "prompt_tracker/testing/tests/prompt_versions/test_runs_accordion_content",
-        locals: { test: test_obj, prompt: prompt, version: version }
-      )
-
-      # Update the modals container to include new evaluation modals
-      all_tests = version.tests.includes(:test_runs).order(created_at: :desc)
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test-modals",
-        partial: "prompt_tracker/testing/prompt_versions/test_modals",
-        locals: { tests: all_tests, prompt: prompt, version: version }
-      )
-
-      # Update the overall status card on tests index page
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "overall_status_card",
-        partial: "prompt_tracker/testing/prompt_tests/overall_status_card",
-        locals: { tests: all_tests }
+        partial: testable.test_row_partial,
+        locals: testable.test_row_locals(test_obj)
       )
     end
 
-    def broadcast_changes
-      # Only broadcast for prompt version tests (assistant tests have different UI)
-      return unless prompt_version_test?
-
-      # Reload test to get fresh last_run association
-      test_obj = test.reload
+    # Broadcasts updates to PromptVersion-specific modals
+    # This is only needed for PromptVersion because it has a special test_modals partial
+    def broadcast_to_prompt_version_modals
       version = prompt_version
       prompt = version.prompt
-
-      # 1) Update the test run row on the Test#show page
-      broadcast_replace(
-        stream: "prompt_test_#{test.id}",
-        target: "test_run_row_#{id}",
-        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
-        locals: { run: self }
-      )
-
-      # 2) Update the status card on Test#show page (pass rate, counts, etc.)
-      broadcast_replace(
-        stream: "prompt_test_#{test.id}",
-        target: "test_status_card",
-        partial: "prompt_tracker/testing/prompt_tests/test_status_card",
-        locals: { test: test_obj }
-      )
-
-      # 3) Update the test row on the tests index page (shows last_run status)
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test_row_#{test_obj.id}",
-        partial: "prompt_tracker/testing/tests/prompt_versions/test_row",
-        locals: { test: test_obj, prompt: prompt, version: version }
-      )
-
-      # 3b) Update the individual test run row on the prompt version page
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test_run_row_#{id}",
-        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
-        locals: { run: self }
-      )
-
-      # 4) Update the accordion content (preserves open/closed state)
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test-runs-content-#{test_obj.id}",
-        partial: "prompt_tracker/testing/tests/prompt_versions/test_runs_accordion_content",
-        locals: { test: test_obj, prompt: prompt, version: version }
-      )
-
-      # 5) Update the modals container to include updated evaluation modals
       all_tests = version.tests.includes(:test_runs).order(created_at: :desc)
+
       broadcast_replace(
-        stream: "prompt_version_#{version.id}",
+        stream: testable.testable_stream_name,
         target: "test-modals",
         partial: "prompt_tracker/testing/prompt_versions/test_modals",
         locals: { tests: all_tests, prompt: prompt, version: version }
-      )
-
-      # 6) Update the overall status card on tests index page
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "overall_status_card",
-        partial: "prompt_tracker/testing/prompt_tests/overall_status_card",
-        locals: { tests: all_tests }
       )
     end
 

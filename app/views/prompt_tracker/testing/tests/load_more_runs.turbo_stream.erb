@@ -1,9 +1,7 @@
 <%# Append new rows to the tbody %>
 <%= turbo_stream.append "test-runs-tbody-#{@test.id}" do %>
   <% @additional_runs.each do |run| %>
-    <% # Determine which row partial to use based on testable type %>
-    <% row_partial = @testable.is_a?(PromptTracker::Openai::Assistant) ? "prompt_tracker/testing/test_runs/assistants/row" : "prompt_tracker/testing/test_runs/prompt_versions/row" %>
-    <%= render row_partial, run: run %>
+    <%= render @testable.test_run_row_partial, run: run %>
   <% end %>
 <% end %>
 

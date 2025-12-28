@@ -50,42 +50,42 @@ module PromptTracker
       describe "#evaluate_score" do
         it "scores 100 for acceptable length" do
           response = create_response("a" * 100) # Within range (10-2000)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(100)
         end
 
         it "scores 0 for too short response" do
           response = create_response("hi") # 2 chars, below min (10)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(0)
         end
 
         it "scores 0 for too long response" do
           response = create_response("a" * 3000) # Above max (2000)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(0)
         end
 
         it "scores 100 for length at minimum boundary" do
           response = create_response("a" * 10) # Exactly at min
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(100)
         end
 
         it "scores 100 for length at maximum boundary" do
           response = create_response("a" * 2000) # Exactly at max
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(100)
         end
 
         it "uses custom config" do
           response = create_response("a" * 20)
-          evaluator = LengthEvaluator.new(response, {
+          evaluator = LengthEvaluator.new(response.response_text, {
             min_length: 10,
             max_length: 100
           })
@@ -95,7 +95,7 @@ module PromptTracker
 
         it "handles empty response" do
           response = create_response("")
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           expect(evaluator.evaluate_score).to eq(0) # Too short
         end
@@ -104,7 +104,7 @@ module PromptTracker
       describe "#generate_feedback" do
         it "generates appropriate feedback for too short" do
           response = create_response("hi")
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           feedback = evaluator.generate_feedback
           expect(feedback).to match(/too short/i)
@@ -113,7 +113,7 @@ module PromptTracker
 
         it "generates appropriate feedback for too long" do
           response = create_response("a" * 3000)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           feedback = evaluator.generate_feedback
           expect(feedback).to match(/too long/i)
@@ -121,7 +121,7 @@ module PromptTracker
 
         it "generates appropriate feedback for acceptable length" do
           response = create_response("a" * 100)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           feedback = evaluator.generate_feedback
           expect(feedback).to match(/acceptable/i)
@@ -132,7 +132,7 @@ module PromptTracker
       describe "#evaluate" do
         it "creates evaluation record" do
           response = create_response("a" * 100)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           evaluation = evaluator.evaluate
 
@@ -144,22 +144,21 @@ module PromptTracker
           expect(evaluation.feedback).not_to be_nil
         end
 
-        it "associates evaluation with prompt_test_run when provided in config" do
+        it "associates evaluation with llm_response when provided in config" do
           response = create_response("a" * 100)
-          test_run = create(:prompt_test_run)
-          evaluator = LengthEvaluator.new(response, { prompt_test_run_id: test_run.id })
+          evaluator = LengthEvaluator.new(response.response_text, { llm_response: response })
 
           evaluation = evaluator.evaluate
 
-          expect(evaluation.prompt_test_run_id).to eq(test_run.id)
-          expect(evaluation.prompt_test_run).to eq(test_run)
+          expect(evaluation.llm_response_id).to eq(response.id)
+          expect(evaluation.llm_response).to eq(response)
         end
       end
 
       describe "#metadata" do
         it "includes metadata" do
           response = create_response("a" * 100)
-          evaluator = LengthEvaluator.new(response)
+          evaluator = LengthEvaluator.new(response.response_text)
 
           metadata = evaluator.metadata
           expect(metadata[:response_length]).to eq(100)

@@ -24,13 +24,7 @@
         </thead>
         <tbody id="test-runs-tbody-<%= test.id %>">
           <% latest_runs.each do |run| %>
-            <% # Convention: derive partial path from testable class name
-               # PromptTracker::PromptVersion -> prompt_versions
-               # PromptTracker::Openai::Assistant -> assistants (note: not openai_assistants in test_runs folder)
-               testable_path = testable.class.name.demodulize.underscore.pluralize
-               row_partial = "prompt_tracker/testing/test_runs/#{testable_path}/row"
-            %>
-            <%= render row_partial, run: run %>
+            <%= render testable.test_run_row_partial, run: run %>
           <% end %>
         </tbody>
       </table>

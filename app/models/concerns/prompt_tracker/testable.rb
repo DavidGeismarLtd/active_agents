@@ -91,5 +91,82 @@ module PromptTracker
     # Examples:
     #   PromptTracker::PromptVersion -> prompt_tracker/testing/tests/prompt_versions/test_row
     #   PromptTracker::Openai::Assistant -> prompt_tracker/testing/tests/openai_assistants/test_row
+
+    # Returns the partial path segment for this testable type
+    # This is the single source of truth for deriving partial paths
+    #
+    # @return [String] the partial path segment (e.g., "prompt_versions", "openai_assistants")
+    #
+    # @example PromptVersion
+    #   testable.partial_path_segment # => "prompt_versions"
+    #
+    # @example Assistant
+    #   testable.partial_path_segment # => "openai_assistants"
+    #
+    def partial_path_segment
+      # Remove PromptTracker:: prefix, convert to underscore, replace / with _, pluralize
+      # PromptTracker::PromptVersion -> "prompt_versions"
+      # PromptTracker::Openai::Assistant -> "openai_assistants"
+      self.class.name.gsub("PromptTracker::", "").underscore.gsub("/", "_").pluralize
+    end
+
+    # Returns the full partial path for test run rows
+    #
+    # @return [String] the full partial path
+    #
+    # @example PromptVersion
+    #   testable.test_run_row_partial # => "prompt_tracker/testing/test_runs/prompt_versions/row"
+    #
+    # @example Assistant
+    #   testable.test_run_row_partial # => "prompt_tracker/testing/test_runs/openai_assistants/row"
+    #
+    def test_run_row_partial
+      "prompt_tracker/testing/test_runs/#{partial_path_segment}/row"
+    end
+
+    # Returns the full partial path for test rows
+    #
+    # @return [String] the full partial path
+    #
+    # @example PromptVersion
+    #   testable.test_row_partial # => "prompt_tracker/testing/tests/prompt_versions/test_row"
+    #
+    # @example Assistant
+    #   testable.test_row_partial # => "prompt_tracker/testing/tests/openai_assistants/test_row"
+    #
+    def test_row_partial
+      "prompt_tracker/testing/tests/#{partial_path_segment}/test_row"
+    end
+
+    # Returns the Turbo Stream name for this testable instance
+    # This is used for broadcasting updates to the testable's show page
+    #
+    # @return [String] the stream name
+    #
+    # @example PromptVersion
+    #   version.testable_stream_name # => "prompt_version_123"
+    #
+    # @example Assistant
+    #   assistant.testable_stream_name # => "openai_assistant_456"
+    #
+    def testable_stream_name
+      "#{partial_path_segment.singularize}_#{id}"
+    end
+
+    # Returns the locals hash needed for rendering the test row partial
+    # This is used when broadcasting test row updates
+    #
+    # @param test [Test] the test to render
+    # @return [Hash] the locals hash
+    #
+    # @example PromptVersion
+    #   version.test_row_locals(test) # => { test: test, version: version, prompt: prompt }
+    #
+    # @example Assistant
+    #   assistant.test_row_locals(test) # => { test: test, assistant: assistant }
+    #
+    def test_row_locals(test)
+      raise NotImplementedError, "#{self.class.name} must implement #test_row_locals"
+    end
   end
 end

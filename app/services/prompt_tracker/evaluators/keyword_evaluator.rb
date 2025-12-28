@@ -8,19 +8,19 @@ module PromptTracker
     # and avoid forbidden keywords.
     #
     # @example Evaluate with required keywords
-    #   evaluator = KeywordEvaluator.new(llm_response, {
+    #   evaluator = KeywordEvaluator.new(response_text, {
     #     required_keywords: ["hello", "welcome"],
     #     forbidden_keywords: ["error", "failed"]
     #   })
     #   evaluation = evaluator.evaluate
     #
     # @example Case-insensitive matching
-    #   evaluator = KeywordEvaluator.new(llm_response, {
+    #   evaluator = KeywordEvaluator.new(response_text, {
     #     required_keywords: ["Hello"],
     #     case_sensitive: false
     #   })
     #
-    class KeywordEvaluator < BaseEvaluator
+    class KeywordEvaluator < BasePromptVersionEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         required_keywords: [],   # Keywords that must be present
@@ -47,8 +47,8 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        super(llm_response, DEFAULT_CONFIG.merge(config.deep_symbolize_keys))
+      def initialize(response_text, config = {})
+        super(response_text, DEFAULT_CONFIG.merge(config.deep_symbolize_keys))
       end
 
       def evaluate_score

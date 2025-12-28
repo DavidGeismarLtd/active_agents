@@ -23,7 +23,7 @@ RSpec.describe PromptTracker::EvaluatorConfig, type: :model do
   describe "polymorphic association" do
     let(:prompt) { create(:prompt) }
     let(:version) { create(:prompt_version, prompt: prompt) }
-    let(:test) { create(:prompt_test, prompt_version: version) }
+    let(:test) { create(:test, testable: version) }
 
     it "can belong to a PromptVersion" do
       config = described_class.create!(
@@ -36,14 +36,14 @@ RSpec.describe PromptTracker::EvaluatorConfig, type: :model do
       expect(config.configurable).to eq(version)
     end
 
-    it "can belong to a PromptTest" do
+    it "can belong to a Test" do
       config = described_class.create!(
         configurable: test,
         evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
         enabled: true
       )
 
-      expect(config.configurable_type).to eq("PromptTracker::PromptTest")
+      expect(config.configurable_type).to eq("PromptTracker::Test")
       expect(config.configurable).to eq(test)
     end
   end
@@ -73,6 +73,89 @@ RSpec.describe PromptTracker::EvaluatorConfig, type: :model do
         duplicate = build(:evaluator_config, configurable: version2, evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator")
 
         expect(duplicate).to be_valid
+      end
+    end
+
+    describe "evaluator compatibility with testable" do
+      context "when configurable is a Test" do
+        it "allows PromptVersion evaluators for PromptVersion tests" do
+          prompt = create(:prompt)
+          version = create(:prompt_version, prompt: prompt)
+          test = create(:test, testable: version)
+
+          config = test.evaluator_configs.build(
+            evaluator_type: "PromptTracker::Evaluators::LengthEvaluator"
+          )
+
+          expect(config).to be_valid
+        end
+
+        it "prevents Assistant evaluators for PromptVersion tests" do
+          prompt = create(:prompt)
+          version = create(:prompt_version, prompt: prompt)
+          test = create(:test, testable: version)
+
+          config = test.evaluator_configs.build(
+            evaluator_type: "PromptTracker::Evaluators::ConversationJudgeEvaluator"
+          )
+
+          expect(config).not_to be_valid
+          expect(config.errors[:evaluator_type]).to include(
+            match(/ConversationJudgeEvaluator is only compatible with PromptTracker::Openai::Assistant/)
+          )
+        end
+
+        it "allows Assistant evaluators for Assistant tests" do
+          assistant = create(:openai_assistant)
+          test = create(:test, testable: assistant)
+
+          config = test.evaluator_configs.build(
+            evaluator_type: "PromptTracker::Evaluators::ConversationJudgeEvaluator"
+          )
+
+          expect(config).to be_valid
+        end
+
+        it "prevents PromptVersion evaluators for Assistant tests" do
+          assistant = create(:openai_assistant)
+          test = create(:test, testable: assistant)
+
+          config = test.evaluator_configs.build(
+            evaluator_type: "PromptTracker::Evaluators::LengthEvaluator"
+          )
+
+          expect(config).not_to be_valid
+          expect(config.errors[:evaluator_type]).to include(
+            match(/LengthEvaluator is only compatible with PromptTracker::PromptVersion/)
+          )
+        end
+
+        it "handles invalid evaluator class gracefully" do
+          prompt = create(:prompt)
+          version = create(:prompt_version, prompt: prompt)
+          test = create(:test, testable: version)
+
+          config = test.evaluator_configs.build(
+            evaluator_type: "Invalid::EvaluatorClass"
+          )
+
+          expect(config).not_to be_valid
+          expect(config.errors[:evaluator_type]).to include("is not a valid evaluator class")
+        end
+      end
+
+      context "when configurable is not a Test" do
+        it "skips validation for PromptVersion" do
+          prompt = create(:prompt)
+          version = create(:prompt_version, prompt: prompt)
+
+          # PromptVersion doesn't have a testable, so validation should be skipped
+          config = version.evaluator_configs.build(
+            evaluator_type: "PromptTracker::Evaluators::LengthEvaluator"
+          )
+
+          expect(config).to be_valid
+        end
       end
     end
   end

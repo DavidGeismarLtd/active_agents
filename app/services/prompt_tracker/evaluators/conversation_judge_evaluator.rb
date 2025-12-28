@@ -5,7 +5,7 @@ module PromptTracker
     # Evaluates assistant conversations by scoring each assistant message using an LLM judge.
     #
     # This evaluator:
-    # 1. Takes conversation_data from a TestRun (array of messages)
+    # 1. Takes conversation_data (Hash with messages array)
     # 2. For each assistant message, asks an LLM judge to score it
     # 3. Averages the scores across all assistant messages
     # 4. Returns an evaluation with per-message scores in metadata
@@ -14,7 +14,7 @@ module PromptTracker
     # this evaluator handles multi-turn conversations.
     #
     # @example Evaluate a conversation
-    #   evaluator = ConversationJudgeEvaluator.new(test_run, {
+    #   evaluator = ConversationJudgeEvaluator.new(conversation_data, {
     #     judge_model: "gpt-4o",
     #     evaluation_prompt: "Evaluate this assistant message for empathy and accuracy. Score 0-100."
     #   })
@@ -23,9 +23,7 @@ module PromptTracker
     #   #    - score: 85 (average of all message scores)
     #   #    - metadata: { message_scores: [90, 80, 85], ... }
     #
-    class ConversationJudgeEvaluator
-      attr_reader :test_run, :config
-
+    class ConversationJudgeEvaluator < BaseOpenAiAssistantEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         judge_model: "gpt-4o",
@@ -55,59 +53,94 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param test_run [TestRun] the test run with conversation_data
+      # @param conversation_data [Hash] the conversation data with messages array
       # @param config [Hash] configuration options
-      def initialize(test_run, config = {})
-        @test_run = test_run
-        @config = DEFAULT_CONFIG.merge(config.symbolize_keys)
+      def initialize(conversation_data, config = {})
+        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
       end
 
-      # Evaluate the conversation
+      # Calculate score by averaging all assistant message scores
       #
-      # @return [Evaluation] the created evaluation
-      def evaluate
-        conversation_data = test_run.conversation_data
-        raise ArgumentError, "TestRun must have conversation_data" if conversation_data.blank?
+      # @return [Float] average score from 0-100
+      def evaluate_score
+        scores = message_scores_data.map { |ms| ms[:score] }
+        (scores.sum.to_f / scores.length).round(2)
+      end
 
-        messages = conversation_data["messages"] || conversation_data[:messages]
-        raise ArgumentError, "conversation_data must have messages array" if messages.blank?
+      # Generate feedback summarizing the conversation evaluation
+      #
+      # @return [String] feedback text
+      def generate_feedback
+        scores = message_scores_data.map { |ms| ms[:score] }
+        average = evaluate_score
 
-        # Extract assistant messages
-        assistant_messages = messages.select { |m| m["role"] == "assistant" || m[:role] == "assistant" }
-        raise ArgumentError, "No assistant messages found in conversation" if assistant_messages.empty?
+        feedback_parts = [
+          "Conversation evaluation complete.",
+          "Average score: #{average}/100 across #{scores.length} assistant messages.",
+          "Individual message scores: #{scores.join(', ')}"
+        ]
 
-        # Score each assistant message
-        message_scores = assistant_messages.map.with_index do |message, index|
-          score_message(message, index, messages)
+        if average >= (config[:threshold_score] || 70)
+          feedback_parts << "✓ Conversation meets quality threshold."
+        else
+          feedback_parts << "✗ Conversation below quality threshold."
         end
 
-        # Calculate average score (extract :score from each hash)
-        scores = message_scores.map { |ms| ms[:score] }
-        average_score = (scores.sum.to_f / scores.length).round(2)
+        feedback_parts.join("\n")
+      end
 
-        # Determine if passed
-        threshold = config[:threshold_score] || 70
-        passed = average_score >= threshold
-
-        # Create evaluation
-        Evaluation.create!(
-          test_run: test_run,
-          evaluator_type: self.class.name,
-          evaluator_config_id: config[:evaluator_config_id],
-          score: average_score,
-          passed: passed,
-          feedback: generate_feedback(message_scores, average_score),
-          metadata: {
-            "message_scores" => message_scores,
-            "total_messages" => assistant_messages.length,
-            "threshold" => threshold,
-            "judge_model" => config[:judge_model]
-          },
-          evaluation_context: "test_run"
+      # Add metadata about message-level scores
+      #
+      # @return [Hash] metadata
+      def metadata
+        super.merge(
+          "message_scores" => message_scores_data,
+          "total_messages" => assistant_messages.length,
+          "threshold" => config[:threshold_score] || 70,
+          "judge_model" => config[:judge_model]
         )
       end
 
+      # Custom pass/fail logic based on threshold
+      #
+      # @return [Boolean] true if average score >= threshold
+      def passed?
+        threshold = config[:threshold_score] || 70
+        evaluate_score >= threshold
+      end
+
       private
+
+      # Get messages from conversation_data
+      #
+      # @return [Array<Hash>] array of messages
+      def messages
+        raise ArgumentError, "conversation_data must have conversation_data" if conversation_data.nil?
+
+        @messages ||= conversation_data["messages"] || conversation_data[:messages] || []
+      end
+
+      # Get assistant messages from conversation
+      #
+      # @return [Array<Hash>] array of assistant messages
+      def assistant_messages
+        @assistant_messages ||= messages.select { |m| m["role"] == "assistant" || m[:role] == "assistant" }
+      end
+
+      # Get or compute message scores (memoized)
+      # This ensures we only call the LLM once per message
+      #
+      # @return [Array<Hash>] array of message score hashes
+      def message_scores_data
+        @message_scores_data ||= begin
+          raise ArgumentError, "conversation_data must have messages array" if messages.blank?
+          raise ArgumentError, "No assistant messages found in conversation" if assistant_messages.empty?
+
+          assistant_messages.map.with_index do |message, index|
+            score_message(message, index, messages)
+          end
+        end
+      end
 
       # Score a single assistant message
       #
@@ -179,9 +212,9 @@ module PromptTracker
         chat = RubyLLM.chat(model: config[:judge_model])
         response = chat.ask(judge_prompt)
         response.content
-      rescue => e
-        Rails.logger.error("ConversationJudgeEvaluator failed: #{e.message}")
-        "Score: 50\nFeedback: Error during evaluation: #{e.message}"
+        # rescue => e
+        #   Rails.logger.error("ConversationJudgeEvaluator failed: #{e.message}")
+        #   "Score: 50\nFeedback: Error during evaluation: #{e.message}"
       end
 
       # Parse score from judge response
@@ -204,15 +237,7 @@ module PromptTracker
         50.0
       end
 
-      # Generate feedback summary
-      #
-      # @param message_scores [Array<Hash>] scores for each message
-      # @param average_score [Float] the average score
-      # @return [String] feedback text
-      def generate_feedback(message_scores, average_score)
-        scores_list = message_scores.map { |ms| "Turn #{ms[:turn]}: #{ms[:score]}" }.join(", ")
-        "Average conversation score: #{average_score}/100. Message scores: #{scores_list}"
-      end
+
 
       # Check if we should use mock mode
       #

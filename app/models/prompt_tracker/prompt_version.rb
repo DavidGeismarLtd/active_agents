@@ -295,6 +295,14 @@ module PromptTracker
       ]
     end
 
+    # Returns the locals hash needed for rendering the test row partial
+    #
+    # @param test [Test] the test to render
+    # @return [Hash] the locals hash with test, version, and prompt
+    def test_row_locals(test)
+      { test: test, version: self, prompt: prompt }
+    end
+
     private
 
     # Sets the next version number based on existing versions

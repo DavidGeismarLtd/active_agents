@@ -1,4 +1,4 @@
-<%= turbo_stream_from "prompt_version_#{@version.id}" %>
+<%= turbo_stream_from @version.testable_stream_name %>
 
 <% content_for :breadcrumbs do %>
   <li class="breadcrumb-item active"><%= @prompt.name %>-v<%= @version.version_number %></li>

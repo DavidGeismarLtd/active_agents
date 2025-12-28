@@ -101,15 +101,17 @@ module PromptTracker
             evaluator_type = config.evaluator_type
             evaluator_config = config.config || {}
 
-            # Add evaluator_config_id to the config
+            # Add evaluator_config_id and test_run to the config
             evaluator_config = evaluator_config.merge(
               evaluator_config_id: config.id,
-              evaluation_context: "test_run"
+              evaluation_context: "test_run",
+              test_run: test_run
             )
 
             # Build and run the evaluator
+            # Pass conversation_data (Hash) instead of test_run (ActiveRecord object)
             evaluator_class = evaluator_type.constantize
-            evaluator = evaluator_class.new(test_run, evaluator_config)
+            evaluator = evaluator_class.new(test_run.conversation_data, evaluator_config)
             evaluation = evaluator.evaluate
 
             results << {
