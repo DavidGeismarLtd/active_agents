@@ -9,11 +9,3 @@
   <%= render "prompt_tracker/testing/test_runs/run_cells/human_evaluations", run: run %>
   <%= render "prompt_tracker/testing/test_runs/run_cells/actions", run: run %>
 </tr>
-
-<!-- Modals for this test run (rendered with each row for Turbo Stream compatibility) -->
-<%= render "prompt_tracker/testing/test_runs/evaluation_modals_for_run", run: run %>
-<%= render "prompt_tracker/shared/human_evaluation_modal_form",
-           record: run,
-           form_url: PromptTracker::Engine.routes.url_helpers.testing_run_human_evaluations_path(run),
-           context: 'testing' %>
-<%= render "prompt_tracker/testing/tests/all_human_evaluations_modal", run: run %>
