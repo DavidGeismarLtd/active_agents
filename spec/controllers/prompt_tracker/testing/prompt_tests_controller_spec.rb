@@ -9,15 +9,14 @@ module PromptTracker
 
       let(:prompt) { create(:prompt) }
       let(:version) { create(:prompt_version, prompt: prompt, status: "active") }
-      let(:test) { create(:prompt_test, prompt_version: version) }
+      let(:test) { create(:test, testable: version) }
 
       describe "GET #load_more_runs" do
         let!(:test_runs) do
           # Create 12 test runs for pagination testing
           (1..12).map do |i|
-            create(:prompt_test_run,
-                   prompt_test: test,
-                   prompt_version: version,
+            create(:test_run,
+                   test: test,
                    status: "passed",
                    created_at: i.hours.ago)
           end

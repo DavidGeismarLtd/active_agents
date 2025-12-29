@@ -57,9 +57,4 @@ FactoryBot.define do
       end
     end
   end
-
-  # Backward compatibility alias
-  factory :prompt_test, parent: :test, class: "PromptTracker::Test" do
-    association :testable, factory: :prompt_version
-  end
 end

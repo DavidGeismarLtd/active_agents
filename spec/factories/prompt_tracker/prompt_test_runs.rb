@@ -168,10 +168,4 @@ FactoryBot.define do
       passed { nil }
     end
   end
-
-  # Backward compatibility alias
-  factory :prompt_test_run, parent: :test_run, class: "PromptTracker::TestRun" do
-    association :test, factory: :prompt_test
-    association :prompt_version, factory: :prompt_version
-  end
 end

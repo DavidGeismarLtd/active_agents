@@ -12,8 +12,8 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
   end
 
   let(:test) do
-    test = create(:prompt_test,
-                  prompt_version: version)
+    test = create(:test,
+                  testable: version)
     create(:evaluator_config,
            configurable: test,
            evaluator_key: "keyword",
@@ -24,9 +24,8 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
   end
 
   let(:test_run) do
-    create(:prompt_test_run,
-           prompt_test: test,
-           prompt_version: version,
+    create(:test_run,
+           test: test,
            llm_response: llm_response,
            status: "running")
   end
@@ -87,8 +86,8 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
 
     context "when assertions fail" do
       let(:test) do
-        test = create(:prompt_test,
-                      prompt_version: version)
+        test = create(:test,
+                      testable: version)
         # Create an evaluator that will fail
         create(:evaluator_config,
                configurable: test,
@@ -147,8 +146,8 @@ RSpec.describe PromptTracker::RunEvaluatorsJob, type: :job do
 
     context "with LLM judge evaluator" do
       let(:test) do
-        test = create(:prompt_test,
-                      prompt_version: version)
+        test = create(:test,
+                      testable: version)
         create(:evaluator_config,
                configurable: test,
                evaluator_key: "llm_judge",

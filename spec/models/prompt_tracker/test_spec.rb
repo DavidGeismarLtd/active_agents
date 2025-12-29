@@ -21,14 +21,14 @@ module PromptTracker
     let(:prompt) { create(:prompt) }
     let(:version) { create(:prompt_version, prompt: prompt) }
     let(:test) do
-      create(:prompt_test,
-             prompt_version: version,
+      create(:test,
+             testable: version,
              name: "test_greeting")
     end
 
     describe "associations" do
-      it { should belong_to(:prompt_version) }
-      it { should have_many(:prompt_test_runs).dependent(:destroy) }
+      it { should belong_to(:testable) }
+      it { should have_many(:test_runs).dependent(:destroy) }
     end
 
     describe "validations" do
@@ -36,23 +36,23 @@ module PromptTracker
     end
 
     describe "scopes" do
-      let!(:enabled_test) { create(:prompt_test, prompt_version: version, enabled: true) }
-      let!(:disabled_test) { create(:prompt_test, prompt_version: version, enabled: false) }
+      let!(:enabled_test) { create(:test, testable: version, enabled: true) }
+      let!(:disabled_test) { create(:test, testable: version, enabled: false) }
 
       it "filters enabled tests" do
-        expect(PromptTest.enabled).to include(enabled_test)
-        expect(PromptTest.enabled).not_to include(disabled_test)
+        expect(Test.enabled).to include(enabled_test)
+        expect(Test.enabled).not_to include(disabled_test)
       end
 
       it "filters disabled tests" do
-        expect(PromptTest.disabled).to include(disabled_test)
-        expect(PromptTest.disabled).not_to include(enabled_test)
+        expect(Test.disabled).to include(disabled_test)
+        expect(Test.disabled).not_to include(enabled_test)
       end
     end
 
     describe "#pass_rate" do
-      let!(:passed_run) { create(:prompt_test_run, prompt_test: test, passed: true) }
-      let!(:failed_run) { create(:prompt_test_run, prompt_test: test, passed: false) }
+      let!(:passed_run) { create(:test_run, test: test, passed: true) }
+      let!(:failed_run) { create(:test_run, test: test, passed: false) }
 
       it "calculates pass rate correctly" do
         expect(test.pass_rate).to eq(50.0)
@@ -61,7 +61,7 @@ module PromptTracker
 
     describe "#passing?" do
       context "when last run passed" do
-        let!(:run) { create(:prompt_test_run, prompt_test: test, passed: true) }
+        let!(:run) { create(:test_run, test: test, passed: true) }
 
         it "returns true" do
           expect(test.passing?).to be true
@@ -69,7 +69,7 @@ module PromptTracker
       end
 
       context "when last run failed" do
-        let!(:run) { create(:prompt_test_run, prompt_test: test, passed: false) }
+        let!(:run) { create(:test_run, test: test, passed: false) }
 
         it "returns false" do
           expect(test.passing?).to be false
