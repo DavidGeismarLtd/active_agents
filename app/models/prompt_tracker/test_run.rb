@@ -162,19 +162,29 @@ module PromptTracker
       testable = test.testable
       stream_name = testable.testable_stream_name
 
-      # Update the accordion content (test runs table)
-      broadcast_replace_to(
-        stream_name,
-        target: "test_run_#{id}",
+      # Render with ApplicationController to include helpers
+      test_run_html = PromptTracker::ApplicationController.render(
         partial: testable.test_run_row_partial,
         locals: { run: self }
       )
-      # Update the test row in the tests table (status, last run, run count)
-      broadcast_replace_to(
-        stream_name,
-        target: "test_row_#{test.id}",
+
+      test_row_html = PromptTracker::ApplicationController.render(
         partial: testable.test_row_partial,
         locals: testable.test_row_locals(test)
+      )
+
+      # Update the accordion content (test runs table)
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream_name,
+        target: "test_run_#{id}",
+        html: test_run_html
+      )
+
+      # Update the test row in the tests table (status, last run, run count)
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream_name,
+        target: "test_row_#{test.id}",
+        html: test_row_html
       )
     end
   end
