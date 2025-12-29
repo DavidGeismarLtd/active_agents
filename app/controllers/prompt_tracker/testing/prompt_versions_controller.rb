@@ -100,12 +100,12 @@ module PromptTracker
 
     # Helper method for generating load_more_runs path
     def load_more_runs_path(test, offset:, limit:)
-      load_more_runs_testing_prompt_prompt_version_test_path(@prompt, @version, test, offset: offset, limit: limit)
+      load_more_runs_testing_prompt_version_test_path(@version, test, offset: offset, limit: limit)
     end
 
     # Helper method for generating run_test path
     def run_test_path(test)
-      run_testing_prompt_prompt_version_test_path(@prompt, @version, test)
+      run_testing_prompt_version_test_path(@version, test)
     end
 
     # Helper method for generating datasets path

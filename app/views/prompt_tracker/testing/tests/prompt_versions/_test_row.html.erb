@@ -13,7 +13,7 @@
 <%= render "prompt_tracker/testing/tests/run_test_modal",
     testable: version,
     test: test,
-    form_url: PromptTracker::Engine.routes.url_helpers.run_testing_prompt_prompt_version_test_path(prompt, version, test),
+    form_url: PromptTracker::Engine.routes.url_helpers.run_testing_prompt_version_test_path(version, test),
     modal_id: "runTestModal-#{test.id}",
     modal_title: "Run Test: #{test.name}",
     submit_button_text: "Run Test",

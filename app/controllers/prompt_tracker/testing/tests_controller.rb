@@ -23,22 +23,22 @@ module PromptTracker
 
       # Returns the path to a specific test's show page
       def test_path(test)
-        testing_prompt_prompt_version_test_path(@prompt, @version, test)
+        testing_prompt_version_test_path(@version, test)
       end
 
       # Returns the path to the tests index page
       def tests_index_path
-        testing_prompt_prompt_version_tests_path(@prompt, @version)
+        testing_prompt_version_tests_path(@version)
       end
 
       # Returns the path to load more runs for a specific test
       def load_more_runs_path(test, offset:, limit:)
-        load_more_runs_testing_prompt_prompt_version_test_path(@prompt, @version, test, offset: offset, limit: limit)
+        load_more_runs_testing_prompt_version_test_path(@version, test, offset: offset, limit: limit)
       end
 
       # Returns the path to run a specific test
       def run_test_path(test)
-        run_testing_prompt_prompt_version_test_path(@prompt, @version, test)
+        run_testing_prompt_version_test_path(@version, test)
       end
 
       # Returns the path to the datasets index page

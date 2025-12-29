@@ -130,7 +130,7 @@
 <%= render "prompt_tracker/testing/tests/run_test_modal",
     testable: @version,
     tests: @tests,
-    form_url: run_all_testing_prompt_prompt_version_tests_path(@prompt, @version),
+    form_url: run_all_testing_prompt_version_tests_path(@version),
     modal_id: "runAllTestsModal",
     modal_title: "Run All Tests",
     submit_button_text: "Run All Tests",

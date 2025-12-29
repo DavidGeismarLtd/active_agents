@@ -300,7 +300,7 @@ module PromptTracker
     # @param test [Test] the test to render
     # @return [Hash] the locals hash with test, version, and prompt
     def test_row_locals(test)
-      { test: test, version: self, prompt: prompt }
+      { test: test, version: self }
     end
 
     private

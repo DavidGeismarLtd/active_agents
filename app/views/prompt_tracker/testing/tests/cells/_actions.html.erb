@@ -9,5 +9,5 @@
 
 <%= render "prompt_tracker/testing/tests/edit_modal",
             test: test,
-            form_partial_path: "prompt_tracker/testing/tests/prompt_versions/form",
+            form_partial_path: test.testable.test_form_partial,
             form_locals: { test: test, in_modal: true } %>

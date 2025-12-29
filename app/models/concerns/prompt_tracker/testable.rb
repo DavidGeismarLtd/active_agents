@@ -124,6 +124,11 @@ module PromptTracker
       "prompt_tracker/testing/test_runs/#{partial_path_segment}/row"
     end
 
+
+    def test_form_partial
+      "prompt_tracker/testing/tests/#{partial_path_segment}/form"
+    end
+
     # Returns the full partial path for test rows
     #
     # @return [String] the full partial path

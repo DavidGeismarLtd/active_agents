@@ -37,17 +37,6 @@ PromptTracker::Engine.routes.draw do
           post :generate, on: :member
         end
 
-        # Tests nested under prompt versions
-        resources :tests, only: [ :create, :update, :destroy ] do
-          collection do
-            post :run_all
-          end
-          member do
-            post :run
-            get :load_more_runs
-          end
-        end
-
         # Datasets nested under prompt versions
         resources :datasets, only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
           member do
@@ -56,6 +45,19 @@ PromptTracker::Engine.routes.draw do
 
           # Dataset rows nested under datasets
           resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows"
+        end
+      end
+    end
+
+    # Tests for prompt versions (not nested under prompts for simpler URLs)
+    resources :prompt_versions, only: [], path: "versions" do
+      resources :tests, only: [ :create, :update, :destroy ] do
+        collection do
+          post :run_all
+        end
+        member do
+          post :run
+          get :load_more_runs
         end
       end
     end

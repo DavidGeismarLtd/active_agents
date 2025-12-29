@@ -32,13 +32,13 @@
       <% end %>
     </h1>
     <p class="text-muted">
-      Test: <%= link_to @test.name, testing_prompt_prompt_version_test_path(@test.prompt, @version, @test) %>
+      Test: <%= link_to @test.name, testing_prompt_version_test_path(@version, @test) %>
       | Version: <%= link_to "v#{@version.version_number}", testing_prompt_prompt_version_path(@test.prompt, @version) %>
       | Run at: <%= @test_run.created_at.strftime("%B %d, %Y at %I:%M %p") %>
     </p>
   </div>
   <div class="col-auto">
-    <%= link_to testing_prompt_prompt_version_test_path(@test.prompt, @version, @test), class: "btn btn-outline-secondary" do %>
+    <%= link_to testing_prompt_version_test_path(@version, @test), class: "btn btn-outline-secondary" do %>
       <i class="bi bi-arrow-left"></i> Back to Test
     <% end %>
   </div>

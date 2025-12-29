@@ -169,7 +169,6 @@ module PromptTracker
         partial: testable.test_run_row_partial,
         locals: { run: self }
       )
-
       # Update the test row in the tests table (status, last run, run count)
       broadcast_replace_to(
         stream_name,
