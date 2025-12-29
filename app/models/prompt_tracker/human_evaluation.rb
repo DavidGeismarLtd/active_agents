@@ -6,7 +6,7 @@ module PromptTracker
   # HumanEvaluations can be used in three ways:
   # 1. Review of automated evaluations (evaluation_id set)
   # 2. Direct evaluation of LLM responses (llm_response_id set)
-  # 3. Direct evaluation of test runs (prompt_test_run_id set)
+  # 3. Direct evaluation of test runs (test_run_id set)
   #
   # @example Creating a review of an automated evaluation
   #   human_eval = HumanEvaluation.create!(
@@ -24,7 +24,7 @@ module PromptTracker
   #
   # @example Creating a direct human evaluation of a test run
   #   human_eval = HumanEvaluation.create!(
-  #     prompt_test_run: test_run,
+  #     test_run: test_run,
   #     score: 95,
   #     feedback: "Test passed with excellent results."
   #   )
@@ -35,8 +35,8 @@ module PromptTracker
     belongs_to :llm_response,
                class_name: "PromptTracker::LlmResponse",
                optional: true
-    belongs_to :prompt_test_run,
-               class_name: "PromptTracker::PromptTestRun",
+    belongs_to :test_run,
+               class_name: "PromptTracker::TestRun",
                optional: true
 
     # Validations
@@ -77,10 +77,10 @@ module PromptTracker
 
     # Validate that exactly one association is set
     def must_belong_to_evaluation_or_llm_response
-      associations = [ evaluation_id, llm_response_id, prompt_test_run_id ].compact
+      associations = [ evaluation_id, llm_response_id, test_run_id ].compact
 
       if associations.empty?
-        errors.add(:base, "Must belong to either an evaluation, llm_response, or prompt_test_run")
+        errors.add(:base, "Must belong to either an evaluation, llm_response, or test_run")
       elsif associations.size > 1
         errors.add(:base, "Cannot belong to multiple associations")
       end
@@ -100,38 +100,22 @@ module PromptTracker
       # Reload the run and force reload of human_evaluations association
       run = TestRun.find(test_run_id)
       run.human_evaluations.reload
-      version = run.prompt_version
       test = run.test
+      testable = run.test.testable
+
 
       # Update the test run row on the prompt version page
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test_run_row_#{run.id}",
-        partial: "prompt_tracker/testing/test_runs/prompt_versions/row",
+      broadcast_replace_to(
+        testable.testable_stream_name,
+        target: "test_run_#{run.id}",
+        partial: "prompt_tracker/testing/test_runs/#{testable.partial_path_segment}/row",
         locals: { run: run }
-      )
-
-      # Update the test row (shows last_run status)
-      broadcast_replace(
-        stream: "prompt_version_#{version.id}",
-        target: "test_row_#{test.id}",
-        partial: "prompt_tracker/testing/tests/prompt_versions/test_row",
-        locals: { test: test, prompt: version.prompt, version: version }
       )
 
       # Update the "View all" modal body on the prompt version page
       # Use broadcast_update to update innerHTML, keeping the wrapper div intact
-      broadcast_update(
-        stream: "prompt_version_#{version.id}",
-        target: "all-human-evals-modal-body-#{run.id}",
-        partial: "prompt_tracker/shared/all_human_evaluations_modal_body",
-        locals: { record: run, context: "testing" }
-      )
-
-      # Also update the "View all" modal body on the test show page
-      # Use broadcast_update to update innerHTML, keeping the wrapper div intact
-      broadcast_update(
-        stream: "prompt_test_#{test.id}",
+      broadcast_replace_to(
+        testable.testable_stream_name,
         target: "all-human-evals-modal-body-#{run.id}",
         partial: "prompt_tracker/shared/all_human_evaluations_modal_body",
         locals: { record: run, context: "testing" }
@@ -149,47 +133,19 @@ module PromptTracker
       # regardless of whether it's showing one version or multiple versions
 
       # Update the human evaluations cell in the tracked calls table
-      broadcast_update(
-        stream: "llm_response_#{call.id}",
+      broadcast_replace_to(
+        "llm_response_#{call.id}",
         target: "human_evaluations_cell_#{call.id}",
         partial: "prompt_tracker/shared/human_evaluations_cell",
         locals: { record: call, context: "monitoring" }
       )
 
       # Update the "View all" modal body
-      broadcast_update(
-        stream: "llm_response_#{call.id}",
+      broadcast_replace_to(
+        "llm_response_#{call.id}",
         target: "all-human-evals-modal-body-#{call.id}",
         partial: "prompt_tracker/shared/all_human_evaluations_modal_body",
         locals: { record: call, context: "monitoring" }
-      )
-    end
-
-    # Helper method to broadcast replace with proper rendering context
-    # Replaces the entire target element with new HTML
-    def broadcast_replace(stream:, target:, partial:, locals:)
-      html = ApplicationController.render(
-        partial: partial,
-        locals: locals
-      )
-      Turbo::StreamsChannel.broadcast_replace_to(
-        stream,
-        target: target,
-        html: html
-      )
-    end
-
-    # Helper method to broadcast update with proper rendering context
-    # Updates the innerHTML of the target element, keeping the element itself intact
-    def broadcast_update(stream:, target:, partial:, locals:)
-      html = ApplicationController.render(
-        partial: partial,
-        locals: locals
-      )
-      Turbo::StreamsChannel.broadcast_update_to(
-        stream,
-        target: target,
-        html: html
       )
     end
   end
