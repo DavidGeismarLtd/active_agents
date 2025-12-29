@@ -42,10 +42,9 @@ module PromptTracker
     end
 
     before do
-      # Mock the API key
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("test-api-key")
-      allow(ENV).to receive(:[]).with("OPENAI_LOUNA_API_KEY").and_return(nil)
+      # Mock the API key through configuration
+      allow(PromptTracker.configuration).to receive(:openai_assistants_api_key).and_return("test-api-key")
+      allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
 
       # Mock the OpenAI client
       allow(OpenAI::Client).to receive(:new).and_return(mock_client)
@@ -118,13 +117,14 @@ module PromptTracker
 
       context "when API key is not set" do
         before do
-          allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return(nil)
+          allow(PromptTracker.configuration).to receive(:openai_assistants_api_key).and_return(nil)
+          allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return(nil)
         end
 
         it "raises SyncError" do
           expect {
             described_class.call
-          }.to raise_error(SyncOpenaiAssistantsService::SyncError, /OPENAI_API_KEY/)
+          }.to raise_error(SyncOpenaiAssistantsService::SyncError, /OpenAI API key not configured/)
         end
       end
 

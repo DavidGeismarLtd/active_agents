@@ -20,14 +20,7 @@ module PromptTracker
         def new
           @assistant = PromptTracker::Openai::Assistant.new
           @is_new = true
-
-          # Get available models from configuration or defaults
-          @available_models = [
-            { id: "gpt-4o", name: "GPT-4o" },
-            { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-            { id: "gpt-4", name: "GPT-4" },
-            { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" }
-          ]
+          load_available_models
 
           render :show
         end
@@ -38,14 +31,7 @@ module PromptTracker
         def show
           @assistant ||= PromptTracker::Openai::Assistant.new
           @is_new = @assistant.new_record?
-
-          # Get available models from configuration or defaults
-          @available_models = [
-            { id: "gpt-4o", name: "GPT-4o" },
-            { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-            { id: "gpt-4", name: "GPT-4" },
-            { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" }
-          ]
+          load_available_models
         end
 
         # POST /testing/openai/assistants/playground/create_assistant
@@ -192,6 +178,21 @@ module PromptTracker
             tools: [],
             metadata: {}
           )
+        end
+
+        def load_available_models
+          # Get OpenAI models from configuration for assistant playground context
+          @available_models = PromptTracker.configuration.models_for(:assistant_playground, provider: :openai)
+
+          # Fallback to default models if none configured
+          if @available_models.blank?
+            @available_models = [
+              { id: "gpt-4o", name: "GPT-4o" },
+              { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
+              { id: "gpt-4", name: "GPT-4" },
+              { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" }
+            ]
+          end
         end
       end
     end

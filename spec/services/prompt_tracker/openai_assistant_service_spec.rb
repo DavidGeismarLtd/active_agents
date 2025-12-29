@@ -13,11 +13,8 @@ module PromptTracker
     before do
       # Mock OpenAI client
       allow(OpenAI::Client).to receive(:new).and_return(mock_client)
-      ENV['OPENAI_API_KEY'] = 'test-api-key'
-    end
-
-    after do
-      ENV.delete('OPENAI_API_KEY')
+      # Configure API key through the configuration system
+      allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
     end
 
     describe '.call' do
@@ -74,11 +71,11 @@ module PromptTracker
       end
 
       it 'raises error when API key is missing' do
-        ENV.delete('OPENAI_API_KEY')
+        allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return(nil)
 
         expect {
           described_class.call(assistant_id: assistant_id, prompt: prompt)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /OPENAI_API_KEY/)
+        }.to raise_error(OpenaiAssistantService::AssistantError, /OpenAI API key not configured/)
       end
 
       it 'raises error when run fails' do

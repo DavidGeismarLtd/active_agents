@@ -183,7 +183,7 @@ module PromptTracker
       require "openai"
 
       # Try OPENAI_LOUNA_API_KEY first (used in existing code), fallback to OPENAI_API_KEY
-      api_key = ENV["OPENAI_LOUNA_API_KEY"] || ENV["OPENAI_API_KEY"]
+      api_key = PromptTracker.configuration.openai_assistants_api_key
       raise PlaygroundError, "OpenAI API key not configured" if api_key.blank?
 
       OpenAI::Client.new(access_token: api_key)

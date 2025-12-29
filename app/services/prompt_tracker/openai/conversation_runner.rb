@@ -385,7 +385,10 @@ module PromptTracker
       #
       # @return [OpenAI::Client] the OpenAI client
       def openai_client
-        @openai_client ||= OpenAI::Client.new(access_token: ENV["OPENAI_LOUNA_API_KEY"])
+        api_key = PromptTracker.configuration.openai_assistants_api_key ||
+                  PromptTracker.configuration.api_key_for(:openai) ||
+                  ENV["OPENAI_API_KEY"]
+        @openai_client ||= OpenAI::Client.new(access_token: api_key)
       end
     end
   end

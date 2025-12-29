@@ -42,6 +42,10 @@ module PromptTracker
         let(:mock_runs) { double("runs") }
 
         before do
+          # Mock the API key through configuration
+          allow(PromptTracker.configuration).to receive(:openai_assistants_api_key).and_return("test-api-key")
+          allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
+
           # Stub the OpenAI module and Client class
           openai_module = Module.new
           openai_client_class = Class.new do

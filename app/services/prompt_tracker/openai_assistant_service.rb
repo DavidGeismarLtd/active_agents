@@ -60,8 +60,9 @@ module PromptTracker
     def build_client
       require "openai"
 
-      api_key = ENV["OPENAI_API_KEY"]
-      raise AssistantError, "OPENAI_API_KEY environment variable not set" if api_key.blank?
+      # Use configuration API key, fallback to ENV for backward compatibility
+      api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+      raise AssistantError, "OpenAI API key not configured" if api_key.blank?
 
       OpenAI::Client.new(access_token: api_key)
     end

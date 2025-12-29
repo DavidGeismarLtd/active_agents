@@ -4,11 +4,10 @@ require "rails_helper"
 
 module PromptTracker
   RSpec.describe AssistantPlaygroundService do
-    # Mock the API key to avoid initialization errors
+    # Mock the API key through configuration
     before do
-      allow(ENV).to receive(:[]).and_call_original
-      allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("test-api-key")
-      allow(ENV).to receive(:[]).with("OPENAI_LOUNA_API_KEY").and_return(nil)
+      allow(PromptTracker.configuration).to receive(:openai_assistants_api_key).and_return("test-api-key")
+      allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
     end
 
     let(:service) { described_class.new }
