@@ -16,7 +16,7 @@ module PromptTracker
     #
     class TestsControllerBase < ApplicationController
       before_action :set_testable
-      before_action :set_test, only: [ :show, :update, :destroy, :run, :load_more_runs ]
+      before_action :set_test, only: [ :update, :destroy, :run, :load_more_runs ]
 
       # Make path helpers available to views
       helper_method :load_more_runs_path, :test_path, :run_test_path, :datasets_path

@@ -48,7 +48,7 @@ module PromptTracker
         )
 
         # Verify result
-        expect(result[:success]).to be(true), "Expected success but got: #{result.inspect}"
+        expect(result[:success]).to be true
         expect(result[:assistant]).to be_a(PromptTracker::Openai::Assistant)
         expect(result[:assistant].assistant_id).to eq("asst_test123")
         expect(result[:assistant].name).to eq("Test Assistant")
