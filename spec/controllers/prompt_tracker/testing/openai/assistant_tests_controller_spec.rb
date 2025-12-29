@@ -12,49 +12,6 @@ module PromptTracker
         let(:test) { create(:test, testable: assistant) }
         let(:dataset) { create(:dataset, testable: assistant) }
 
-        describe "GET #index" do
-          it "returns success" do
-            get :index, params: { assistant_id: assistant.id }
-            expect(response).to be_successful
-          end
-
-          it "assigns @tests" do
-            test # create test
-            get :index, params: { assistant_id: assistant.id }
-            expect(assigns(:tests)).to include(test)
-          end
-        end
-
-        describe "GET #show" do
-          it "returns success" do
-            get :show, params: { assistant_id: assistant.id, id: test.id }
-            expect(response).to be_successful
-          end
-
-          it "assigns @test" do
-            get :show, params: { assistant_id: assistant.id, id: test.id }
-            expect(assigns(:test)).to eq(test)
-          end
-
-          it "assigns @recent_runs" do
-            run = create(:test_run, test: test, testable: assistant)
-            get :show, params: { assistant_id: assistant.id, id: test.id }
-            expect(assigns(:recent_runs)).to include(run)
-          end
-        end
-
-        describe "GET #new" do
-          it "returns success" do
-            get :new, params: { assistant_id: assistant.id }
-            expect(response).to be_successful
-          end
-
-          it "assigns new @test" do
-            get :new, params: { assistant_id: assistant.id }
-            expect(assigns(:test)).to be_a_new(Test)
-          end
-        end
-
         describe "POST #create" do
           let(:valid_params) do
             {
@@ -73,9 +30,9 @@ module PromptTracker
             }.to change(Test, :count).by(1)
           end
 
-          it "redirects to test show page" do
+          it "redirects to assistant show page" do
             post :create, params: valid_params
-            expect(response).to redirect_to(testing_openai_assistant_test_path(assistant, Test.last))
+            expect(response).to redirect_to(testing_openai_assistant_path(assistant))
           end
 
           it "sets flash notice" do
@@ -91,18 +48,6 @@ module PromptTracker
               }
               expect(response).to have_http_status(:unprocessable_entity)
             end
-          end
-        end
-
-        describe "GET #edit" do
-          it "returns success" do
-            get :edit, params: { assistant_id: assistant.id, id: test.id }
-            expect(response).to be_successful
-          end
-
-          it "assigns @test" do
-            get :edit, params: { assistant_id: assistant.id, id: test.id }
-            expect(assigns(:test)).to eq(test)
           end
         end
 
@@ -125,9 +70,9 @@ module PromptTracker
             expect(test.description).to eq("Updated description")
           end
 
-          it "redirects to test show page" do
+          it "redirects to assistant show page" do
             patch :update, params: update_params
-            expect(response).to redirect_to(testing_openai_assistant_test_path(assistant, test))
+            expect(response).to redirect_to(testing_openai_assistant_path(assistant))
           end
 
           it "sets flash notice" do
@@ -136,13 +81,13 @@ module PromptTracker
           end
 
           context "with invalid params" do
-            it "renders edit template" do
+            it "redirects to assistant show page" do
               patch :update, params: {
                 assistant_id: assistant.id,
                 id: test.id,
                 test: { name: "" }
               }
-              expect(response).to have_http_status(:unprocessable_entity)
+              expect(response).to redirect_to(testing_openai_assistant_path(assistant))
             end
           end
         end
@@ -155,9 +100,9 @@ module PromptTracker
             }.to change(Test, :count).by(-1)
           end
 
-          it "redirects to tests index" do
+          it "redirects to assistant show page" do
             delete :destroy, params: { assistant_id: assistant.id, id: test.id }
-            expect(response).to redirect_to(testing_openai_assistant_tests_path(assistant))
+            expect(response).to redirect_to(testing_openai_assistant_path(assistant))
           end
 
           it "sets flash notice" do
@@ -192,14 +137,14 @@ module PromptTracker
               }.to have_enqueued_job(RunTestJob).exactly(1).times
             end
 
-            it "redirects to test show page" do
+            it "redirects to assistant show page" do
               post :run, params: {
                 assistant_id: assistant.id,
                 id: test.id,
                 run_mode: "dataset",
                 dataset_id: dataset.id
               }
-              expect(response).to redirect_to(testing_openai_assistant_test_path(assistant, test))
+              expect(response).to redirect_to(testing_openai_assistant_path(assistant))
             end
 
             it "shows error when dataset_id is missing" do
@@ -291,7 +236,6 @@ module PromptTracker
             (1..12).map do |i|
               create(:test_run,
                      test: test,
-                     testable: assistant,
                      status: "passed",
                      created_at: i.hours.ago)
             end

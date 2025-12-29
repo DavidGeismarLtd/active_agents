@@ -16,7 +16,7 @@ module PromptTracker
     #
     class TestsControllerBase < ApplicationController
       before_action :set_testable
-      before_action :set_test, only: [ :show, :edit, :update, :destroy, :run, :load_more_runs ]
+      before_action :set_test, only: [ :show, :update, :destroy, :run, :load_more_runs ]
 
       # Make path helpers available to views
       helper_method :load_more_runs_path, :test_path, :run_test_path, :datasets_path
@@ -45,16 +45,6 @@ module PromptTracker
         end
       end
 
-      # GET /tests/:id
-      def show
-        @recent_runs = @test.recent_runs(10)
-      end
-
-      # GET /tests/new
-      def new
-        @test = @testable.tests.build
-      end
-
       # POST /tests
       def create
         @test = @testable.tests.build(test_params)
@@ -62,7 +52,7 @@ module PromptTracker
         if @test.save
           respond_to do |format|
             format.html do
-              redirect_to test_path(@test),
+              redirect_to testable_path,
                           notice: "Test created successfully."
             end
             format.turbo_stream do
@@ -76,16 +66,12 @@ module PromptTracker
         end
       end
 
-      # GET /tests/:id/edit
-      def edit
-      end
-
       # PATCH/PUT /tests/:id
       def update
         if @test.update(test_params)
           respond_to do |format|
             format.html do
-              redirect_to test_path(@test),
+              redirect_to testable_path,
                           notice: "Test updated successfully."
             end
             format.turbo_stream do
@@ -95,14 +81,15 @@ module PromptTracker
             end
           end
         else
-          render :edit, status: :unprocessable_entity
+          redirect_to testable_path,
+                      alert: "Failed to update test: #{@test.errors.full_messages.join(', ')}"
         end
       end
 
       # DELETE /tests/:id
       def destroy
         @test.destroy
-        redirect_to tests_index_path,
+        redirect_to testable_path,
                     notice: "Test deleted successfully."
       end
 
