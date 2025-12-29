@@ -3,7 +3,6 @@
 <% test ||= @test %>
 <% in_modal ||= false %>
 
-<% form_url = test.new_record? ? testing_prompt_prompt_version_tests_path(prompt, version) : testing_prompt_prompt_version_test_path(prompt, version, test) %>
-<% cancel_url = test.new_record? ? testing_prompt_prompt_version_tests_path(prompt, version) : testing_prompt_prompt_version_test_path(prompt, version, test) %>
+<% form_url = test.new_record? ? PromptTracker::Engine.routes.url_helpers.testing_prompt_version_tests_path(version) : PromptTracker::Engine.routes.url_helpers.testing_prompt_version_test_path(version, test) %>
 
-<%= render "prompt_tracker/testing/tests/form", test: test, in_modal: in_modal, form_url: form_url, cancel_url: cancel_url %>
+<%= render "prompt_tracker/testing/tests/form", test: test, in_modal: in_modal, form_url: form_url %>

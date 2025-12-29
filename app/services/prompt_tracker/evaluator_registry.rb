@@ -18,7 +18,11 @@ module PromptTracker
   #   # }
   #
   # @example Building an evaluator instance
-  #   evaluator = EvaluatorRegistry.build(:length, llm_response, { min_length: 50 })
+  #   evaluator = EvaluatorRegistry.build(
+  #     :length,
+  #     llm_response.response_text,
+  #     { llm_response: llm_response, min_length: 50 }
+  #   )
   #   result = evaluator.evaluate
   #
   # @example Registering a custom evaluator
@@ -75,16 +79,33 @@ module PromptTracker
       # Builds an instance of an evaluator
       #
       # @param key [Symbol, String] the evaluator key
-      # @param llm_response [LlmResponse] the response to evaluate
+      # @param evaluated_data [String, Hash] the data to evaluate
+      #   - For PromptVersion evaluators: String (response_text)
+      #   - For Assistant evaluators: Hash (conversation_data)
       # @param config [Hash] configuration for the evaluator
+      #   - Should include :llm_response or :test_run for context
       # @return [BaseEvaluator] an instance of the evaluator
       # @raise [ArgumentError] if evaluator not found
-      def build(key, llm_response, config = {})
+      #
+      # @example Building a PromptVersion evaluator
+      #   evaluator = EvaluatorRegistry.build(
+      #     :length,
+      #     llm_response.response_text,
+      #     { llm_response: llm_response }
+      #   )
+      #
+      # @example Building an Assistant evaluator
+      #   evaluator = EvaluatorRegistry.build(
+      #     :conversation_judge,
+      #     test_run.conversation_data,
+      #     { test_run: test_run }
+      #   )
+      def build(key, evaluated_data, config = {})
         metadata = get(key)
         raise ArgumentError, "Evaluator '#{key}' not found in registry" unless metadata
 
         evaluator_class = metadata[:evaluator_class]
-        evaluator_class.new(llm_response, config)
+        evaluator_class.new(evaluated_data, config)
       end
 
       # Registers a new evaluator

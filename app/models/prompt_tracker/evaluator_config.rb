@@ -106,9 +106,13 @@ module PromptTracker
     # @param llm_response [LlmResponse] the response to evaluate
     # @return [BaseEvaluator] an instance of the evaluator
     def build_evaluator(llm_response)
-      # Add evaluator_config_id to config so evaluations can reference it
-      merged_config = config.merge(evaluator_config_id: id)
-      evaluator_class.new(llm_response, merged_config)
+      # Add evaluator_config_id and llm_response to config so evaluations can reference them
+      merged_config = config.merge(
+        evaluator_config_id: id,
+        llm_response: llm_response
+      )
+      # Pass response_text (String) as the evaluated data
+      evaluator_class.new(llm_response.response_text, merged_config)
     end
 
     # Returns a human-readable name for this evaluator

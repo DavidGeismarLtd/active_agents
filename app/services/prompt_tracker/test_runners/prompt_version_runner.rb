@@ -162,13 +162,20 @@ module PromptTracker
           evaluator_config = config.config || {}
 
           # Add test_run context to evaluator config
+          # Include llm_response for evaluation record creation
           evaluator_config = evaluator_config.merge(
             evaluation_context: "test_run",
-            test_run_id: test_run.id
+            test_run_id: test_run.id,
+            llm_response: llm_response
           )
 
           # Build and run evaluator
-          evaluator = EvaluatorRegistry.build(evaluator_key, llm_response, evaluator_config)
+          # Pass response_text (String) as the evaluated data
+          evaluator = EvaluatorRegistry.build(
+            evaluator_key,
+            llm_response.response_text,
+            evaluator_config
+          )
 
           # All evaluators now use RubyLLM directly - no block needed!
           # Evaluation is created with correct context and test_run association

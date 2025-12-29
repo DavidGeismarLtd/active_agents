@@ -98,7 +98,7 @@ module PromptTracker
           results = []
 
           evaluator_configs.each do |config|
-            evaluator_type = config.evaluator_type
+            evaluator_key = config.evaluator_key.to_sym
             evaluator_config = config.config || {}
 
             # Add evaluator_config_id and test_run to the config
@@ -108,14 +108,17 @@ module PromptTracker
               test_run: test_run
             )
 
-            # Build and run the evaluator
-            # Pass conversation_data (Hash) instead of test_run (ActiveRecord object)
-            evaluator_class = evaluator_type.constantize
-            evaluator = evaluator_class.new(test_run.conversation_data, evaluator_config)
+            # Build and run the evaluator using EvaluatorRegistry
+            # Pass conversation_data (Hash) as the evaluated data
+            evaluator = EvaluatorRegistry.build(
+              evaluator_key,
+              test_run.conversation_data,
+              evaluator_config
+            )
             evaluation = evaluator.evaluate
 
             results << {
-              evaluator_type: evaluator_type,
+              evaluator_type: config.evaluator_type,
               score: evaluation.score,
               passed: evaluation.passed,
               feedback: evaluation.feedback
