@@ -100,6 +100,23 @@ module PromptTracker
       end
     end
 
+    # Generate path for batch destroying dataset rows
+    # @param dataset [PromptTracker::Dataset] The dataset
+    # @return [String] The path to batch destroy dataset rows
+    def batch_destroy_dataset_rows_path(dataset)
+      testable = dataset.testable
+
+      case testable
+      when PromptTracker::PromptVersion
+        prompt = testable.prompt
+        batch_destroy_testing_prompt_prompt_version_dataset_dataset_rows_path(prompt, testable, dataset)
+      when PromptTracker::Openai::Assistant
+        batch_destroy_testing_openai_assistant_dataset_dataset_rows_path(testable, dataset)
+      else
+        raise ArgumentError, "Unknown testable type: #{testable.class}"
+      end
+    end
+
     # Generate path to the testable's show page
     # @param testable [PromptTracker::PromptVersion, PromptTracker::Openai::Assistant] The testable
     # @return [String] The path to the testable

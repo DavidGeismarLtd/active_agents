@@ -1,49 +1,79 @@
-<% if rows.any? %>
-  <div class="table-responsive">
-    <table class="table table-hover">
-      <thead>
-        <tr>
-          <th style="width: 50px;">#</th>
-          <% dataset.variable_names.each do |var_name| %>
-            <th><%= var_name %></th>
-          <% end %>
-          <th style="width: 100px;">Source</th>
-          <th style="width: 120px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="dataset-rows">
-        <% rows.each_with_index do |row, index| %>
-          <%= render "row", row: row, index: (rows.current_page - 1) * rows.limit_value + index + 1 %>
-        <% end %>
-      </tbody>
-    </table>
+<div data-controller="batch-select"
+     data-batch-select-batch-delete-url-value="<%= batch_destroy_dataset_rows_path(dataset) %>">
+
+  <!-- Batch Actions Bar -->
+  <div class="d-flex align-items-center justify-content-between mb-3" data-batch-select-target="batchActions" class="d-none">
+    <div class="text-muted">
+      <span data-batch-select-target="selectedCount">0</span> row(s) selected
+    </div>
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            data-action="batch-select#batchDelete">
+      <i class="bi bi-trash"></i> Delete Selected
+    </button>
   </div>
 
-  <%= paginate rows %>
-<% else %>
-  <!-- Empty state with tbody for Turbo Stream targets -->
-  <div class="table-responsive">
-    <table class="table table-hover">
-      <thead>
-        <tr>
-          <th style="width: 50px;">#</th>
-          <% dataset.variable_names.each do |var_name| %>
-            <th><%= var_name %></th>
+  <% if rows.any? %>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox"
+                     class="form-check-input"
+                     data-batch-select-target="selectAll"
+                     data-action="batch-select#toggleAll"
+                     title="Select all rows">
+            </th>
+            <th style="width: 50px;">#</th>
+            <% dataset.variable_names.each do |var_name| %>
+              <th><%= var_name %></th>
+            <% end %>
+            <th style="width: 100px;">Source</th>
+            <th style="width: 120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="dataset-rows">
+          <% rows.each_with_index do |row, index| %>
+            <%= render "row", row: row, index: (rows.current_page - 1) * rows.limit_value + index + 1 %>
           <% end %>
-          <th style="width: 100px;">Source</th>
-          <th style="width: 120px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="dataset-rows">
-        <!-- Rows will be prepended here via Turbo Streams -->
-      </tbody>
-    </table>
-  </div>
-  
-  <div class="text-center py-5" id="empty-state">
-    <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-    <p class="text-muted mt-3">No rows in this dataset yet</p>
-    <p class="text-muted">Add rows manually or generate them with AI to get started.</p>
-  </div>
-<% end %>
+        </tbody>
+      </table>
+    </div>
 
+    <%= paginate rows %>
+  <% else %>
+    <!-- Empty state with tbody for Turbo Stream targets -->
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              <input type="checkbox"
+                     class="form-check-input"
+                     data-batch-select-target="selectAll"
+                     data-action="batch-select#toggleAll"
+                     title="Select all rows"
+                     disabled>
+            </th>
+            <th style="width: 50px;">#</th>
+            <% dataset.variable_names.each do |var_name| %>
+              <th><%= var_name %></th>
+            <% end %>
+            <th style="width: 100px;">Source</th>
+            <th style="width: 120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="dataset-rows">
+          <!-- Rows will be prepended here via Turbo Streams -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="text-center py-5" id="empty-state">
+      <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+      <p class="text-muted mt-3">No rows in this dataset yet</p>
+      <p class="text-muted">Add rows manually or generate them with AI to get started.</p>
+    </div>
+  <% end %>
+</div>

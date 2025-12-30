@@ -44,7 +44,11 @@ PromptTracker::Engine.routes.draw do
           end
 
           # Dataset rows nested under datasets
-          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows"
+          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            collection do
+              delete :batch_destroy
+            end
+          end
         end
       end
     end
@@ -105,7 +109,11 @@ PromptTracker::Engine.routes.draw do
           end
 
           # Dataset rows nested under datasets
-          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows"
+          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            collection do
+              delete :batch_destroy
+            end
+          end
         end
       end
     end
