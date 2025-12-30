@@ -1,0 +1,3 @@
+<!-- Evaluation Modals with z-index fix -->
+<%= render "prompt_tracker/testing/tests/evaluation_modals_for_runs",
+           runs: test.test_runs.includes(:evaluations, llm_response: :evaluations).order(created_at: :desc).limit(5) %>

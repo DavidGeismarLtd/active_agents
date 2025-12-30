@@ -21,7 +21,7 @@ module PromptTracker
 
       context "when tests have no evaluator configs" do
         before do
-          create(:prompt_test, prompt_version: version)
+          create(:test, testable: version)
         end
 
         it "returns success with zero counts" do
@@ -34,7 +34,7 @@ module PromptTracker
       end
 
       context "when copying from a single test" do
-        let!(:test) { create(:prompt_test, prompt_version: version) }
+        let!(:test) { create(:test, testable: version) }
         let!(:test_config) do
           create(:evaluator_config,
                  configurable: test,
@@ -76,8 +76,8 @@ module PromptTracker
       end
 
       context "when copying from multiple tests" do
-        let!(:test1) { create(:prompt_test, prompt_version: version, name: "Test 1") }
-        let!(:test2) { create(:prompt_test, prompt_version: version, name: "Test 2") }
+        let!(:test1) { create(:test, testable: version, name: "Test 1") }
+        let!(:test2) { create(:test, testable: version, name: "Test 2") }
         let!(:config1) do
           create(:evaluator_config,
                  configurable: test1,
@@ -107,7 +107,7 @@ module PromptTracker
       end
 
       context "when handling duplicates" do
-        let!(:test) { create(:prompt_test, prompt_version: version) }
+        let!(:test) { create(:test, testable: version) }
         let!(:test_config) do
           create(:evaluator_config,
                  configurable: test,
@@ -144,8 +144,8 @@ module PromptTracker
       end
 
       context "when handling multiple tests with same evaluator type" do
-        let!(:test1) { create(:prompt_test, prompt_version: version, name: "Test 1") }
-        let!(:test2) { create(:prompt_test, prompt_version: version, name: "Test 2") }
+        let!(:test1) { create(:test, testable: version, name: "Test 1") }
+        let!(:test2) { create(:test, testable: version, name: "Test 2") }
         let!(:config1) do
           create(:evaluator_config,
                  configurable: test1,

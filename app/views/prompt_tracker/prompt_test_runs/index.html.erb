@@ -17,24 +17,24 @@
     <%= form_with url: request.path, method: :get, local: true, class: "row g-3" do |f| %>
       <div class="col-md-4">
         <%= label_tag :status, "Status", class: "form-label" %>
-        <%= select_tag :status, 
+        <%= select_tag :status,
                        options_for_select([
                          ["All Statuses", ""],
                          ["Pending", "pending"],
                          ["Running", "running"],
                          ["Completed", "completed"],
                          ["Failed", "failed"]
-                       ], params[:status]), 
+                       ], params[:status]),
                        class: "form-select" %>
       </div>
       <div class="col-md-4">
         <%= label_tag :passed, "Result", class: "form-label" %>
-        <%= select_tag :passed, 
+        <%= select_tag :passed,
                        options_for_select([
                          ["All Results", ""],
                          ["Passed", "true"],
                          ["Failed", "false"]
-                       ], params[:passed]), 
+                       ], params[:passed]),
                        class: "form-select" %>
       </div>
       <div class="col-md-4 d-flex align-items-end">
@@ -69,10 +69,10 @@
             <% @test_runs.each do |run| %>
               <tr>
                 <td>
-                  <strong><%= run.prompt_test.name %></strong>
+                  <strong><%= run.test.name %></strong>
                 </td>
                 <td>
-                  <%= link_to "v#{run.prompt_version.version_number}", 
+                  <%= link_to "v#{run.prompt_version.version_number}",
                               testing_prompt_prompt_version_path(run.prompt_version.prompt, run.prompt_version) %>
                 </td>
                 <td>
@@ -132,4 +132,3 @@
     <% end %>
   </div>
 </div>
-

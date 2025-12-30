@@ -13,22 +13,19 @@ module PromptTracker
     before do
       # Mock OpenAI client
       allow(OpenAI::Client).to receive(:new).and_return(mock_client)
-      ENV['OPENAI_API_KEY'] = 'test-api-key'
-    end
-
-    after do
-      ENV.delete('OPENAI_API_KEY')
+      # Configure API key through the configuration system
+      allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
     end
 
     describe '.call' do
       it 'creates thread, runs assistant, and returns response' do
         # Mock thread creation
-        expect(mock_client).to receive(:threads).and_return(
+        allow(mock_client).to receive(:threads).and_return(
           double(create: { 'id' => thread_id })
         )
 
         # Mock message creation
-        expect(mock_client).to receive(:messages).and_return(
+        allow(mock_client).to receive(:messages).and_return(
           double(
             create: { 'id' => 'msg_123' },
             list: {
@@ -44,7 +41,7 @@ module PromptTracker
         )
 
         # Mock run creation
-        expect(mock_client).to receive(:runs).and_return(
+        allow(mock_client).to receive(:runs).and_return(
           double(
             create: { 'id' => run_id },
             retrieve: {
@@ -74,23 +71,23 @@ module PromptTracker
       end
 
       it 'raises error when API key is missing' do
-        ENV.delete('OPENAI_API_KEY')
+        allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return(nil)
 
         expect {
           described_class.call(assistant_id: assistant_id, prompt: prompt)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /OPENAI_API_KEY/)
+        }.to raise_error(OpenaiAssistantService::AssistantError, /OpenAI API key not configured/)
       end
 
       it 'raises error when run fails' do
-        expect(mock_client).to receive(:threads).and_return(
+        allow(mock_client).to receive(:threads).and_return(
           double(create: { 'id' => thread_id })
         )
 
-        expect(mock_client).to receive(:messages).and_return(
+        allow(mock_client).to receive(:messages).and_return(
           double(create: { 'id' => 'msg_123' })
         )
 
-        expect(mock_client).to receive(:runs).and_return(
+        allow(mock_client).to receive(:runs).and_return(
           double(
             create: { 'id' => run_id },
             retrieve: {
@@ -107,16 +104,16 @@ module PromptTracker
       end
 
       it 'raises error when run times out' do
-        expect(mock_client).to receive(:threads).and_return(
+        allow(mock_client).to receive(:threads).and_return(
           double(create: { 'id' => thread_id })
         )
 
-        expect(mock_client).to receive(:messages).and_return(
+        allow(mock_client).to receive(:messages).and_return(
           double(create: { 'id' => 'msg_123' })
         )
 
         # Mock run that never completes
-        expect(mock_client).to receive(:runs).and_return(
+        allow(mock_client).to receive(:runs).and_return(
           double(
             create: { 'id' => run_id },
             retrieve: {
@@ -133,15 +130,15 @@ module PromptTracker
       end
 
       it 'raises error when run requires action (tool calls)' do
-        expect(mock_client).to receive(:threads).and_return(
+        allow(mock_client).to receive(:threads).and_return(
           double(create: { 'id' => thread_id })
         )
 
-        expect(mock_client).to receive(:messages).and_return(
+        allow(mock_client).to receive(:messages).and_return(
           double(create: { 'id' => 'msg_123' })
         )
 
-        expect(mock_client).to receive(:runs).and_return(
+        allow(mock_client).to receive(:runs).and_return(
           double(
             create: { 'id' => run_id },
             retrieve: {

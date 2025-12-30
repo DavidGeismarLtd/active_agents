@@ -35,7 +35,38 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
     end
   end
 
+  describe ".for_testable" do
+    it "returns only evaluators compatible with PromptVersion" do
+      prompt = create(:prompt)
+      version = create(:prompt_version, prompt: prompt)
 
+      evaluators = described_class.for_testable(version)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators.keys).to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
+      expect(evaluators.keys).not_to include(:conversation_judge)
+    end
+
+    it "returns only evaluators compatible with Assistant" do
+      assistant = create(:openai_assistant)
+
+      evaluators = described_class.for_testable(assistant)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators.keys).to include(:conversation_judge)
+      expect(evaluators.keys).not_to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
+    end
+
+    it "returns empty hash for incompatible testable" do
+      # Create a mock testable that no evaluators are compatible with
+      incompatible_testable = double("IncompatibleTestable")
+
+      evaluators = described_class.for_testable(incompatible_testable)
+
+      expect(evaluators).to be_a(Hash)
+      expect(evaluators).to be_empty
+    end
+  end
 
   describe ".get" do
     it "returns metadata for a specific evaluator by symbol" do
@@ -74,24 +105,30 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
   end
 
   describe ".build" do
-    let(:llm_response) { create(:llm_response) }
-    let(:config) { { min_length: 100, max_length: 1000 } }
+    let(:llm_response) { create(:llm_response, response_text: "Test response text") }
+    let(:config) { { min_length: 100, max_length: 1000, llm_response: llm_response } }
 
     it "builds an instance of the evaluator" do
-      evaluator = described_class.build(:length, llm_response, config)
+      evaluator = described_class.build(:length, llm_response.response_text, config)
 
       expect(evaluator).to be_a(PromptTracker::Evaluators::LengthEvaluator)
     end
 
     it "passes config to the evaluator" do
-      evaluator = described_class.build(:length, llm_response, config)
+      evaluator = described_class.build(:length, llm_response.response_text, config)
 
-      expect(evaluator.instance_variable_get(:@config)).to include(config)
+      expect(evaluator.instance_variable_get(:@config)).to include(min_length: 100, max_length: 1000)
+    end
+
+    it "passes response_text as evaluated_data" do
+      evaluator = described_class.build(:length, llm_response.response_text, config)
+
+      expect(evaluator.instance_variable_get(:@response_text)).to eq("Test response text")
     end
 
     it "raises ArgumentError for non-existent evaluator" do
       expect {
-        described_class.build(:non_existent, llm_response, config)
+        described_class.build(:non_existent, llm_response.response_text, config)
       }.to raise_error(ArgumentError, /not found in registry/)
     end
   end

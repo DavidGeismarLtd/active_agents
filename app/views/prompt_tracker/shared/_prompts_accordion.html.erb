@@ -89,8 +89,8 @@
                             <td><%= format_timestamp(version.created_at) %></td>
                             <td class="text-end">
                               <%
-                                # Get all test runs for this version
-                                test_runs = PromptTracker::PromptTestRun.where(prompt_version_id: version.id).completed
+                                # Get all test runs for this version through tests
+                                test_runs = PromptTracker::TestRun.joins(:test).where(test: { testable: version }).completed
                                 total_tests = test_runs.count
                                 passed_tests = test_runs.passed.count
                                 failed_tests = test_runs.failed.count

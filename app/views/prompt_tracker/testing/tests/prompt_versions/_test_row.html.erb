@@ -1,0 +1,24 @@
+<% version ||= test.testable %>
+<% prompt ||= version.prompt %>
+<tr id="test_row_<%= test.id %>">
+  <%= render "prompt_tracker/testing/tests/cells/name", test: test %>
+  <%= render "prompt_tracker/testing/tests/prompt_versions/cells/template", test: test, version: version %>
+  <%= render "prompt_tracker/testing/tests/cells/evaluator_configs", test: test %>
+  <%= render "prompt_tracker/testing/tests/cells/status", test: test %>
+  <%= render "prompt_tracker/testing/tests/cells/last_run", test: test %>
+  <%= render "prompt_tracker/testing/tests/cells/total_runs", test: test %>
+  <%= render "prompt_tracker/testing/tests/cells/actions", test: test %>
+</tr>
+
+<%= render "prompt_tracker/testing/tests/run_test_modal",
+    testable: version,
+    test: test,
+    form_url: PromptTracker::Engine.routes.url_helpers.run_testing_prompt_version_test_path(version, test),
+    modal_id: "runTestModal-#{test.id}",
+    modal_title: "Run Test: #{test.name}",
+    submit_button_text: "Run Test",
+    datasets_path: PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_datasets_path(prompt, version),
+    intro_text: "Choose how to run this test:",
+    dataset_mode_description: "Execute test for all rows in a dataset",
+    custom_mode_description: "Execute test once with manually entered values",
+    custom_variables_context: "Enter values for the prompt variables:" %>

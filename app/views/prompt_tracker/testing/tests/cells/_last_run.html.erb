@@ -1,0 +1,8 @@
+<td data-column="last_run">
+  <% if test.last_run %>
+    <%= time_ago_in_words(test.last_run.created_at) %> ago
+  <% else %>
+    <span class="text-muted">Never</span>
+  <% end %>
+</td>
+

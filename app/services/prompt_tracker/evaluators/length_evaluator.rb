@@ -8,17 +8,17 @@ module PromptTracker
     # Useful for ensuring responses are not too short or too long.
     #
     # @example Evaluate with default config
-    #   evaluator = LengthEvaluator.new(llm_response)
+    #   evaluator = LengthEvaluator.new(response_text)
     #   evaluation = evaluator.evaluate
     #
     # @example Evaluate with custom length ranges
-    #   evaluator = LengthEvaluator.new(llm_response, {
+    #   evaluator = LengthEvaluator.new(response_text, {
     #     min_length: 50,
     #     max_length: 500
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LengthEvaluator < BaseEvaluator
+    class LengthEvaluator < BasePromptVersionEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         min_length: 10,      # Minimum acceptable length
@@ -43,8 +43,8 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        super(llm_response, DEFAULT_CONFIG.merge(config))
+      def initialize(response_text, config = {})
+        super(response_text, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

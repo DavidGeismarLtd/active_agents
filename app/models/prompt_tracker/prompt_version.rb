@@ -47,6 +47,9 @@ module PromptTracker
   #   # Marks this version as active and deprecates others
   #
   class PromptVersion < ApplicationRecord
+    # Include Testable concern for polymorphic interface
+    include Testable
+
     # Constants
     STATUSES = %w[active deprecated draft].freeze
 
@@ -64,20 +67,12 @@ module PromptTracker
              through: :llm_responses,
              class_name: "PromptTracker::Evaluation"
 
-    has_many :prompt_tests,
-             class_name: "PromptTracker::PromptTest",
-             dependent: :destroy,
-             inverse_of: :prompt_version
+    # Note: tests, datasets, and test_runs associations are provided by Testable concern
 
     has_many :evaluator_configs,
              as: :configurable,
              class_name: "PromptTracker::EvaluatorConfig",
              dependent: :destroy
-
-    has_many :datasets,
-             class_name: "PromptTracker::Dataset",
-             dependent: :destroy,
-             inverse_of: :prompt_version
 
     # Validations
     validates :user_prompt, presence: true
@@ -180,17 +175,21 @@ module PromptTracker
       status == "draft"
     end
 
-    # Returns a display name for this version.
+    # Returns a human-readable name for this version.
+    # This provides a consistent interface with Assistant.name
     #
     # @return [String] formatted version name
     #
     # @example
-    #   version.display_name  # => "v1 (active)"
-    def display_name
-      name = "v#{version_number}"
-      name += " (#{status})" if status != "active"
-      name
+    #   version.name  # => "v1 (active)"
+    def name
+      display_name = "v#{version_number}"
+      display_name += " (#{status})" if status != "active"
+      display_name
     end
+
+    # Alias for backwards compatibility
+    alias_method :display_name, :name
 
     # Checks if this version has any LLM responses.
     #
@@ -241,6 +240,67 @@ module PromptTracker
     # @return [Boolean] true if any evaluator configs exist
     def has_monitoring_enabled?
       evaluator_configs.enabled.exists?
+    end
+
+    # Run a test with a dataset row (for polymorphic testable interface)
+    #
+    # @param test [Test] the test to run
+    # @param dataset_row [DatasetRow] the dataset row with test variables
+    # @return [TestRun] the created test run
+    def run_test(test:, dataset_row:)
+      # This will be implemented by PromptTestRunner service
+      # For now, just create a pending test run
+      test.test_runs.create!(
+        dataset_id: dataset_row.dataset_id,
+        dataset_row_id: dataset_row.id,
+        status: "pending"
+      )
+    end
+
+    # Returns the column headers for the tests table
+    #
+    # Defines which columns to display in the tests table for this testable type.
+    # PromptVersions include a "Template" column to show the user_prompt preview.
+    #
+    # @return [Array<Hash>] array of column definitions
+    def test_table_headers
+      [
+        { key: "name", label: "Test Name", width: "25%" },
+        { key: "template", label: "Template", width: "20%" },
+        { key: "evaluator_configs", label: "Evaluator Configs", width: "20%" },
+        { key: "status", label: "Last Status", width: "8%" },
+        { key: "last_run", label: "Last Run", width: "10%" },
+        { key: "total_runs", label: "Total Runs", width: "8%", align: "end" },
+        { key: "actions", label: "Actions", width: "9%" }
+      ]
+    end
+
+    # Returns the column headers for the test runs table
+    #
+    # Defines which columns to display in the test runs accordion for this testable type.
+    # PromptVersions show rendered prompt and response instead of conversation data.
+    #
+    # @return [Array<Hash>] array of column definitions
+    def test_run_table_headers
+      [
+        { key: "run_status", label: "Status", width: "10%" },
+        { key: "run_time", label: "Run Time", width: "12%" },
+        { key: "response_time", label: "Response Time", width: "10%" },
+        { key: "run_cost", label: "Cost", width: "8%" },
+        { key: "rendered_prompt", label: "Rendered Prompt", width: "20%" },
+        { key: "run_response", label: "Response", width: "20%" },
+        { key: "run_evaluations", label: "Evaluations", width: "10%" },
+        { key: "human_evaluations", label: "Human Evaluations", width: "10%" },
+        { key: "actions", label: "Actions", width: "5%" }
+      ]
+    end
+
+    # Returns the locals hash needed for rendering the test row partial
+    #
+    # @param test [Test] the test to render
+    # @return [Hash] the locals hash with test, version, and prompt
+    def test_row_locals(test)
+      { test: test, version: self }
     end
 
     private

@@ -1,0 +1,57 @@
+<!-- Custom Variables Fields -->
+<!-- Renders dynamic form fields based on testable's variables_schema -->
+<%
+  # Local variables expected:
+  # - testable: The testable object (Assistant or PromptVersion) with variables_schema method
+  # - context_description: Optional description text (e.g., "Enter values for the test scenario:")
+%>
+
+<% if testable.variables_schema.present? %>
+  <% if local_assigns[:context_description].present? %>
+    <p class="text-muted mb-3">
+      <%= context_description %>
+    </p>
+  <% end %>
+
+  <% testable.variables_schema.each do |var_config| %>
+    <% var_name = var_config["name"] %>
+    <% is_required = var_config["required"] %>
+    <div class="mb-3">
+      <%= label_tag "custom_variables[#{var_name}]", var_name.to_s.humanize, class: "form-label" %>
+      <% if is_required %>
+        <span class="text-danger">*</span>
+      <% end %>
+
+      <% if var_config["type"] == "text" %>
+        <%= text_area_tag "custom_variables[#{var_name}]",
+            nil,
+            class: "form-control",
+            rows: 4,
+            data: { required: is_required.to_s },
+            placeholder: var_config["description"] %>
+      <% elsif var_config["type"] == "integer" %>
+        <%= number_field_tag "custom_variables[#{var_name}]",
+            nil,
+            class: "form-control",
+            data: { required: is_required.to_s },
+            placeholder: var_config["description"] %>
+      <% else %>
+        <%= text_field_tag "custom_variables[#{var_name}]",
+            nil,
+            class: "form-control",
+            data: { required: is_required.to_s },
+            placeholder: var_config["description"] %>
+      <% end %>
+
+      <% if var_config["description"].present? %>
+        <small class="form-text text-muted"><%= var_config["description"] %></small>
+      <% end %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    This <%= testable.class.name.demodulize.underscore.humanize.downcase %> has no variables defined.
+  </div>
+<% end %>
+

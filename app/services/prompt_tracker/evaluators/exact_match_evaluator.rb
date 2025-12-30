@@ -9,7 +9,7 @@ module PromptTracker
     # options for case sensitivity and whitespace trimming.
     #
     # @example Case-insensitive match with trimming
-    #   evaluator = ExactMatchEvaluator.new(llm_response, {
+    #   evaluator = ExactMatchEvaluator.new(response_text, {
     #     expected_text: "Hello World",
     #     case_sensitive: false,
     #     trim_whitespace: true
@@ -17,14 +17,14 @@ module PromptTracker
     #   evaluation = evaluator.evaluate
     #
     # @example Strict exact match
-    #   evaluator = ExactMatchEvaluator.new(llm_response, {
+    #   evaluator = ExactMatchEvaluator.new(response_text, {
     #     expected_text: "Hello World",
     #     case_sensitive: true,
     #     trim_whitespace: false
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class ExactMatchEvaluator < BaseEvaluator
+    class ExactMatchEvaluator < BasePromptVersionEvaluator
       DEFAULT_CONFIG = {
         expected_text: "",      # The exact text to match
         case_sensitive: false,  # Whether matching is case-sensitive
@@ -50,8 +50,8 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        super(llm_response, DEFAULT_CONFIG.merge(config))
+      def initialize(response_text, config = {})
+        super(response_text, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

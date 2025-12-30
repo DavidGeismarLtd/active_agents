@@ -21,7 +21,7 @@
 FactoryBot.define do
   factory :evaluation, class: "PromptTracker::Evaluation" do
     association :llm_response, factory: :llm_response
-    prompt_test_run { nil }  # Optional association
+    test_run { nil }  # Optional association
     score { 4.5 }
     score_min { 0 }
     score_max { 5 }

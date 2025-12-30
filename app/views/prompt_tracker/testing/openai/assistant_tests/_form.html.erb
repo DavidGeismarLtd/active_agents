@@ -1,0 +1,94 @@
+<%= form_with model: test, url: test.persisted? ? testing_openai_assistant_test_path(assistant, test) : testing_openai_assistant_tests_path(assistant), local: true do |f| %>
+  <% if test.errors.any? %>
+    <div class="alert alert-danger">
+      <h5><%= pluralize(test.errors.count, "error") %> prohibited this test from being saved:</h5>
+      <ul class="mb-0">
+        <% test.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Basic Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <%= f.label :name, class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "Conversation Quality Test", required: true %>
+        <div class="form-text">
+          A descriptive name for this test.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Tests the quality of multi-turn conversations..." %>
+        <div class="form-text">
+          Optional description of what this test validates.
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <div class="form-check">
+          <%= f.check_box :enabled, class: "form-check-input" %>
+          <%= f.label :enabled, "Enabled", class: "form-check-label" %>
+        </div>
+        <div class="form-text">
+          Disabled tests will not run when "Run All Tests" is triggered.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Evaluators</h6>
+    </div>
+    <div class="card-body">
+      <p class="text-muted">Configure evaluators to automatically assess conversation quality.</p>
+      
+      <div id="evaluators-container">
+        <% if test.evaluator_configs.any? %>
+          <% test.evaluator_configs.each_with_index do |config, index| %>
+            <div class="evaluator-config mb-3 p-3 border rounded">
+              <h6>Evaluator <%= index + 1 %>: <%= config.evaluator_type.demodulize %></h6>
+              <pre class="bg-light p-2 rounded"><code><%= JSON.pretty_generate(config.config) %></code></pre>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted">No evaluators configured yet.</p>
+        <% end %>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        <strong>Note:</strong> For assistant tests, use the <strong>ConversationJudgeEvaluator</strong> to evaluate multi-turn conversations.
+        You can configure evaluators by editing the test's <code>evaluator_configs</code> JSON field.
+      </div>
+
+      <%= f.hidden_field :evaluator_configs, value: test.evaluator_configs.to_json %>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      <h6 class="mb-0">Metadata (Optional)</h6>
+    </div>
+    <div class="card-body">
+      <%= f.label :metadata, "Metadata (JSON)", class: "form-label" %>
+      <%= f.text_area :metadata, class: "form-control font-monospace", rows: 5, value: test.metadata.present? ? JSON.pretty_generate(test.metadata) : "{}" %>
+      <div class="form-text">
+        Optional metadata in JSON format for storing additional test configuration.
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit test.persisted? ? "Update Test" : "Create Test", class: "btn btn-primary" %>
+    <%= link_to "Cancel", test.persisted? ? testing_openai_assistant_test_path(assistant, test) : testing_openai_assistant_path(assistant), class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>
+

@@ -1,6 +1,6 @@
 <% content_for :breadcrumbs do %>
-  <li class="breadcrumb-item"><%= link_to @prompt.name, testing_prompt_prompt_version_path(@prompt, @version) %></li>
-  <li class="breadcrumb-item"><%= link_to "Datasets", testing_prompt_prompt_version_datasets_path(@prompt, @version) %></li>
+  <li class="breadcrumb-item"><%= link_to @testable.name, testable_show_path(@testable) %></li>
+  <li class="breadcrumb-item"><%= link_to "Datasets", datasets_index_path(@testable) %></li>
   <li class="breadcrumb-item active"><%= @dataset.name %></li>
 <% end %>
 
@@ -12,9 +12,9 @@
     <div>
       <h1 style="color: #1E40AF; margin: 0;">
         <i class="bi bi-database"></i> <%= @dataset.name %>
-        <span class="badge bg-primary">v<%= @version.version_number %></span>
+        <%= testable_badge(@testable) %>
         <% if !@dataset.schema_valid? %>
-          <span class="badge bg-danger" title="Schema no longer matches prompt version">
+          <span class="badge bg-danger" title="Schema no longer matches">
             <i class="bi bi-exclamation-triangle"></i> Invalid Schema
           </span>
         <% end %>
@@ -24,10 +24,10 @@
       <% end %>
     </div>
     <div class="d-flex gap-2">
-      <%= link_to testing_prompt_prompt_version_datasets_path(@prompt, @version), class: "btn btn-outline-primary" do %>
+      <%= link_to datasets_index_path(@testable), class: "btn btn-outline-primary" do %>
         <i class="bi bi-arrow-left"></i> Back to Datasets
       <% end %>
-      <%= link_to edit_testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset), class: "btn btn-outline-secondary" do %>
+      <%= link_to dataset_path(@dataset, action: :edit), class: "btn btn-outline-secondary" do %>
         <i class="bi bi-pencil"></i> Edit
       <% end %>
     </div>
@@ -88,7 +88,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <%= form_with(model: @dataset.dataset_rows.build,
-                      url: testing_prompt_prompt_version_dataset_dataset_rows_path(@prompt, @version, @dataset),
+                      url: dataset_rows_path(@dataset),
                       method: :post) do |f| %>
           <div class="modal-body">
             <%= f.hidden_field :source, value: "manual" %>
@@ -144,7 +144,7 @@
   <div class="modal fade" id="generateRowsModal" tabindex="-1" data-modal-fix-target="modal" data-controller="modal-fix">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <%= form_with(url: generate_rows_testing_prompt_prompt_version_dataset_path(@prompt, @version, @dataset),
+        <%= form_with(url: generate_rows_dataset_path(@dataset),
                       method: :post,
                       data: { turbo: false }) do |f| %>
           <div class="modal-header">
@@ -171,15 +171,6 @@
                               placeholder: "e.g., 'Focus on edge cases with special characters' or 'Generate international examples with different languages'" %>
               <div class="form-text">Provide specific guidance to customize the generated data</div>
             </div>
-
-            <div class="mb-3">
-              <%= f.label :model, "Model (Optional)", class: "form-label" %>
-              <%= f.text_field :model,
-                               class: "form-control",
-                               placeholder: "Leave blank to use default model" %>
-              <div class="form-text">Specify a model ID (e.g., 'gpt-4o', 'claude-sonnet-4') or leave blank for default</div>
-            </div>
-
             <div class="alert alert-warning">
               <i class="bi bi-exclamation-triangle"></i>
               <strong>Note:</strong> Generation happens in the background. Rows will appear in real-time as they're created.

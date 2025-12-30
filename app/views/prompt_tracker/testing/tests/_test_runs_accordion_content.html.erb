@@ -1,0 +1,60 @@
+<% testable = test.testable %>
+<% latest_runs = test.test_runs.includes(:human_evaluations, :evaluations, llm_response: :evaluations).order(created_at: :desc).limit(5) %>
+<% total_count = test.test_runs.count %>
+
+<% if latest_runs.any? %>
+  <div class="bg-light p-3" data-controller="column-visibility" data-column-visibility-storage-key-value="testRunsTableColumns_<%= test.id %>">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="mb-0">
+        <i class="bi bi-clock-history"></i>
+        Latest Test Runs (<span id="loaded-runs-count-<%= test.id %>">5</span> of <%= total_count %>)
+      </h6>
+      <%= render "prompt_tracker/testing/tests/test_runs_column_visibility_dropdown", test: test %>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered bg-white mb-0">
+        <thead>
+          <tr>
+            <% testable.test_run_table_headers.each do |header| %>
+              <th style="width: <%= header[:width] %>;" data-column="<%= header[:key] %>" class="<%= 'text-end' if header[:align] == 'end' %>">
+                <%= header[:label] %>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody id="test-runs-tbody-<%= test.id %>">
+          <% latest_runs.each do |run| %>
+            <%= render testable.test_run_row_partial, run: run %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Load More Section -->
+    <div id="load-more-runs-<%= test.id %>">
+      <% if total_count > 5 %>
+        <div class="text-center mt-3">
+          <%= link_to load_more_runs_path(test, offset: 5, limit: 5),
+                      class: "btn btn-sm btn-outline-primary",
+                      data: { turbo_stream: true } do %>
+            <i class="bi bi-arrow-down-circle"></i> Load 5 More Runs
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Modals for test runs -->
+    <div id="test-runs-modals-<%= test.id %>">
+      <!-- Evaluation Modals (for both assistants and prompt versions) -->
+      <%# render "prompt_tracker/testing/tests/evaluation_modals", test: test %>
+
+      <!-- Human Evaluation Modals -->
+      <% latest_runs.each do |run| %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="bg-light p-3">
+    <p class="text-muted mb-0"><i class="bi bi-info-circle"></i> No test runs yet. Click "Run Test" to execute this test.</p>
+  </div>
+<% end %>

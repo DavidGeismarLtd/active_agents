@@ -206,7 +206,7 @@
 
   <!-- Human Evaluation Modals -->
   <% tracked_calls.each do |call| %>
-    <%= render "prompt_tracker/monitoring/shared/human_evaluation_modal", call: call %>
+    <%= render "prompt_tracker/monitoring/shared/human_evaluation_modal_form", call: call %>
     <%= render "prompt_tracker/shared/all_human_evaluations_modal", record: call, context: 'monitoring' %>
   <% end %>
 <% else %>

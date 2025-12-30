@@ -1,0 +1,226 @@
+# frozen_string_literal: true
+
+module PromptTracker
+  module TestRunners
+    # Test runner for PromptVersion testables.
+    #
+    # This runner:
+    # 1. Renders the prompt template with variables
+    # 2. Calls the LLM (real or mock)
+    # 3. Runs evaluators on the response
+    # 4. Updates the test run with results
+    #
+    # @example Run a prompt version test
+    #   runner = PromptVersionRunner.new(
+    #     test_run: test_run,
+    #     test: test,
+    #     testable: prompt_version,
+    #     use_real_llm: true
+    #   )
+    #   runner.run
+    #
+    class PromptVersionRunner < Base
+      # Execute the prompt version test
+      #
+      # @return [void]
+      def run
+        start_time = Time.current
+
+        llm_response = execute_llm_call
+
+        # Run evaluators
+        evaluator_results = run_evaluators(llm_response)
+
+        # Determine if test passed (all evaluators must pass)
+        passed = evaluator_results.all? { |r| r[:passed] }
+
+        # Calculate execution time
+        execution_time = ((Time.current - start_time) * 1000).to_i
+
+        # Update test run with results
+        update_test_run_with_evaluators(
+          llm_response: llm_response,
+          evaluator_results: evaluator_results,
+          passed: passed,
+          execution_time_ms: execution_time
+        )
+      end
+
+      private
+
+      # Execute the LLM call
+      #
+      # @return [LlmResponse] the LLM response record
+      def execute_llm_call
+        # Determine which variables to use
+        template_vars = determine_template_variables
+
+        # Render the user_prompt with variables
+        renderer = TemplateRenderer.new(testable.user_prompt)
+        rendered_prompt = renderer.render(template_vars)
+
+        # Get model config from version (tests use the version's model config)
+        model_config = testable.model_config.with_indifferent_access
+        provider = model_config[:provider] || "openai"
+        model = model_config[:model] || "gpt-4"
+
+        # Call LLM (real or mock) with timing
+        start_time = Time.current
+        if use_real_llm?
+          llm_api_response = call_real_llm(rendered_prompt, model_config)
+        else
+          llm_api_response = generate_mock_llm_response(rendered_prompt, model_config)
+        end
+        response_time_ms = ((Time.current - start_time) * 1000).round
+
+        # Extract token usage and response text
+        tokens = extract_token_usage(llm_api_response)
+        response_text = extract_response_text(llm_api_response)
+
+        # Calculate cost using RubyLLM's model registry
+        cost = calculate_cost_from_response(llm_api_response)
+
+        # Create LlmResponse record (marked as test run to skip auto-evaluation)
+        LlmResponse.create!(
+          prompt_version: testable,
+          rendered_prompt: rendered_prompt,
+          variables_used: template_vars,
+          provider: provider,
+          model: model,
+          response_text: response_text,
+          response_time_ms: response_time_ms,
+          tokens_prompt: tokens[:prompt],
+          tokens_completion: tokens[:completion],
+          tokens_total: tokens[:total],
+          cost_usd: cost,
+          status: "success",
+          is_test_run: true,
+          response_metadata: { test_run: true }
+        )
+      end
+
+      # Call real LLM API
+      #
+      # @param rendered_prompt [String] the rendered prompt
+      # @param model_config [Hash] the model configuration
+      # @return [RubyLLM::Message] LLM API response
+      def call_real_llm(rendered_prompt, model_config)
+        config = model_config.with_indifferent_access
+        provider = config[:provider] || "openai"
+        model = config[:model] || "gpt-4"
+        temperature = config[:temperature] || 0.7
+        max_tokens = config[:max_tokens]
+
+        Rails.logger.info "🔧 Calling REAL LLM: #{provider}/#{model}"
+
+        LlmClientService.call(
+          provider: provider,
+          model: model,
+          prompt: rendered_prompt,
+          temperature: temperature,
+          max_tokens: max_tokens
+        )[:raw] # Return raw RubyLLM::Message
+      end
+
+      # Generate a mock LLM response for testing
+      #
+      # @param rendered_prompt [String] the rendered prompt
+      # @param model_config [Hash] the model configuration
+      # @return [Hash] mock LLM response in OpenAI format
+      def generate_mock_llm_response(rendered_prompt, model_config)
+        provider = model_config["provider"] || model_config[:provider] || "openai"
+
+        Rails.logger.info "🎭 Generating MOCK LLM response for #{provider}"
+
+        # Generate a realistic mock response based on the prompt
+        mock_text = "This is a mock response to: #{rendered_prompt.truncate(100)}\n\n"
+        mock_text += "In a production environment, this would be replaced with an actual API call to #{provider}.\n"
+        mock_text += "The response would be generated by the configured model and would address the prompt appropriately."
+
+        # Return in OpenAI-like format for compatibility
+        {
+          "choices" => [
+            {
+              "message" => {
+                "content" => mock_text
+              }
+            }
+          ]
+        }
+      end
+
+      # Run evaluators for prompt tests
+      #
+      # @param llm_response [LlmResponse] the LLM response to evaluate
+      # @return [Array<Hash>] array of evaluator results
+      def run_evaluators(llm_response)
+        evaluator_configs = test.evaluator_configs.enabled.order(:created_at)
+        results = []
+
+        evaluator_configs.each do |config|
+          evaluator_key = config.evaluator_key.to_sym
+          evaluator_config = config.config || {}
+
+          # Add test_run context to evaluator config
+          # Include llm_response for evaluation record creation
+          evaluator_config = evaluator_config.merge(
+            evaluation_context: "test_run",
+            test_run_id: test_run.id,
+            llm_response: llm_response
+          )
+
+          # Build and run evaluator
+          # Pass response_text (String) as the evaluated data
+          evaluator = EvaluatorRegistry.build(
+            evaluator_key,
+            llm_response.response_text,
+            evaluator_config
+          )
+
+          # All evaluators now use RubyLLM directly - no block needed!
+          # Evaluation is created with correct context and test_run association
+          evaluation = evaluator.evaluate
+
+          results << {
+            evaluator_key: evaluator_key.to_s,
+            score: evaluation.score,
+            passed: evaluation.passed,
+            feedback: evaluation.feedback
+          }
+        end
+
+        results
+      end
+
+      # Update test run with evaluator results
+      #
+      # @param llm_response [LlmResponse] the LLM response
+      # @param evaluator_results [Array<Hash>] evaluator results
+      # @param passed [Boolean] whether test passed
+      # @param execution_time_ms [Integer] execution time in milliseconds
+      def update_test_run_with_evaluators(llm_response:, evaluator_results:, passed:, execution_time_ms:)
+        passed_evaluators = evaluator_results.count { |r| r[:passed] }
+        failed_evaluators = evaluator_results.count { |r| !r[:passed] }
+
+        test_run.update!(
+          llm_response: llm_response,
+          status: passed ? "passed" : "failed",
+          passed: passed,
+          evaluator_results: evaluator_results,
+          passed_evaluators: passed_evaluators,
+          failed_evaluators: failed_evaluators,
+          total_evaluators: evaluator_results.length,
+          execution_time_ms: execution_time_ms,
+          cost_usd: llm_response.cost_usd
+        )
+      end
+
+      # Check if we should use real LLM
+      #
+      # @return [Boolean]
+      def use_real_llm?
+        options[:use_real_llm] || false
+      end
+    end
+  end
+end

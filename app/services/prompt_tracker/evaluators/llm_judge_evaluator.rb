@@ -4,26 +4,24 @@ module PromptTracker
   module Evaluators
     # Uses an LLM to evaluate another LLM's response.
     #
-    # This evaluator sends the original prompt and response to a "judge" LLM
+    # This evaluator sends the response to a "judge" LLM
     # and asks it to score the response based on custom instructions.
     #
     # @example Evaluate with custom instructions
-    #   evaluator = LlmJudgeEvaluator.new(llm_response, {
+    #   evaluator = LlmJudgeEvaluator.new(response_text, {
     #     judge_model: "gpt-4o",
     #     custom_instructions: "Evaluate if the response is helpful and professional"
     #   })
     #   evaluation = evaluator.evaluate  # Uses RubyLLM with structured outputs
     #
     # @example Custom evaluation with specific focus
-    #   evaluator = LlmJudgeEvaluator.new(llm_response, {
+    #   evaluator = LlmJudgeEvaluator.new(response_text, {
     #     judge_model: "claude-3-5-sonnet-20241022",
     #     custom_instructions: "Focus on technical correctness for a senior developer audience"
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LlmJudgeEvaluator
-      attr_reader :llm_response, :config
-
+    class LlmJudgeEvaluator < BasePromptVersionEvaluator
       # Default configuration
       # Note: Using gpt-4o because it supports structured outputs
       # gpt-4 (non-turbo) does NOT support structured outputs
@@ -57,31 +55,70 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        @llm_response = llm_response
+      def initialize(response_text, config = {})
         # Convert string keys to symbol keys to ensure proper merging with DEFAULT_CONFIG
         # Use symbolize_keys to handle nested hashes and ensure clean merge
         symbolized_config = config.is_a?(Hash) ? config.deep_symbolize_keys : {}
-        @config = DEFAULT_CONFIG.merge(symbolized_config)
+        super(response_text, DEFAULT_CONFIG.merge(symbolized_config))
       end
 
-      # Evaluate the response using an LLM judge with structured output
+      # Calculate score by calling LLM judge
       #
-      # This method uses RubyLLM with structured schemas to guarantee valid JSON responses.
-      # No more regex parsing or fragile text extraction!
+      # @return [Integer] score from 0-100
+      def evaluate_score
+        judge_result[:overall_score]
+      end
+
+      # Generate feedback from LLM judge
       #
-      # @return [Evaluation] the created evaluation
+      # @return [String] feedback text
+      def generate_feedback
+        judge_result[:feedback]
+      end
+
+      # Add metadata about the judge evaluation
       #
-      # @example Evaluate with RubyLLM (automatic)
-      #   evaluation = evaluator.evaluate
+      # @return [Hash] metadata
+      def metadata
+        super.merge(
+          judge_model: config[:judge_model],
+          custom_instructions: config[:custom_instructions],
+          judge_prompt: build_judge_prompt,
+          raw_judge_response: judge_result[:raw_response],
+          used_structured_output: true,
+          mock_mode: use_mock_mode?,
+          threshold_score: config[:threshold_score] || 70
+        )
+      end
+
+      # Custom pass/fail logic based on threshold
       #
-      def evaluate
-        # Generate the evaluation prompt
+      # @return [Boolean] true if score >= threshold
+      def passed?
+        threshold = config[:threshold_score] || 70
+        evaluate_score >= threshold
+      end
+
+      private
+
+      # Get or compute the judge result (memoized)
+      # This ensures we only call the LLM once per evaluation
+      #
+      # @return [Hash] judge result with :overall_score, :feedback, :raw_response
+      def judge_result
+        @judge_result ||= compute_judge_result
+      end
+
+      # Call the LLM judge and get the result
+      #
+      # @return [Hash] judge result
+      def compute_judge_result
         judge_prompt = build_judge_prompt
 
         # Check if we should use mock mode
         if use_mock_mode?
           parsed = generate_mock_evaluation
+          raw_response = "MOCK_RESPONSE"
         else
           # Build RubyLLM schema for structured output
           schema = build_schema
@@ -93,38 +130,15 @@ module PromptTracker
           # Response content is already a structured hash!
           # Convert to hash with indifferent access to handle both string and symbol keys
           parsed = response.content.with_indifferent_access
+          raw_response = response.raw.to_s
         end
 
-        # Calculate if passed (score >= threshold, default 70)
-        score = parsed[:overall_score]
-        threshold = config[:threshold_score] || 70
-        passed = score >= threshold
-
-        # Create the evaluation
-        Evaluation.create!(
-          llm_response: llm_response,
-          evaluator_type: self.class.name,
-          evaluator_config_id: config[:evaluator_config_id],
-          score: score,
-          score_min: 0,
-          score_max: 100,
-          passed: passed,
+        {
+          overall_score: parsed[:overall_score],
           feedback: parsed[:feedback],
-          evaluation_context: config[:evaluation_context] || "tracked_call",
-          prompt_test_run_id: config[:prompt_test_run_id],
-          metadata: {
-            judge_model: config[:judge_model],
-            custom_instructions: config[:custom_instructions],
-            judge_prompt: judge_prompt,
-            raw_judge_response: use_mock_mode? ? "MOCK_RESPONSE" : response.raw.to_s,
-            used_structured_output: true,
-            mock_mode: use_mock_mode?,
-            threshold_score: threshold
-          }
-        )
+          raw_response: raw_response
+        }
       end
-
-      private
 
       # Build RubyLLM schema for structured output
       #
@@ -140,11 +154,8 @@ module PromptTracker
         <<~PROMPT
           You are an expert evaluator of AI-generated responses. Please evaluate the following LLM response.
 
-          ORIGINAL PROMPT:
-          #{llm_response.rendered_prompt}
-
           LLM RESPONSE TO EVALUATE:
-          #{llm_response.response_text}
+          #{response_text}
 
           EVALUATION INSTRUCTIONS:
           #{config[:custom_instructions]}

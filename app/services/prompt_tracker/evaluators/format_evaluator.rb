@@ -9,19 +9,19 @@ module PromptTracker
     # Checks if the response matches expected formats like JSON, markdown, etc.
     #
     # @example Validate JSON format
-    #   evaluator = FormatEvaluator.new(llm_response, {
+    #   evaluator = FormatEvaluator.new(response_text, {
     #     format: :json,
     #     required_keys: ["name", "email"]
     #   })
     #   evaluation = evaluator.evaluate
     #
     # @example Validate markdown format
-    #   evaluator = FormatEvaluator.new(llm_response, {
+    #   evaluator = FormatEvaluator.new(response_text, {
     #     format: :markdown,
     #     require_headers: true
     #   })
     #
-    class FormatEvaluator < BaseEvaluator
+    class FormatEvaluator < BasePromptVersionEvaluator
       # Supported formats
       FORMATS = %i[json markdown plain_text].freeze
 
@@ -57,8 +57,8 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        super(llm_response, DEFAULT_CONFIG.merge(config))
+      def initialize(response_text, config = {})
+        super(response_text, DEFAULT_CONFIG.merge(config))
         validate_config!
       end
 

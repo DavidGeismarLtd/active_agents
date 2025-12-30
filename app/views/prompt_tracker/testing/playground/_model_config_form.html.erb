@@ -8,15 +8,17 @@
   </div>
   <div class="card-body">
     <%
-      # Get available providers (only those with API keys)
-      all_available_models = PromptTracker.configuration.available_models
-      available_providers_list = @available_providers
-      current_provider = @version&.model_config&.dig('provider') || available_providers_list.first.to_s
+      # Get available providers for playground context (only those with API keys)
+      available_providers_list = providers_for(:playground)
+      all_available_models = models_for(:playground)
+      default_provider_value = default_provider_for(:playground)
+      current_provider = @version&.model_config&.dig('provider') || default_provider_value&.to_s || available_providers_list.first.to_s
 
       # Build JSON data for JavaScript to use when switching providers
       models_by_provider = {}
       available_providers_list.each do |provider_key|
-        models_by_provider[provider_key.to_s] = all_available_models[provider_key].map do |model|
+        provider_models = all_available_models[provider_key] || []
+        models_by_provider[provider_key.to_s] = provider_models.map do |model|
           {
             id: model[:id],
             name: model[:name] || model[:id],
@@ -49,9 +51,9 @@
       <%
         provider = @version&.model_config&.dig('provider') || current_provider
         current_model = @version&.model_config&.dig('model')
-        models = PromptTracker.configuration.available_models[provider.to_sym] || []
-        # If no current model, use first available model from the provider
-        current_model ||= models.first&.dig(:id)
+        models = models_for(:playground, provider: provider.to_sym)
+        # If no current model, use default or first available model from the provider
+        current_model ||= default_model_for(:playground) || models.first&.dig(:id)
       %>
       <select
         id="model-name"

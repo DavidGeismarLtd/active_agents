@@ -50,8 +50,8 @@ RSpec.describe PromptTracker::LlmJudgeEvaluationJob, type: :job do
 
       expect(PromptTracker::EvaluatorRegistry).to have_received(:build).with(
         :llm_judge,
-        llm_response,
-        config
+        llm_response.response_text,
+        hash_including(config.merge(llm_response: llm_response))
       )
     end
 

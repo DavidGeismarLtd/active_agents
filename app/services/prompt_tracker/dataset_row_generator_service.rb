@@ -116,21 +116,31 @@ module PromptTracker
     #
     # @return [String] formatted prompt context
     def build_prompt_context
-      prompt_version = dataset.prompt_version
+      testable = dataset.testable
       context_parts = []
 
       context_parts << "PROMPT CONTEXT:"
-      context_parts << "You are generating test data for the following LLM prompt:\n"
 
-      if prompt_version.system_prompt.present?
-        context_parts << "System Prompt:"
-        context_parts << prompt_version.system_prompt
+      # Handle PromptVersion testables
+      if testable.is_a?(PromptVersion)
+        context_parts << "You are generating test data for the following LLM prompt:\n"
+
+        if testable.system_prompt.present?
+          context_parts << "System Prompt:"
+          context_parts << testable.system_prompt
+          context_parts << ""
+        end
+
+        context_parts << "User Prompt Template:"
+        context_parts << testable.user_prompt
+        context_parts << ""
+      elsif testable.is_a?(Openai::Assistant)
+        # Handle Assistant testables
+        context_parts << "You are generating test data for the following OpenAI Assistant:\n"
+        context_parts << "Assistant Name: #{testable.name}"
+        context_parts << "Description: #{testable.description}" if testable.description.present?
         context_parts << ""
       end
-
-      context_parts << "User Prompt Template:"
-      context_parts << prompt_version.user_prompt
-      context_parts << ""
 
       context_parts.join("\n")
     end

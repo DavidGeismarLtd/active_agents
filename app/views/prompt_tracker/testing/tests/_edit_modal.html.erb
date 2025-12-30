@@ -1,0 +1,16 @@
+<!-- Edit Test Modal -->
+<div class="modal fade" id="edit-test-modal-<%= test.id %>" tabindex="-1" aria-labelledby="edit-test-modal-label-<%= test.id %>" aria-hidden="true" data-controller="modal-fix" data-modal-fix-target="modal">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="edit-test-modal-label-<%= test.id %>">
+          <i class="bi bi-pencil"></i> Edit Test: <%= test.name %>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <%= form_partial_path ? render(form_partial_path, **form_locals) : "" %>
+      </div>
+    </div>
+  </div>
+</div>

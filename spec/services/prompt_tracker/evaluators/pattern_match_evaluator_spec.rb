@@ -37,7 +37,7 @@ module PromptTracker
       describe "#evaluate_score" do
         it "returns 100 when all patterns match (match_all: true)" do
           response = create_response("Hello world test")
-          evaluator = PatternMatchEvaluator.new(response, {
+          evaluator = PatternMatchEvaluator.new(response.response_text, {
             patterns: [ "/hello/i", "/world/" ],
             match_all: true
           })
@@ -46,7 +46,7 @@ module PromptTracker
 
         it "returns 0 when not all patterns match (match_all: true)" do
           response = create_response("Hello test")
-          evaluator = PatternMatchEvaluator.new(response, {
+          evaluator = PatternMatchEvaluator.new(response.response_text, {
             patterns: [ "/hello/i", "/world/" ],
             match_all: true
           })
@@ -55,7 +55,7 @@ module PromptTracker
 
         it "returns 100 when any pattern matches (match_all: false)" do
           response = create_response("Hello test")
-          evaluator = PatternMatchEvaluator.new(response, {
+          evaluator = PatternMatchEvaluator.new(response.response_text, {
             patterns: [ "/hello/i", "/world/" ],
             match_all: false
           })
@@ -66,7 +66,7 @@ module PromptTracker
       describe "#passed?" do
         it "passes when all patterns match (match_all: true)" do
           response = create_response("Hello world")
-          evaluator = PatternMatchEvaluator.new(response, {
+          evaluator = PatternMatchEvaluator.new(response.response_text, {
             patterns: [ "/hello/i", "/world/" ],
             match_all: true
           })
@@ -75,7 +75,7 @@ module PromptTracker
 
         it "fails when not all patterns match (match_all: true)" do
           response = create_response("Hello")
-          evaluator = PatternMatchEvaluator.new(response, {
+          evaluator = PatternMatchEvaluator.new(response.response_text, {
             patterns: [ "/hello/i", "/world/" ],
             match_all: true
           })

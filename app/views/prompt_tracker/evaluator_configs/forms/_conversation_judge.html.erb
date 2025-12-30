@@ -1,0 +1,92 @@
+<%# Unified form for Conversation Judge Evaluator - works for both test configuration and manual evaluation %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'conversation_judge' %>
+<% namespace ||= 'config' %>
+<% default_judge_model = default_model_for(:llm_judge) || 'gpt-4o' %>
+<% judge_model = config['judge_model'] || config[:judge_model] || default_judge_model %>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-comments"></i>
+  <strong>Conversation Judge</strong>
+  <p class="mb-0 mt-1">Uses an LLM to evaluate each assistant message in a multi-turn conversation. Returns an average score (0-100) across all messages.</p>
+</div>
+
+<!-- Judge Model -->
+<div class="mb-3">
+  <label class="form-label">Judge Model</label>
+  <%
+    # Get available models for LLM judge context (only providers with API keys and structured output capability)
+    all_models = models_for(:llm_judge)
+  %>
+  <select name="<%= namespace %>[judge_model]" class="form-select" required>
+    <% all_models.each do |provider_key, models| %>
+      <% provider_name = provider_key.to_s.titleize %>
+      <% # Group models by category %>
+      <% models.group_by { |m| m[:category] }.each do |category, models_in_category| %>
+        <% if category.present? %>
+          <optgroup label="<%= provider_name %> - <%= category %>">
+        <% else %>
+          <optgroup label="<%= provider_name %>">
+        <% end %>
+
+        <% models_in_category.each do |model| %>
+          <option value="<%= model[:id] %>"
+                  <%= 'selected' if judge_model == model[:id] %>>
+            <%= model[:name] || model[:id] %>
+          </option>
+        <% end %>
+
+        </optgroup>
+      <% end %>
+    <% end %>
+  </select>
+  <small class="form-text text-muted">
+    The LLM model to use as a judge for evaluating conversation messages. Only models with structured output capability are shown.
+  </small>
+</div>
+
+<!-- Evaluation Prompt -->
+<div class="mb-3">
+  <label class="form-label">Evaluation Prompt</label>
+  <textarea name="<%= namespace %>[evaluation_prompt]"
+            class="form-control"
+            rows="4"
+            placeholder="Evaluate this assistant message for quality and appropriateness. Score 0-100."
+            required><%= config['evaluation_prompt'] || config[:evaluation_prompt] || 'Evaluate this assistant message for quality and appropriateness. Score 0-100.' %></textarea>
+  <small class="form-text text-muted">
+    Provide specific instructions for the LLM judge on how to evaluate each assistant message in the conversation.
+  </small>
+</div>
+
+<!-- Threshold Score -->
+<div class="mb-3">
+  <label class="form-label">Threshold Score (0-100)</label>
+  <input type="number"
+         name="<%= namespace %>[threshold_score]"
+         class="form-control"
+         value="<%= config['threshold_score'] || config[:threshold_score] || 70 %>"
+         min="0"
+         max="100"
+         required>
+  <small class="form-text text-muted">
+    Minimum average score required to pass (0-100). The LLM judge will score each assistant message, and if the average is >= this threshold, the evaluation passes.
+  </small>
+</div>
+
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle"></i>
+  <strong>Note:</strong> Conversation judge evaluations require API calls for each assistant message and may run asynchronously. Make sure you have configured your API keys in the <code>.env</code> file.
+</div>
+
+<div class="alert alert-secondary">
+  <strong>How it works:</strong>
+  <ul class="mb-0 mt-2">
+    <li>The LLM judge evaluates each assistant message in the conversation separately</li>
+    <li>Each message receives a score from 0-100 based on your evaluation prompt</li>
+    <li>The final score is the average of all message scores</li>
+    <li>If average score >= threshold: <strong>PASS</strong></li>
+    <li>If average score < threshold: <strong>FAIL</strong></li>
+    <li>Individual message scores are stored in the evaluation metadata</li>
+  </ul>
+</div>

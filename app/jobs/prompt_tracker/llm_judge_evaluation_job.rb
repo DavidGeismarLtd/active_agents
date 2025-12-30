@@ -28,7 +28,13 @@ module PromptTracker
       evaluator_key = :llm_judge
 
       # Build the evaluator with the provided config
-      evaluator = EvaluatorRegistry.build(evaluator_key, llm_response, config)
+      # Pass response_text (String) as the evaluated data
+      # Include llm_response in config for evaluation record creation
+      evaluator = EvaluatorRegistry.build(
+        evaluator_key,
+        llm_response.response_text,
+        config.merge(llm_response: llm_response)
+      )
 
       # Run the evaluator - it now calls RubyLLM directly!
       # No block needed - the evaluator handles the LLM API call internally

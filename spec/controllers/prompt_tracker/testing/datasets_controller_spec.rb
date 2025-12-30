@@ -16,7 +16,7 @@ module PromptTracker
                  { "name" => "issue", "type" => "string", "required" => false }
                ])
       end
-      let(:dataset) { create(:dataset, prompt_version: version) }
+      let(:dataset) { create(:dataset, testable: version) }
 
       describe "GET #index" do
         it "returns success" do

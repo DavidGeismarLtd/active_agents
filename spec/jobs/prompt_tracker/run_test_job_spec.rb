@@ -9,6 +9,7 @@ module PromptTracker
       allow_any_instance_of(DatasetRow).to receive(:broadcast_prepend_to_dataset)
       allow_any_instance_of(DatasetRow).to receive(:broadcast_replace_to_dataset)
       allow_any_instance_of(DatasetRow).to receive(:broadcast_remove_to_dataset)
+      allow_any_instance_of(TestRun).to receive(:broadcast_status_change)
     end
 
     let(:prompt) { create(:prompt, name: "test_prompt") }
@@ -22,7 +23,7 @@ module PromptTracker
     end
     let(:dataset) do
       create(:dataset,
-             prompt_version: version,
+             testable: version,
              name: "test_dataset",
              schema: version.variables_schema)
     end
@@ -33,14 +34,12 @@ module PromptTracker
              source: "manual")
     end
     let(:test) do
-      create(:prompt_test,
-             prompt_version: version,
-            )
+      create(:test,
+             testable: version)
     end
     let(:test_run) do
-      create(:prompt_test_run,
-             prompt_test: test,
-             prompt_version: version,
+      create(:test_run,
+             test: test,
              dataset_row: dataset_row,
              status: "running")
     end

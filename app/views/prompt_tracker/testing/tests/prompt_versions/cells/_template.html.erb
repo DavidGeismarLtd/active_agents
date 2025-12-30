@@ -1,0 +1,25 @@
+<td data-column="template">
+  <% if version.user_prompt.present? %>
+    <% template_id = "test-template-#{test.id}" %>
+    <% combined_prompt = [version.system_prompt, version.user_prompt].compact.join("\n---\n") %>
+    <div class="expandable-text">
+      <div id="<%= template_id %>-truncated">
+        <small class="text-muted font-monospace"><%= truncate(combined_prompt, length: 60) %></small>
+        <% if combined_prompt.length > 60 %>
+          <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= template_id %>-truncated').style.display='none'; document.getElementById('<%= template_id %>-full').style.display='block';">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        <% end %>
+      </div>
+      <div id="<%= template_id %>-full" style="display: none;">
+        <small class="text-muted font-monospace" style="white-space: pre-wrap;"><%= combined_prompt %></small>
+        <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= template_id %>-full').style.display='none'; document.getElementById('<%= template_id %>-truncated').style.display='block';">
+          <i class="bi bi-chevron-up"></i>
+        </button>
+      </div>
+    </div>
+  <% else %>
+    <span class="text-muted">-</span>
+  <% end %>
+</td>
+

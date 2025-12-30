@@ -1,0 +1,265 @@
+<%= turbo_stream_from @assistant.testable_stream_name %>
+
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "OpenAI Assistants", testing_openai_assistants_path %></li>
+  <li class="breadcrumb-item active"><%= @assistant.name %></li>
+<% end %>
+
+<div class="testing-assistant-show">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 style="color: #1E40AF; margin: 0;">
+          <i class="bi bi-robot"></i> <%= @assistant.name %>
+          <% if @assistant.category.present? %>
+            <span class="badge bg-info"><%= @assistant.category.titleize %></span>
+          <% end %>
+        </h1>
+        <div style="margin-top: 0.5rem;">
+          <code style="background-color: #DBEAFE; color: #1E40AF; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;">
+            assistant_id: "<%= @assistant.assistant_id %>"
+          </code>
+          <% if @assistant.model.present? %>
+            <code style="background-color: #DBEAFE; color: #1E40AF; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem; margin-left: 0.5rem;">
+              model: "<%= @assistant.model %>"
+            </code>
+          <% end %>
+        </div>
+        <% if @assistant.description.present? %>
+          <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+            <%= @assistant.description %>
+          </p>
+        <% end %>
+      </div>
+      <div class="d-flex gap-2 align-items-start">
+        <%= link_to testing_openai_assistant_playground_path(@assistant), class: "btn btn-primary" do %>
+          <i class="bi bi-pencil-square"></i> Edit in Playground
+        <% end %>
+        <%= link_to testing_openai_assistant_datasets_path(@assistant), class: "btn btn-outline-primary" do %>
+          <i class="bi bi-database"></i> Datasets
+        <% end %>
+        <%= button_to sync_testing_openai_assistant_path(@assistant), method: :post, class: "btn btn-outline-secondary" do %>
+          <i class="bi bi-arrow-repeat"></i> Sync from OpenAI
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Total Tests</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= @tests.count %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #D1FAE5; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Passing</div>
+      <div style="color: #10B981; font-size: 1.5rem; font-weight: bold;"><%= @tests_passing %></div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+        <% if @total_test_runs > 0 %>
+          <%= ((@tests_passing.to_f / @total_test_runs) * 100).round(1) %>% pass rate
+        <% end %>
+      </div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #FEE2E2; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Failing</div>
+      <div style="color: #EF4444; font-size: 1.5rem; font-weight: bold;"><%= @tests_failing %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Total Test Runs</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;"><%= @total_test_runs %></div>
+    </div>
+    <div class="stat-card" style="background: white; border: 2px solid #DBEAFE; border-radius: 8px; padding: 1rem;">
+      <div style="color: #64748B; font-size: 0.875rem; margin-bottom: 0.5rem;">Avg Score</div>
+      <div style="color: #3B82F6; font-size: 1.5rem; font-weight: bold;">
+        <% if @avg_score.present? %>
+          <%= @avg_score.round(1) %>%
+        <% else %>
+          N/A
+        <% end %>
+      </div>
+      <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">From evaluations</div>
+    </div>
+  </div>
+
+  <!-- Assistant Configuration -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-gear"></i> Configuration</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <th style="width: 40%;">Model</th>
+                <td>
+                  <% if @assistant.model.present? %>
+                    <code><%= @assistant.model %></code>
+                  <% else %>
+                    <span class="text-muted">Not synced</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>Temperature</th>
+                <td>
+                  <% temp = @assistant.metadata["temperature"] %>
+                  <%= temp.present? ? temp : "0.7 (default)" %>
+                </td>
+              </tr>
+              <tr>
+                <th>Top P</th>
+                <td>
+                  <% top_p = @assistant.metadata["top_p"] %>
+                  <%= top_p.present? ? top_p : "1.0 (default)" %>
+                </td>
+              </tr>
+              <tr>
+                <th>Response Format</th>
+                <td>
+                  <% format = @assistant.metadata["response_format"] %>
+                  <code><%= format.present? ? format : "auto" %></code>
+                </td>
+              </tr>
+              <tr>
+                <th>Last Synced</th>
+                <td>
+                  <% if @assistant.last_synced_at.present? %>
+                    <%= Time.parse(@assistant.last_synced_at).strftime("%Y-%m-%d %H:%M") %>
+                  <% else %>
+                    <span class="text-muted">Never</span>
+                  <% end %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-tools"></i> Tools & Resources</h6>
+        </div>
+        <div class="card-body">
+          <% if @assistant.tools.present? && @assistant.tools.any? %>
+            <div class="mb-3">
+              <strong class="d-block mb-2">Enabled Tools:</strong>
+              <% @assistant.tools.each do |tool| %>
+                <div class="mb-2">
+                  <span class="badge bg-primary me-2">
+                    <i class="bi bi-<%= tool['type'] == 'file_search' ? 'search' : tool['type'] == 'code_interpreter' ? 'code-slash' : 'tool' %>"></i>
+                    <%= tool["type"] %>
+                  </span>
+                  <% if tool["type"] == "file_search" && tool.dig("file_search", "ranking_options") %>
+                    <small class="text-muted">
+                      (ranker: <%= tool.dig("file_search", "ranking_options", "ranker") %>)
+                    </small>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted mb-3">No tools enabled</p>
+          <% end %>
+
+          <% tool_resources = @assistant.metadata["tool_resources"] %>
+          <% if tool_resources.present? %>
+            <div>
+              <strong class="d-block mb-2">Tool Resources:</strong>
+              <% if tool_resources["file_search"].present? && tool_resources["file_search"]["vector_store_ids"].present? %>
+                <div class="mb-2">
+                  <small class="text-muted d-block">Vector Stores:</small>
+                  <% tool_resources["file_search"]["vector_store_ids"].each do |vs_id| %>
+                    <code class="d-block small"><%= vs_id %></code>
+                  <% end %>
+                </div>
+              <% end %>
+              <% if tool_resources["code_interpreter"].present? && tool_resources["code_interpreter"]["file_ids"].present? %>
+                <div class="mb-2">
+                  <small class="text-muted d-block">Code Interpreter Files:</small>
+                  <% tool_resources["code_interpreter"]["file_ids"].each do |file_id| %>
+                    <code class="d-block small"><%= file_id %></code>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% if @assistant.file_ids.present? && @assistant.file_ids.any? %>
+            <div class="mt-3">
+              <strong class="d-block mb-2">Attached Files:</strong>
+              <% @assistant.file_ids.each do |file_id| %>
+                <code class="d-block small"><%= file_id %></code>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h6 class="mb-0"><i class="bi bi-file-text"></i> System Instructions</h6>
+      <span class="badge bg-secondary"><%= @assistant.instructions.to_s.length %> characters</span>
+    </div>
+    <div class="card-body">
+      <% if @assistant.instructions.present? %>
+        <pre class="mb-0 border-start border-3 border-primary ps-3" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"><code><%= @assistant.instructions %></code></pre>
+      <% else %>
+        <p class="text-muted mb-0">No instructions set. Click "Sync from OpenAI" to fetch the latest configuration.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Metadata (if any additional fields) -->
+  <% custom_metadata = @assistant.metadata.except("instructions", "model", "tools", "file_ids", "last_synced_at", "temperature", "top_p", "response_format", "tool_resources") %>
+  <% if custom_metadata.present? && custom_metadata.any? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Additional Metadata</h6>
+      </div>
+      <div class="card-body">
+        <pre class="mb-0"><code><%= JSON.pretty_generate(custom_metadata) %></code></pre>
+      </div>
+    </div>
+  <% end %>
+
+  <%= render "prompt_tracker/testing/tests/tests_card", tests: @tests, testable_param: @assistant %>
+</div>
+
+<%= render "prompt_tracker/testing/tests/new_test_modal",
+           badge_html: content_tag(:span, class: "badge bg-info") { content_tag(:i, "", class: "bi bi-robot") + " #{@assistant.name}" },
+           form_partial_path: "prompt_tracker/testing/tests/openai_assistants/form",
+           form_locals: { assistant: @assistant, test: PromptTracker::Test.new(testable: @assistant, enabled: true), in_modal: true } %>
+
+<%= render "prompt_tracker/testing/tests/run_test_modal",
+    testable: @assistant,
+    tests: @tests,
+    form_url: run_all_testing_openai_assistant_tests_path(@assistant),
+    modal_id: "runAllTestsModal",
+    modal_title: "Run All Tests",
+    submit_button_text: "Run All Tests",
+    datasets_path: testing_openai_assistant_datasets_path(@assistant),
+    intro_text: "Choose how to run all #{@tests.count} test(s):",
+    dataset_mode_description: "Execute each test for all rows in a dataset",
+    custom_mode_description: "Execute each test once with manually entered values",
+    custom_variables_context: "Enter values for the test scenario (will be used for all tests):" %>
+
+<div id="test-modals">
+  <% if @tests.any? %>
+    <% @tests.each do |test| %>
+      <%= render "prompt_tracker/testing/tests/evaluator_config_modals", test: test %>
+      <%= render "prompt_tracker/testing/tests/edit_modal",
+                 test: test,
+                 badge_html: content_tag(:span, class: "badge bg-info") { content_tag(:i, "", class: "bi bi-robot") + " #{@assistant.name}" },
+                 form_partial_path: "prompt_tracker/testing/tests/openai_assistants/form",
+                 form_locals: { assistant: @assistant, test: test, in_modal: true } %>
+    <% end %>
+  <% end %>
+</div>

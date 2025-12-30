@@ -1,0 +1,56 @@
+<div class="list-group">
+  <% assistants.each do |assistant| %>
+    <%= link_to testing_openai_assistant_path(assistant), class: "list-group-item list-group-item-action" do %>
+      <div class="d-flex w-100 justify-content-between align-items-start">
+        <div class="flex-grow-1">
+          <h5 class="mb-1">
+            <i class="bi bi-robot text-primary"></i>
+            <%= assistant.name %>
+            <% if assistant.category.present? %>
+              <span class="badge bg-info ms-2"><%= assistant.category.titleize %></span>
+            <% end %>
+          </h5>
+
+          <% if assistant.description.present? %>
+            <p class="mb-2 text-muted"><%= assistant.description %></p>
+          <% end %>
+
+          <div class="d-flex gap-3 align-items-center">
+            <!-- Assistant ID -->
+            <small class="text-muted">
+              <code><%= assistant.assistant_id %></code>
+            </small>
+
+            <!-- Model -->
+            <% if assistant.model.present? %>
+              <small class="text-muted">
+                <i class="bi bi-cpu"></i> <%= assistant.model %>
+              </small>
+            <% end %>
+
+            <!-- Test Count -->
+            <small class="text-muted">
+              <i class="bi bi-check2-square"></i>
+              <%= pluralize(assistant.tests.count, "test") %>
+            </small>
+
+            <!-- Recent Test Runs -->
+            <% test_runs = PromptTracker::TestRun.where(test: assistant.tests).completed %>
+            <% if test_runs.any? %>
+              <% pass_count = test_runs.passed.count %>
+              <% fail_count = test_runs.failed.count %>
+              <small>
+                <span class="badge bg-success"><%= pass_count %> passed</span>
+                <span class="badge bg-danger"><%= fail_count %> failed</span>
+              </small>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="text-end">
+          <i class="bi bi-chevron-right"></i>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+</div>

@@ -40,8 +40,8 @@ module PromptTracker
                class_name: "PromptTracker::Dataset",
                inverse_of: :dataset_rows
 
-    has_many :prompt_test_runs,
-             class_name: "PromptTracker::PromptTestRun",
+    has_many :test_runs,
+             class_name: "PromptTracker::TestRun",
              dependent: :nullify,
              inverse_of: :dataset_row
 
@@ -86,11 +86,20 @@ module PromptTracker
 
     # Broadcast prepend to dataset rows table
     def broadcast_prepend_to_dataset
+      partial_path, locals = row_partial_and_locals
+
       broadcast_prepend_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-rows",
-        partial: "prompt_tracker/testing/datasets/row",
-        locals: { row: self, index: dataset.dataset_rows.count, dataset: dataset }
+        partial: partial_path,
+        locals: locals
+      )
+
+      # Update row count
+      broadcast_update_to(
+        "dataset_#{dataset_id}_rows",
+        target: "dataset-row-count",
+        html: dataset.dataset_rows.count.to_s
       )
 
       # Remove empty state if this is the first row
@@ -104,11 +113,13 @@ module PromptTracker
 
     # Broadcast replace to dataset rows table
     def broadcast_replace_to_dataset
+      partial_path, locals = row_partial_and_locals
+
       broadcast_replace_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-row-#{id}",
-        partial: "prompt_tracker/testing/datasets/row",
-        locals: { row: self, index: dataset.dataset_rows.where("id <= ?", id).count, dataset: dataset }
+        partial: partial_path,
+        locals: locals
       )
     end
 
@@ -118,6 +129,29 @@ module PromptTracker
         "dataset_#{dataset_id}_rows",
         target: "dataset-row-#{id}"
       )
+
+      # Update row count
+      broadcast_update_to(
+        "dataset_#{dataset_id}_rows",
+        target: "dataset-row-count",
+        html: dataset.dataset_rows.count.to_s
+      )
+
+      # Remove the edit modal for this row
+      broadcast_remove_to(
+        "dataset_#{dataset_id}_rows",
+        target: "editRowModal-#{id}"
+      )
+    end
+
+    # Get the correct partial path and locals for Turbo Stream broadcasts
+    # All testable types now use the same unified partial
+    def row_partial_and_locals
+      index = dataset.dataset_rows.where("id <= ?", id).count
+      [
+        "prompt_tracker/testing/datasets/row",
+        { row: self, index: index, dataset: dataset }
+      ]
     end
 
     # Validate that row_data is a hash

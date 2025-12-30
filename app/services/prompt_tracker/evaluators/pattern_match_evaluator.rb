@@ -9,20 +9,20 @@ module PromptTracker
     # all patterns to match or just any pattern.
     #
     # @example Require all patterns to match
-    #   evaluator = PatternMatchEvaluator.new(llm_response, {
+    #   evaluator = PatternMatchEvaluator.new(response_text, {
     #     patterns: ["/Hello/", "/world/i"],
     #     match_all: true
     #   })
     #   evaluation = evaluator.evaluate
     #
     # @example Require any pattern to match
-    #   evaluator = PatternMatchEvaluator.new(llm_response, {
+    #   evaluator = PatternMatchEvaluator.new(response_text, {
     #     patterns: ["/greeting/i", "/hello/i", "/hi/i"],
     #     match_all: false
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class PatternMatchEvaluator < BaseEvaluator
+    class PatternMatchEvaluator < BasePromptVersionEvaluator
       DEFAULT_CONFIG = {
         patterns: [],      # Array of regex pattern strings (e.g., ["/Hello/", "/world/i"])
         match_all: true    # true = all must match, false = any must match
@@ -46,8 +46,8 @@ module PromptTracker
         }
       end
 
-      def initialize(llm_response, config = {})
-        super(llm_response, DEFAULT_CONFIG.merge(config))
+      def initialize(response_text, config = {})
+        super(response_text, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

@@ -13,7 +13,7 @@ module PromptTracker
     describe "associations" do
       it { should belong_to(:evaluation).optional }
       it { should belong_to(:llm_response).optional }
-      it { should belong_to(:prompt_test_run).optional }
+      it { should belong_to(:test_run).optional }
     end
 
     describe "validations" do

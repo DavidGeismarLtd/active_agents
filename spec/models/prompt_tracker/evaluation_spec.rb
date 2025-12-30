@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe PromptTracker::Evaluation, type: :model do
   describe "associations" do
-    it { should belong_to(:llm_response) }
+    it { should belong_to(:llm_response).optional }
   end
 
   describe "validations" do

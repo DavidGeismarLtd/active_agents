@@ -57,7 +57,7 @@ module PromptTracker
       describe "required keywords" do
         it "scores 100 when all required keywords present" do
           response = create_response("This response contains apple and banana")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ]
           })
 
@@ -66,7 +66,7 @@ module PromptTracker
 
         it "scores 0 when no required keywords present" do
           response = create_response("This response has nothing")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ]
           })
 
@@ -75,7 +75,7 @@ module PromptTracker
 
         it "scores 50 when half of required keywords present" do
           response = create_response("This response contains apple only")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ]
           })
 
@@ -84,7 +84,7 @@ module PromptTracker
 
         it "is case insensitive by default" do
           response = create_response("This response contains APPLE and BANANA")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ]
           })
 
@@ -95,7 +95,7 @@ module PromptTracker
       describe "forbidden keywords" do
         it "scores 100 when no forbidden keywords present" do
           response = create_response("This is a clean response")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             forbidden_keywords: [ "bad", "wrong" ]
           })
 
@@ -104,7 +104,7 @@ module PromptTracker
 
         it "scores 0 when all forbidden keywords present" do
           response = create_response("This is bad and wrong")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             forbidden_keywords: [ "bad", "wrong" ]
           })
 
@@ -115,7 +115,7 @@ module PromptTracker
       describe "combined required and forbidden" do
         it "combines scores correctly" do
           response = create_response("This response contains apple and banana")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad", "wrong" ]
           })
@@ -127,7 +127,7 @@ module PromptTracker
       describe "case sensitivity" do
         it "is case insensitive by default" do
           response = create_response("APPLE")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple" ]
           })
 
@@ -136,7 +136,7 @@ module PromptTracker
 
         it "can be case sensitive" do
           response = create_response("APPLE")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple" ],
             case_sensitive: true
           })
@@ -148,7 +148,7 @@ module PromptTracker
       describe "no keywords configured" do
         it "defaults to 100 score" do
           response = create_response("Any text")
-          evaluator = KeywordEvaluator.new(response, {})
+          evaluator = KeywordEvaluator.new(response.response_text, {})
 
           expect(evaluator.evaluate_score).to eq(100)
         end
@@ -157,7 +157,7 @@ module PromptTracker
       describe "#generate_feedback" do
         it "lists missing required keywords" do
           response = create_response("This has apple")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana", "cherry" ]
           })
 
@@ -168,7 +168,7 @@ module PromptTracker
 
         it "lists forbidden keywords found" do
           response = create_response("This is bad and wrong")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             forbidden_keywords: [ "bad", "wrong" ]
           })
 
@@ -179,7 +179,7 @@ module PromptTracker
 
         it "provides positive feedback when all criteria met" do
           response = create_response("This has apple and banana")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad" ]
           })
@@ -192,7 +192,7 @@ module PromptTracker
       describe "#evaluate" do
         it "creates evaluation record" do
           response = create_response("This has apple and banana")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ]
           })
 
@@ -209,7 +209,7 @@ module PromptTracker
       describe "#metadata" do
         it "includes metadata" do
           response = create_response("This has apple")
-          evaluator = KeywordEvaluator.new(response, {
+          evaluator = KeywordEvaluator.new(response.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad" ],
             case_sensitive: false
@@ -226,7 +226,7 @@ module PromptTracker
         it "weights required keywords at 70% and forbidden at 30%" do
           # All required present (70 points) + no forbidden (30 points) = 100
           response1 = create_response("apple banana")
-          evaluator1 = KeywordEvaluator.new(response1, {
+          evaluator1 = KeywordEvaluator.new(response1.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad" ]
           })
@@ -234,7 +234,7 @@ module PromptTracker
 
           # No required present (0 points) + no forbidden (30 points) = 30
           response2 = create_response("nothing here")
-          evaluator2 = KeywordEvaluator.new(response2, {
+          evaluator2 = KeywordEvaluator.new(response2.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad" ]
           })
@@ -242,7 +242,7 @@ module PromptTracker
 
           # All required present (70 points) + all forbidden (0 points) = 70
           response3 = create_response("apple banana bad")
-          evaluator3 = KeywordEvaluator.new(response3, {
+          evaluator3 = KeywordEvaluator.new(response3.response_text, {
             required_keywords: [ "apple", "banana" ],
             forbidden_keywords: [ "bad" ]
           })

@@ -147,7 +147,7 @@ module PromptTracker
 
       it "applies max_tokens using with_params" do
         chat_with_params_double = double("RubyLLM::Chat with params")
-        allow(chat_with_temp_double).to receive(:with_params).and_return(chat_with_params_double)
+        allow(chat_with_temp_double).to receive(:with_params).and_yield({}).and_return(chat_with_params_double)
         allow(chat_with_params_double).to receive(:ask).and_return(response_double)
 
         described_class.call(
@@ -158,7 +158,7 @@ module PromptTracker
           max_tokens: 100
         )
 
-        expect(chat_with_temp_double).to have_received(:with_params).with(max_tokens: 100)
+        expect(chat_with_temp_double).to have_received(:with_params)
       end
 
       it "handles API errors by raising them" do

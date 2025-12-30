@@ -1,0 +1,102 @@
+<!-- Shared Run Test Modal -->
+<!-- Used for both single test and run-all modals -->
+<%
+  # Local variables expected:
+  # - testable: The testable object (Assistant or PromptVersion)
+  # - form_url: The URL to submit the form to
+  # - modal_id: Unique ID for the modal
+  # - modal_title: Title text for the modal
+  # - submit_button_text: Text for the submit button
+  # - datasets_path: Path to create a new dataset
+  # - test: (optional) The test object for single test modals
+  # - tests: (optional) Collection of tests for run-all modals
+  # - intro_text: (optional) Introductory text in modal body
+  # - dataset_mode_description: Description for dataset mode radio button
+  # - custom_mode_description: Description for custom mode radio button
+  # - custom_variables_context: Description text for custom variables section
+%>
+
+
+<% is_run_all = local_assigns[:tests].present? %>
+<% test_id_suffix = local_assigns[:test].present? ? test.id : "" %>
+
+<div class="modal fade" id="<%= modal_id %>" tabindex="-1"
+     data-controller="modal-fix run-test-modal"
+     data-modal-fix-target="modal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><%= modal_title %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <%= form_with(url: form_url, method: :post, data: { turbo: false }) do |f| %>
+        <div class="modal-body">
+          <% if intro_text.present? %>
+            <p class="text-muted mb-3">
+              <%= intro_text %>
+            </p>
+          <% end %>
+
+          <!-- Run Mode Selection -->
+          <div class="mb-4">
+            <div class="form-check mb-3">
+              <%= f.radio_button :run_mode, "dataset",
+                  id: test_id_suffix.present? ? "run_mode_dataset_#{test_id_suffix}" : "run_mode_dataset",
+                  checked: true,
+                  class: "form-check-input",
+                  data: {
+                    action: "change->run-test-modal#toggleMode",
+                    "run-test-modal-target": "modeRadio"
+                  } %>
+              <%= f.label :run_mode_dataset,
+                  for: test_id_suffix.present? ? "run_mode_dataset_#{test_id_suffix}" : "run_mode_dataset",
+                  class: "form-check-label" do %>
+                <strong>Run against dataset</strong>
+                <small class="d-block text-muted"><%= dataset_mode_description %></small>
+              <% end %>
+            </div>
+
+            <div class="form-check">
+              <%= f.radio_button :run_mode, "single",
+                  id: test_id_suffix.present? ? "run_mode_single_#{test_id_suffix}" : "run_mode_single",
+                  class: "form-check-input",
+                  data: {
+                    action: "change->run-test-modal#toggleMode",
+                    "run-test-modal-target": "modeRadio"
+                  } %>
+              <%= f.label :run_mode_single,
+                  for: test_id_suffix.present? ? "run_mode_single_#{test_id_suffix}" : "run_mode_single",
+                  class: "form-check-label" do %>
+                <strong>Single run with custom variables</strong>
+                <small class="d-block text-muted"><%= custom_mode_description %></small>
+              <% end %>
+            </div>
+          </div>
+
+          <!-- Dataset Selection (shown when run_mode=dataset) -->
+          <div data-run-test-modal-target="datasetSection">
+            <%= render "prompt_tracker/testing/tests/dataset_selection",
+                testable: testable,
+                f: f,
+                is_run_all: is_run_all,
+                tests: local_assigns[:tests],
+                datasets_path: datasets_path %>
+          </div>
+
+          <!-- Custom Variables (shown when run_mode=single) -->
+          <div data-run-test-modal-target="customSection" style="display: none;">
+            <%= render "prompt_tracker/testing/tests/custom_variables_fields",
+                testable: testable,
+                context_description: custom_variables_context %>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit submit_button_text, class: "btn btn-success", data: { "run-test-modal-target": "submitButton" } %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

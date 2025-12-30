@@ -5,15 +5,101 @@
       <h1>
         <i class="bi bi-check2-square"></i> Testing Dashboard
       </h1>
-      <p class="text-muted">Manage prompts, versions, and test results</p>
+      <p class="text-muted">All testables (Prompts & Assistants) in one place</p>
     </div>
     <div class="col-auto">
-      <%= link_to testing_playground_path, class: "btn btn-primary" do %>
-        <i class="bi bi-play-circle"></i> Create Prompt in Playground
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTestableModal">
+        <i class="bi bi-plus-circle"></i> Create New Testable
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted">Total Tests</h6>
+          <h3><%= @total_tests %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted">Runs Today</h6>
+          <h3><%= @total_runs_today %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted">Pass Rate</h6>
+          <h3><%= @pass_rate %>%</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted">Testables</h6>
+          <h3><%= @prompt_count + @assistant_count %></h3>
+          <small class="text-muted"><%= @prompt_count %> prompts, <%= @assistant_count %> assistants</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Buttons -->
+  <div class="mb-3">
+    <div class="btn-group" role="group">
+      <%= link_to testing_root_path(filter: "all"), class: "btn btn-sm #{@filter == 'all' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        <i class="bi bi-grid"></i> All (<%= @prompt_count + @assistant_count %>)
+      <% end %>
+      <%= link_to testing_root_path(filter: "prompts"), class: "btn btn-sm #{@filter == 'prompts' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        <i class="bi bi-chat-text"></i> Prompts (<%= @prompt_count %>)
+      <% end %>
+      <%= link_to testing_root_path(filter: "assistants"), class: "btn btn-sm #{@filter == 'assistants' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        <i class="bi bi-robot"></i> Assistants (<%= @assistant_count %>)
       <% end %>
     </div>
   </div>
 
-  <!-- Prompts Accordion -->
-  <%= render "prompt_tracker/shared/prompts_accordion", prompts: @prompts, show_monitor_button: false, search_enabled: false %>
+  <!-- Unified Testable List -->
+  <% if @filter.in?(["all", "assistants"]) && @assistants.any? %>
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+          <i class="bi bi-robot"></i> OpenAI Assistants
+          <span class="badge bg-secondary"><%= @assistants.count %></span>
+        </h4>
+        <%= button_to testing_sync_openai_assistants_root_path, method: :post, class: "btn btn-sm btn-outline-primary", form: { data: { turbo_confirm: "This will fetch all assistants from OpenAI and sync them. Continue?" } } do %>
+          <i class="bi bi-arrow-repeat"></i> Sync with OpenAI
+        <% end %>
+      </div>
+      <%= render "assistant_list", assistants: @assistants %>
+    </div>
+  <% end %>
+
+  <% if @filter.in?(["all", "prompts"]) && @prompts.any? %>
+    <div class="mb-4">
+      <h4 class="mb-3">
+        <i class="bi bi-chat-text"></i> Prompts
+        <span class="badge bg-secondary"><%= @prompts.count %></span>
+      </h4>
+      <%= render "prompt_tracker/shared/prompts_accordion", prompts: @prompts, show_monitor_button: false, search_enabled: false %>
+    </div>
+  <% end %>
+
+  <% if @prompts.empty? && @assistants.empty? %>
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i>
+      <strong>No testables found.</strong>
+      Click "Create New Testable" to get started!
+    </div>
+  <% end %>
 </div>
+
+<!-- Creation Wizard Modal -->
+<%= render "create_testable_modal" %>

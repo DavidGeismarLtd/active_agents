@@ -1,0 +1,21 @@
+<td class="test-status" data-column="status">
+  <% if test.last_run %>
+    <% case test.last_run.status %>
+    <% when 'running' %>
+      <span class="badge bg-warning">
+        <span class="spinner-border spinner-border-sm me-1"></span>Running
+      </span>
+    <% when 'passed' %>
+      <span class="badge bg-success">Passed</span>
+    <% when 'failed' %>
+      <span class="badge bg-danger">Failed</span>
+    <% when 'error' %>
+      <span class="badge bg-danger">Error</span>
+    <% else %>
+      <span class="badge bg-secondary">Unknown</span>
+    <% end %>
+  <% else %>
+    <span class="badge bg-secondary">Not Run</span>
+  <% end %>
+</td>
+

@@ -1,0 +1,8 @@
+
+<% test ||= @test %>
+<% version ||= test.testable %>
+<% in_modal ||= false %>
+
+<% form_url = test.new_record? ? PromptTracker::Engine.routes.url_helpers.testing_prompt_version_tests_path(version) : PromptTracker::Engine.routes.url_helpers.testing_prompt_version_test_path(version, test) %>
+
+<%= render "prompt_tracker/testing/tests/form", test: test, in_modal: in_modal, form_url: form_url %>

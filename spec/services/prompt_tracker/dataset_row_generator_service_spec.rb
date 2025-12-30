@@ -14,7 +14,7 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
              { "name" => "priority", "type" => "number", "required" => false, "description" => "Priority level 1-5" }
            ])
   end
-  let(:dataset) { create(:dataset, prompt_version: version) }
+  let(:dataset) { create(:dataset, testable: version) }
 
   describe ".generate" do
     context "with valid parameters" do

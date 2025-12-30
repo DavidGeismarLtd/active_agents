@@ -45,6 +45,7 @@ module PromptTracker
     validates :evaluator_type,
               presence: true,
               uniqueness: { scope: [ :configurable_type, :configurable_id ] }
+    validate :evaluator_compatible_with_testable
 
     # Scopes
 
@@ -105,9 +106,13 @@ module PromptTracker
     # @param llm_response [LlmResponse] the response to evaluate
     # @return [BaseEvaluator] an instance of the evaluator
     def build_evaluator(llm_response)
-      # Add evaluator_config_id to config so evaluations can reference it
-      merged_config = config.merge(evaluator_config_id: id)
-      evaluator_class.new(llm_response, merged_config)
+      # Add evaluator_config_id and llm_response to config so evaluations can reference them
+      merged_config = config.merge(
+        evaluator_config_id: id,
+        llm_response: llm_response
+      )
+      # Pass response_text (String) as the evaluated data
+      evaluator_class.new(llm_response.response_text, merged_config)
     end
 
     # Returns a human-readable name for this evaluator
@@ -133,6 +138,28 @@ module PromptTracker
         "evaluator_key" => evaluator_key.to_s,
         "evaluator_name" => name
       )
+    end
+
+    private
+
+    # Validates that the evaluator is compatible with the testable
+    # This prevents adding evaluators to tests where they won't work
+    # (e.g., adding a ConversationJudgeEvaluator to a PromptVersion test)
+    def evaluator_compatible_with_testable
+      return unless configurable.respond_to?(:testable)
+      return if evaluator_type.blank?
+
+      testable = configurable.testable
+      klass = evaluator_type.constantize
+
+      unless klass.compatible_with?(testable)
+        compatible_types = klass.compatible_with.map(&:name).join(", ")
+        errors.add(:evaluator_type,
+          "#{klass.name.demodulize} is only compatible with #{compatible_types}, " \
+          "but this test is for #{testable.class.name}")
+      end
+    rescue NameError
+      errors.add(:evaluator_type, "is not a valid evaluator class")
     end
   end
 end

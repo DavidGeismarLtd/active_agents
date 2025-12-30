@@ -6,7 +6,7 @@ RSpec.describe PromptTracker::GenerateDatasetRowsJob, type: :job do
   describe "#perform" do
     let(:prompt) { create(:prompt) }
     let(:version) { create(:prompt_version, prompt: prompt) }
-    let(:dataset) { create(:dataset, prompt_version: version) }
+    let(:dataset) { create(:dataset, testable: version) }
 
     before do
       # Stub Turbo Stream broadcasts

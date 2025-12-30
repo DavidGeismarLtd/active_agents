@@ -1,0 +1,48 @@
+<!-- Dataset Selection Section -->
+<!-- Renders dataset dropdown and related messages -->
+<%
+  # Local variables expected:
+  # - testable: The testable object (Assistant or PromptVersion) with datasets association
+  # - f: The form builder
+  # - is_run_all: Boolean indicating if this is for run-all (affects messaging)
+  # - datasets_path: Path to create a new dataset
+%>
+
+<% if testable.datasets.any? %>
+  <div class="mb-3">
+    <%= f.label :dataset_id, "Select Dataset", class: "form-label" %>
+    <% if testable.is_a?(PromptTracker::PromptVersion) %>
+      <span class="text-danger">*</span>
+    <% end %>
+    <%= f.select :dataset_id,
+        options_from_collection_for_select(testable.datasets, :id, :name),
+        { prompt: "Choose a dataset..." },
+        class: "form-select",
+        data: { "run-test-modal-target": "datasetSelect" } %>
+    <small class="form-text text-muted">
+      <% if is_run_all %>
+        Each test will run once for each row in the selected dataset.
+        <% if local_assigns[:tests].present? %>
+          Total runs: <%= tests.count %> tests × <span data-run-test-modal-target="rowCount">?</span> rows
+        <% end %>
+      <% else %>
+        The test will run once for each row in the selected dataset.
+      <% end %>
+    </small>
+  </div>
+
+  <% if is_run_all %>
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i>
+      <strong>Batch execution:</strong> This will create <%= tests.count %> test runs per dataset row.
+    </div>
+  <% end %>
+<% else %>
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    No datasets available for this <%= testable.class.name.demodulize.underscore.humanize.downcase %>.
+    <%= link_to "Create a dataset", datasets_path, class: "alert-link" %>
+    to run tests against multiple data rows.
+  </div>
+<% end %>
+

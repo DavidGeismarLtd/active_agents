@@ -1,0 +1,13 @@
+<td data-column="actions">
+  <button type="button"
+          class="btn btn-sm btn-primary"
+          data-bs-toggle="modal"
+          data-bs-target="#human-evaluation-modal-<%= run.id %>"
+          title="Add Human Evaluation">
+    <i class="bi bi-person-check"></i>
+  </button>
+   <%= render "prompt_tracker/shared/human_evaluation_modal_form",
+                   record: run,
+                   form_url: PromptTracker::Engine.routes.url_helpers.testing_run_human_evaluations_path(run),
+                   context: 'testing' %>
+</td>

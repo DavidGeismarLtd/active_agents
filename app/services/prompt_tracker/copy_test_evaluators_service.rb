@@ -102,7 +102,7 @@ module PromptTracker
     # @return [Array<EvaluatorConfig>] unique evaluator configs by evaluator_type
     def collect_test_evaluator_configs
       # Get all tests for this version
-      tests = prompt_version.prompt_tests
+      tests = prompt_version.tests
 
       # Get all evaluator configs from all tests
       all_configs = tests.flat_map(&:evaluator_configs)

@@ -173,7 +173,6 @@ module PromptTracker
     end
 
     # Check if a provider has an API key configured.
-    # Uses the provider_api_key_env_vars configuration to determine which ENV variable to check.
     #
     # @param provider [String, Symbol] the provider name
     # @return [Boolean] true if API key is present
@@ -181,24 +180,59 @@ module PromptTracker
     #   provider_api_key_present?("openai") # => true
     #   provider_api_key_present?(:anthropic) # => false
     def provider_api_key_present?(provider)
-      provider_key = provider.to_s.to_sym
-      env_var_name = PromptTracker.configuration.provider_api_key_env_vars[provider_key]
+      PromptTracker.configuration.provider_configured?(provider)
+    end
 
-      return false if env_var_name.nil?
-
-      ENV[env_var_name].present?
+    # Get list of available providers for a given context.
+    # Returns providers that have API keys configured AND are allowed by the context.
+    #
+    # @param context [Symbol] the context name (e.g., :playground, :llm_judge)
+    # @return [Array<Symbol>] list of provider keys
+    # @example
+    #   providers_for(:playground) # => [:openai, :anthropic]
+    #   providers_for(:llm_judge) # => [:openai]
+    def providers_for(context)
+      PromptTracker.configuration.providers_for(context)
     end
 
     # Get list of available providers (those with API keys configured).
-    # Dynamically checks all providers defined in available_models configuration.
-    #
+    # @deprecated Use {#providers_for} with a context instead
     # @return [Array<Symbol>] list of provider keys
-    # @example
-    #   available_providers # => [:openai, :anthropic]
     def available_providers
-      PromptTracker.configuration.available_models.keys.select do |provider_key|
-        provider_api_key_present?(provider_key)
-      end
+      PromptTracker.configuration.configured_providers
+    end
+
+    # Get available models for a context.
+    # Returns models that are allowed by the context AND whose provider has an API key.
+    #
+    # @param context [Symbol] the context name (e.g., :playground, :llm_judge)
+    # @param provider [Symbol, nil] optional provider filter
+    # @return [Hash, Array] hash of provider => models, or array if provider specified
+    # @example
+    #   models_for(:playground) # => { openai: [...], anthropic: [...] }
+    #   models_for(:playground, provider: :openai) # => [{ id: "gpt-4o", ... }]
+    def models_for(context, provider: nil)
+      PromptTracker.configuration.models_for(context, provider: provider)
+    end
+
+    # Get the default model for a context.
+    #
+    # @param context [Symbol] the context name
+    # @return [String, nil] the default model ID
+    # @example
+    #   default_model_for(:playground) # => "gpt-4o"
+    def default_model_for(context)
+      PromptTracker.configuration.default_model_for(context)
+    end
+
+    # Get the default provider for a context.
+    #
+    # @param context [Symbol] the context name
+    # @return [Symbol, nil] the default provider
+    # @example
+    #   default_provider_for(:playground) # => :openai
+    def default_provider_for(context)
+      PromptTracker.configuration.default_provider_for(context)
     end
 
     # Highlight variable values in rendered prompt

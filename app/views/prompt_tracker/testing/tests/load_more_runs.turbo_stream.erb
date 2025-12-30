@@ -1,0 +1,30 @@
+<%# Append new rows to the tbody %>
+<%= turbo_stream.append "test-runs-tbody-#{@test.id}" do %>
+  <% @additional_runs.each do |run| %>
+    <%= render @testable.test_run_row_partial, run: run %>
+  <% end %>
+<% end %>
+
+<%# Update the count %>
+<%= turbo_stream.update "loaded-runs-count-#{@test.id}" do %>
+  <%= @next_offset < @total_runs_count ? @next_offset : @total_runs_count %>
+<% end %>
+
+<%# Replace the "Load More" button %>
+<%= turbo_stream.replace "load-more-runs-#{@test.id}" do %>
+  <div id="load-more-runs-<%= @test.id %>">
+    <% if @next_offset < @total_runs_count %>
+      <div class="text-center mt-3">
+        <%= link_to load_more_runs_path(@test, offset: @next_offset, limit: 5),
+                    class: "btn btn-sm btn-outline-primary",
+                    data: { turbo_stream: true } do %>
+          <i class="bi bi-arrow-down-circle"></i> Load 5 More Runs
+        <% end %>
+      </div>
+    <% else %>
+      <div class="text-center mt-3 text-muted">
+        <small><i class="bi bi-check-circle"></i> All runs loaded</small>
+      </div>
+    <% end %>
+  </div>
+<% end %>

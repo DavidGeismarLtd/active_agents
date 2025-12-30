@@ -1,0 +1,11 @@
+<td data-column="evaluator_configs">
+  <% if test.evaluator_configs.any? %>
+    <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#evaluator-configs-modal-<%= test.id %>">
+      <i class="bi bi-gear-fill text-primary"></i>
+      <small><%= test.evaluator_configs.count %> evaluator<%= test.evaluator_configs.count == 1 ? '' : 's' %></small>
+    </a>
+  <% else %>
+    <span class="text-muted">-</span>
+  <% end %>
+  <%= render "prompt_tracker/testing/tests/evaluator_config_modals", test: test %>
+</td>

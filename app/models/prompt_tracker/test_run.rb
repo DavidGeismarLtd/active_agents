@@ -1,0 +1,191 @@
+# frozen_string_literal: true
+
+# == Schema Information
+#
+# Table name: prompt_tracker_test_runs
+#
+#  id                       :bigint           not null, primary key
+#  test_id                  :bigint           not null
+#  llm_response_id          :bigint
+#  dataset_id               :bigint
+#  dataset_row_id           :bigint
+#  status                   :string           default("pending"), not null
+#  passed                   :boolean
+#  error_message            :text
+#  assertion_results        :jsonb            not null
+#  passed_evaluators        :integer          default(0), not null
+#  failed_evaluators        :integer          default(0), not null
+#  total_evaluators         :integer          default(0), not null
+#  evaluator_results        :jsonb            not null
+#  execution_time_ms        :integer
+#  cost_usd                 :decimal(10, 6)
+#  metadata                 :jsonb            not null
+#  conversation_data        :jsonb            not null (for assistant tests)
+#  created_at               :datetime         not null
+#  updated_at               :datetime         not null
+#
+module PromptTracker
+  # Represents the result of running a single test.
+  #
+  # Records all details about test execution including:
+  # - Pass/fail status
+  # - Evaluator results
+  # - Performance metrics
+  # - Error details
+  # - For assistant tests: conversation_data with per-message scores
+  #
+  # @example Access test run results
+  #   run = TestRun.last
+  #   puts "Status: #{run.status}"
+  #   puts "Passed: #{run.passed?}"
+  #   puts "Evaluators: #{run.passed_evaluators}/#{run.total_evaluators}"
+  #   puts "Time: #{run.execution_time_ms}ms"
+  #
+  # @example Access conversation data (for assistant tests)
+  #   run.conversation_data.each do |message|
+  #     puts "#{message['role']}: #{message['content']}"
+  #     puts "Score: #{message['score']}" if message['score']
+  #   end
+  #
+  class TestRun < ApplicationRecord
+    self.table_name = "prompt_tracker_test_runs"
+
+    # Associations
+    belongs_to :test,
+               class_name: "PromptTracker::Test",
+               foreign_key: :test_id,
+               touch: true
+
+    belongs_to :llm_response,
+               class_name: "PromptTracker::LlmResponse",
+               optional: true
+
+    belongs_to :dataset,
+               class_name: "PromptTracker::Dataset",
+               optional: true
+
+    belongs_to :dataset_row,
+               class_name: "PromptTracker::DatasetRow",
+               optional: true
+
+    has_many :evaluations,
+             class_name: "PromptTracker::Evaluation",
+             foreign_key: :test_run_id,
+             dependent: :destroy
+
+    has_many :human_evaluations,
+             class_name: "PromptTracker::HumanEvaluation",
+             dependent: :destroy
+
+    # Validations
+    validates :status, presence: true
+    validates :status, inclusion: { in: %w[pending running passed failed error skipped] }
+
+    # Scopes
+    scope :passed, -> { where(passed: true) }
+    scope :failed, -> { where(passed: false) }
+    scope :pending, -> { where(status: "pending") }
+    scope :running, -> { where(status: "running") }
+    scope :completed, -> { where(status: [ "passed", "failed", "error" ]) }
+    scope :recent, -> { order(created_at: :desc) }
+
+    # broadcast change only if status changes
+    after_update_commit :broadcast_status_change, if: :saved_change_to_status?
+
+    # Status helpers
+    def pending?
+      status == "pending"
+    end
+
+    def running?
+      status == "running"
+    end
+
+    def completed?
+      %w[passed failed error skipped].include?(status)
+    end
+
+    def error?
+      status == "error"
+    end
+
+    def skipped?
+      status == "skipped"
+    end
+
+    # Get evaluator pass rate
+    def evaluator_pass_rate
+      return 0.0 if total_evaluators.zero?
+      (passed_evaluators.to_f / total_evaluators * 100).round(2)
+    end
+
+    # Get failed evaluations
+    def failed_evaluations
+      evaluations.where(passed: false)
+    end
+
+    # Get passed evaluations
+    def passed_evaluations
+      evaluations.where(passed: true)
+    end
+
+    # Check if all evaluators passed
+    def all_evaluators_passed?
+      failed_evaluators.zero? && total_evaluators.positive?
+    end
+
+    # Calculate average score from all evaluations
+    def avg_score
+      return nil if evaluations.empty?
+      evaluations.average(:score)&.round(2)
+    end
+
+    # Check if this is an assistant test run
+    def assistant_test?
+      test.testable_type == "PromptTracker::Assistant"
+    end
+
+    # Check if this is a prompt version test run
+    def prompt_version_test?
+      test.testable_type == "PromptTracker::PromptVersion"
+    end
+
+    # Get the prompt version (if this is a prompt version test)
+    def prompt_version
+      return nil unless prompt_version_test?
+      test.testable
+    end
+
+    private
+
+    def broadcast_status_change
+      testable = test.testable
+      stream_name = testable.testable_stream_name
+
+      # Render with ApplicationController to include helpers
+      test_run_html = PromptTracker::ApplicationController.render(
+        partial: testable.test_run_row_partial,
+        locals: { run: self }
+      )
+
+      test_row_html = PromptTracker::ApplicationController.render(
+        partial: testable.test_row_partial,
+        locals: testable.test_row_locals(test)
+      )
+
+      # Update the accordion content (test runs table)
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream_name,
+        target: "test_run_#{id}",
+        html: test_run_html
+      )
+
+      # Update the test row in the tests table (status, last run, run count)
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream_name,
+        target: "test_row_#{test.id}",
+        html: test_row_html
+      )
+    end
+  end
+end

@@ -6,13 +6,7 @@ require "ruby_llm/schema"
 module PromptTracker
   module Evaluators
     RSpec.describe LlmJudgeEvaluator do
-      let(:llm_response) do
-        instance_double(
-          PromptTracker::LlmResponse,
-          rendered_prompt: "What is the capital of France?",
-          response_text: "The capital of France is Paris."
-        )
-      end
+      let(:response_text) { "The capital of France is Paris." }
 
       let(:config) do
         {
@@ -21,7 +15,7 @@ module PromptTracker
         }
       end
 
-      subject(:evaluator) { described_class.new(llm_response, config) }
+      subject(:evaluator) { described_class.new(response_text, config) }
 
       describe ".param_schema" do
         it "defines schema for LLM judge parameters" do
@@ -47,7 +41,7 @@ module PromptTracker
         end
 
         it "uses default values for missing config" do
-          minimal_evaluator = described_class.new(llm_response, {})
+          minimal_evaluator = described_class.new(response_text, {})
           expect(minimal_evaluator.config[:judge_model]).to eq("gpt-4o")
           expect(minimal_evaluator.config[:custom_instructions]).to eq("Evaluate the quality and appropriateness of the response")
         end
@@ -57,7 +51,7 @@ module PromptTracker
             "judge_model" => "gpt-4o",
             "custom_instructions" => "Focus on clarity and conciseness"
           }
-          evaluator = described_class.new(llm_response, string_config)
+          evaluator = described_class.new(response_text, string_config)
           expect(evaluator.config[:judge_model]).to eq("gpt-4o")
           expect(evaluator.config[:custom_instructions]).to eq("Focus on clarity and conciseness")
         end
@@ -67,6 +61,12 @@ module PromptTracker
         let(:prompt) { create(:prompt, :with_active_version) }
         let(:version) { prompt.active_version }
         let(:llm_response) { create(:llm_response, prompt_version: version) }
+        let(:evaluator_with_response) do
+          described_class.new(
+            llm_response.response_text,
+            config.merge(llm_response: llm_response)
+          )
+        end
 
         let(:chat_double) { double("RubyLLM::Chat") }
         let(:schema_chat_double) { double("RubyLLM::Chat with schema") }
@@ -92,13 +92,13 @@ module PromptTracker
         end
 
         it "calls RubyLLM.chat with the judge model" do
-          evaluator.evaluate
+          evaluator_with_response.evaluate
 
           expect(RubyLLM).to have_received(:chat).with(model: "gpt-4o-2024-08-06")
         end
 
         it "calls with_schema with a RubyLLM::Schema class" do
-          evaluator.evaluate
+          evaluator_with_response.evaluate
 
           expect(chat_double).to have_received(:with_schema) do |schema_class|
             expect(schema_class).to be < RubyLLM::Schema
@@ -106,7 +106,7 @@ module PromptTracker
         end
 
         it "calls ask with the judge prompt" do
-          evaluator.evaluate
+          evaluator_with_response.evaluate
 
           expect(schema_chat_double).to have_received(:ask) do |prompt_text|
             # Check that the prompt includes the response text and custom instructions
@@ -117,7 +117,7 @@ module PromptTracker
 
         it "creates an LLM judge evaluation with structured response data" do
           expect {
-            evaluator.evaluate
+            evaluator_with_response.evaluate
           }.to change(Evaluation, :count).by(1)
 
           evaluation = Evaluation.last
@@ -131,7 +131,7 @@ module PromptTracker
         end
 
         it "includes metadata about structured output usage and custom instructions" do
-          evaluator.evaluate
+          evaluator_with_response.evaluate
 
           evaluation = Evaluation.last
           expect(evaluation.metadata["used_structured_output"]).to eq(true)
@@ -141,7 +141,7 @@ module PromptTracker
         end
 
         it "returns the evaluation" do
-          result = evaluator.evaluate
+          result = evaluator_with_response.evaluate
 
           expect(result).to be_a(Evaluation)
           expect(result.score).to eq(85)
@@ -154,7 +154,7 @@ module PromptTracker
           end
 
           it "raises the error" do
-            expect { evaluator.evaluate }.to raise_error(StandardError, /API error/)
+            expect { evaluator_with_response.evaluate }.to raise_error(StandardError, /API error/)
           end
         end
 
@@ -165,14 +165,14 @@ module PromptTracker
           end
 
           it "does not call RubyLLM" do
-            evaluator.evaluate
+            evaluator_with_response.evaluate
 
             expect(RubyLLM).not_to have_received(:chat)
           end
 
           it "generates mock evaluation data" do
             expect {
-              evaluator.evaluate
+              evaluator_with_response.evaluate
             }.to change(Evaluation, :count).by(1)
 
             evaluation = Evaluation.last
@@ -200,12 +200,6 @@ module PromptTracker
       end
 
       describe "#build_judge_prompt" do
-        it "includes the original prompt" do
-          prompt = evaluator.send(:build_judge_prompt)
-
-          expect(prompt).to include("What is the capital of France?")
-        end
-
         it "includes the response to evaluate" do
           prompt = evaluator.send(:build_judge_prompt)
 

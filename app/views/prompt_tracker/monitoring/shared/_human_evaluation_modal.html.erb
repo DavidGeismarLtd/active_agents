@@ -1,7 +1,0 @@
-<%# Human Evaluation Modal for LLM Response %>
-<%# Parameters: call (LlmResponse) %>
-
-<%= render "prompt_tracker/shared/human_evaluation_modal",
-           record: call,
-           form_url: monitoring_llm_response_human_evaluations_path(call),
-           context: 'monitoring' %>

@@ -1,0 +1,26 @@
+<% testable = tests.first&.testable || testable_param %>
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <% testable.test_table_headers.each do |header| %>
+          <th style="width: <%= header[:width] %>;" data-column="<%= header[:key] %>" class="<%= 'text-end' if header[:align] == 'end' %>">
+            <%= header[:label] %>
+          </th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% tests.each do |test| %>
+        <%= render test.testable.test_row_partial, test: test %>
+        <tr class="collapse" id="test-runs-<%= test.id %>">
+          <td colspan="8" class="p-0">
+            <div id="test-runs-content-<%= test.id %>">
+              <%= render "prompt_tracker/testing/tests/test_runs_accordion_content", test: test %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

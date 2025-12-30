@@ -71,7 +71,7 @@
 <% else %>
   <div class="text-center py-5">
     <i class="bi bi-inbox" style="font-size: 3rem; color: #9CA3AF;"></i>
-    <% if record.is_a?(PromptTracker::PromptTestRun) %>
+    <% if record.is_a?(PromptTracker::TestRun) %>
       <p class="text-muted mt-3 mb-0">No human evaluations yet for this test run.</p>
     <% else %>
       <p class="text-muted mt-3 mb-0">No human evaluations yet for this tracked call.</p>
@@ -79,4 +79,3 @@
   </div>
 <% end %>
 </div>
-

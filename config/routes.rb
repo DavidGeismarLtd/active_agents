@@ -6,6 +6,7 @@ PromptTracker::Engine.routes.draw do
   # ========================================
   namespace :testing do
     get "/", to: "dashboard#index", as: :root
+    post "sync_openai_assistants", to: "dashboard#sync_openai_assistants", as: :sync_openai_assistants_root
 
     # Standalone playground (not tied to a specific prompt)
     resource :playground, only: [ :show ], controller: "playground" do
@@ -36,8 +37,62 @@ PromptTracker::Engine.routes.draw do
           post :generate, on: :member
         end
 
-        # Tests nested under prompt versions
-        resources :prompt_tests, only: [ :index, :new, :create, :show, :edit, :update, :destroy ], path: "tests" do
+        # Datasets nested under prompt versions
+        resources :datasets, only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
+          member do
+            post :generate_rows # LLM-powered row generation
+          end
+
+          # Dataset rows nested under datasets
+          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            collection do
+              delete :batch_destroy
+            end
+          end
+        end
+      end
+    end
+
+    # Tests for prompt versions (not nested under prompts for simpler URLs)
+    resources :prompt_versions, only: [], path: "versions" do
+      resources :tests, only: [ :create, :update, :destroy ] do
+        collection do
+          post :run_all
+        end
+        member do
+          post :run
+          get :load_more_runs
+        end
+      end
+    end
+
+    # Test runs (for viewing results)
+    resources :runs, controller: "test_runs" do
+      # Human evaluations nested under test runs
+      resources :human_evaluations, only: [ :create ]
+    end
+
+    # OpenAI Assistants
+    namespace :openai do
+      # Standalone playground route for creating new assistants
+      get "assistants/playground/new", to: "assistant_playground#new", as: "new_assistant_playground"
+
+      resources :assistants, only: [ :index, :show, :destroy ] do
+        member do
+          post :sync # Sync assistant from OpenAI API
+        end
+
+        # Playground for editing existing assistants
+        resource :playground, only: [ :show ], controller: "assistant_playground" do
+          post :create_assistant    # Create new assistant via API
+          post :update_assistant    # Update existing assistant via API
+          post :send_message        # Send message in thread
+          post :create_thread       # Create new thread
+          get  :load_messages       # Load thread messages
+        end
+
+        # Tests nested under assistants
+        resources :tests, controller: "assistant_tests", only: [ :create, :show, :update, :destroy ] do
           collection do
             post :run_all
           end
@@ -47,22 +102,20 @@ PromptTracker::Engine.routes.draw do
           end
         end
 
-        # Datasets nested under prompt versions
-        resources :datasets, only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
+        # Datasets nested under assistants
+        resources :datasets, controller: "assistant_datasets", only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
           member do
             post :generate_rows # LLM-powered row generation
           end
 
           # Dataset rows nested under datasets
-          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows"
+          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            collection do
+              delete :batch_destroy
+            end
+          end
         end
       end
-    end
-
-    # Test runs (for viewing results)
-    resources :runs, controller: "prompt_test_runs", only: [ :index, :show ] do
-      # Human evaluations nested under test runs
-      resources :human_evaluations, only: [ :create ]
     end
   end
 
@@ -132,7 +185,4 @@ PromptTracker::Engine.routes.draw do
       get :config_form
     end
   end
-
-  # Test runs (legacy, redirects to /testing/runs)
-  resources :prompt_test_runs, only: [ :index, :show ], path: "test-runs"
 end

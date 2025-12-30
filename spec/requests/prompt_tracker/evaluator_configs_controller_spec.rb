@@ -426,7 +426,7 @@ RSpec.describe "PromptTracker::EvaluatorConfigsController", type: :request do
 
     context "when tests have no evaluator configs" do
       before do
-        create(:prompt_test, prompt_version: version)
+        create(:test, testable: version)
       end
 
       it "redirects with alert message" do
@@ -439,7 +439,7 @@ RSpec.describe "PromptTracker::EvaluatorConfigsController", type: :request do
     end
 
     context "when copying from tests with evaluators" do
-      let!(:test) { create(:prompt_test, prompt_version: version) }
+      let!(:test) { create(:test, testable: version) }
       let!(:test_config) do
         create(:evaluator_config,
                configurable: test,
@@ -463,8 +463,8 @@ RSpec.describe "PromptTracker::EvaluatorConfigsController", type: :request do
     end
 
     context "when copying multiple evaluators" do
-      let!(:test1) { create(:prompt_test, prompt_version: version, name: "Test 1") }
-      let!(:test2) { create(:prompt_test, prompt_version: version, name: "Test 2") }
+      let!(:test1) { create(:test, testable: version, name: "Test 1") }
+      let!(:test2) { create(:test, testable: version, name: "Test 2") }
       let!(:config1) do
         create(:evaluator_config,
                configurable: test1,
@@ -493,7 +493,7 @@ RSpec.describe "PromptTracker::EvaluatorConfigsController", type: :request do
     end
 
     context "when some evaluators already exist in monitoring" do
-      let!(:test) { create(:prompt_test, prompt_version: version) }
+      let!(:test) { create(:test, testable: version) }
       let!(:test_config) do
         create(:evaluator_config,
                configurable: test,

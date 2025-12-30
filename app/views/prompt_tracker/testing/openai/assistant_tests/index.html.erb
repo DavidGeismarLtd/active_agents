@@ -1,0 +1,76 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "OpenAI Assistants", testing_openai_assistants_path %></li>
+  <li class="breadcrumb-item"><%= link_to @assistant.name, testing_openai_assistant_path(@assistant) %></li>
+  <li class="breadcrumb-item active">Tests</li>
+<% end %>
+
+<div class="row mb-4">
+  <div class="col">
+    <h1>
+      <i class="bi bi-check-circle"></i> Tests for <%= @assistant.name %>
+    </h1>
+    <p class="text-muted">Manage automated tests for this assistant</p>
+  </div>
+  <div class="col-auto">
+    <%= link_to new_testing_openai_assistant_test_path(@assistant), class: "btn btn-primary" do %>
+      <i class="bi bi-plus-circle"></i> New Test
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <% if @tests.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Pass Rate</th>
+              <th>Total Runs</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @tests.each do |test| %>
+              <tr>
+                <td>
+                  <strong><%= link_to test.name, testing_openai_assistant_test_path(@assistant, test) %></strong>
+                  <% unless test.enabled? %>
+                    <span class="badge bg-secondary">Disabled</span>
+                  <% end %>
+                  <% if test.description.present? %>
+                    <br><small class="text-muted"><%= truncate(test.description, length: 80) %></small>
+                  <% end %>
+                </td>
+                <td>
+                  <% if test.passing? %>
+                    <span class="badge bg-success">Passing</span>
+                  <% elsif test.test_runs.any? %>
+                    <span class="badge bg-danger">Failing</span>
+                  <% else %>
+                    <span class="badge bg-secondary">No runs</span>
+                  <% end %>
+                </td>
+                <td><%= number_to_percentage(test.pass_rate, precision: 0) %></td>
+                <td><span class="badge bg-secondary"><%= test.test_runs.count %></span></td>
+                <td>
+                  <%= link_to "View", testing_openai_assistant_test_path(@assistant, test), class: "btn btn-sm btn-outline-primary" %>
+                  <%= link_to "Edit", edit_testing_openai_assistant_test_path(@assistant, test), class: "btn btn-sm btn-outline-secondary" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-check-circle" style="font-size: 3rem; color: #ccc;"></i>
+        <p class="text-muted mt-3">No tests yet.</p>
+        <%= link_to "Create your first test", new_testing_openai_assistant_test_path(@assistant), class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+

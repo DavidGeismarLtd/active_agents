@@ -1,3 +1,9 @@
+<%
+  # Get schema from dataset (for edit) or testable (for new)
+  # The dataset model's before_validation callback will copy schema from testable if blank
+  display_schema = dataset.schema.presence || (dataset.testable&.respond_to?(:variables_schema) ? dataset.testable.variables_schema : [])
+%>
+
 <%= form_with(model: dataset, url: url, method: method, local: true) do |f| %>
   <% if dataset.errors.any? %>
     <div class="alert alert-danger">
@@ -18,21 +24,22 @@
 
   <div class="mb-3">
     <%= f.label :description, class: "form-label" %>
-    <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Describe what this dataset contains and when to use it..." %>
+    <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Describe what this dataset contains..." %>
     <div class="form-text">Optional description to help others understand this dataset</div>
   </div>
 
+  <%# Schema info - driven by dataset.schema (works for any testable type) %>
   <div class="mb-3">
     <label class="form-label">Schema</label>
     <div class="alert alert-info">
       <small>
         <i class="bi bi-info-circle"></i>
-        The schema is automatically copied from the prompt version's variables schema.
-        <% if @version.variables_schema.present? %>
-          This dataset will use the following variables:
-          <strong><%= @version.variables_schema.map { |v| v["name"] }.join(", ") %></strong>
-        <% else %>
-          <span class="text-danger">Warning: This prompt version has no variables schema defined.</span>
+        <% if dataset.new_record? %>
+          The schema will be automatically copied from the <%= dataset.testable.class.name.demodulize.humanize.downcase %>.
+        <% end %>
+        <% if display_schema.present? %>
+          This dataset uses the following variables:
+          <strong><%= display_schema.map { |v| v["name"] }.join(", ") %></strong>
         <% end %>
       </small>
     </div>
@@ -43,4 +50,3 @@
     <%= link_to "Cancel", cancel_path, class: "btn btn-outline-secondary" %>
   </div>
 <% end %>
-

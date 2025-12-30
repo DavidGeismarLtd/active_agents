@@ -1,0 +1,89 @@
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0" style="color: #374151;">
+      <i class="bi bi-comments"></i>
+      Conversation Judge Evaluation
+    </h5>
+  </div>
+  <div class="card-body">
+    <% metadata = evaluation.metadata || {} %>
+    <% message_scores = metadata['message_scores'] || [] %>
+    <% total_messages = metadata['total_messages'] || 0 %>
+    <% threshold = metadata['threshold'] || 70 %>
+    <% judge_model = metadata['judge_model'] || 'Unknown' %>
+    <% mock_mode = metadata['mock_mode'] %>
+
+    <!-- Judge Model Info -->
+    <div class="mb-3">
+      <p class="mb-1" style="color: #6B7280; font-size: 0.875rem;"><strong>Judge Model:</strong></p>
+      <code style="background-color: #F3F4F6; padding: 0.25rem 0.5rem; border-radius: 4px; color: #374151;"><%= judge_model %></code>
+      <% if mock_mode %>
+        <span class="badge bg-warning text-dark ms-2">MOCK MODE</span>
+      <% end %>
+    </div>
+
+    <!-- Overall Score -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-danger' %> mb-0">
+          <strong>Average Score:</strong> <%= number_with_precision(evaluation.score, precision: 1) %>/100
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-secondary mb-0">
+          <strong>Threshold:</strong> <%= threshold %>/100
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-secondary mb-0">
+          <strong>Total Messages:</strong> <%= total_messages %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-Message Scores -->
+    <% if message_scores.any? %>
+      <h6><i class="bi bi-list-ol"></i> Message-by-Message Scores</h6>
+      <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 10%;">Turn</th>
+              <th style="width: 15%;">Score</th>
+              <th style="width: 40%;">Feedback</th>
+              <th style="width: 35%;">Message Preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% message_scores.each do |msg_score| %>
+              <% turn = msg_score['turn'] || msg_score[:turn] %>
+              <% score = msg_score['score'] || msg_score[:score] %>
+              <% feedback = msg_score['feedback'] || msg_score[:feedback] %>
+              <% content_preview = msg_score['content_preview'] || msg_score[:content_preview] || 'N/A' %>
+              <% passed_threshold = score >= threshold %>
+              
+              <tr>
+                <td class="text-center"><strong>#<%= turn %></strong></td>
+                <td>
+                  <span class="badge <%= passed_threshold ? 'bg-success' : 'bg-danger' %>">
+                    <%= score %>/100
+                  </span>
+                </td>
+                <td><small><%= feedback %></small></td>
+                <td><small class="text-muted"><%= truncate(content_preview, length: 80) %></small></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <!-- Overall Feedback -->
+    <% if evaluation.feedback.present? %>
+      <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-warning' %> mb-0">
+        <strong>Summary:</strong> <%= evaluation.feedback %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
