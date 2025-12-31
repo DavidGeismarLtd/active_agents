@@ -291,4 +291,248 @@ tech_test.evaluator_configs.create!(
 
 puts "  ✓ Created technical support assistant with dataset and test"
 
-puts "\n  ✅ Created 3 OpenAI assistants with datasets and tests"
+# ============================================================================
+# 4. Travel Booking Assistant (with Functions)
+# ============================================================================
+
+travel_assistant = PromptTracker::Openai::Assistant.new(
+  name: "travel_booking_assistant",
+  description: "Helps users plan and book travel with function calling capabilities",
+  assistant_id: "asst_travel_booking_001",  # Mock ID for demo
+  category: "travel",
+  skip_fetch_from_openai: true,  # Don't fetch from OpenAI during seeding
+  metadata: {
+    "instructions" => <<~INSTRUCTIONS.strip,
+      You are a travel booking assistant. Your role is to:
+      1. Help users search for flights and hotels
+      2. Check weather at destinations
+      3. Book travel arrangements when requested
+      4. Provide travel recommendations and tips
+
+      Use the available functions to look up real-time information.
+      Always confirm booking details with the user before finalizing.
+    INSTRUCTIONS
+    "model" => "gpt-4o",
+    "tools" => [
+      {
+        "type" => "function",
+        "function" => {
+          "name" => "search_flights",
+          "description" => "Search for available flights between two airports",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "origin" => {
+                "type" => "string",
+                "description" => "Origin airport code (e.g., JFK, LAX)"
+              },
+              "destination" => {
+                "type" => "string",
+                "description" => "Destination airport code (e.g., LHR, CDG)"
+              },
+              "date" => {
+                "type" => "string",
+                "description" => "Departure date in YYYY-MM-DD format"
+              },
+              "passengers" => {
+                "type" => "integer",
+                "description" => "Number of passengers"
+              }
+            },
+            "required" => [ "origin", "destination", "date" ]
+          },
+          "strict" => false
+        }
+      },
+      {
+        "type" => "function",
+        "function" => {
+          "name" => "search_hotels",
+          "description" => "Search for available hotels in a city",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "city" => {
+                "type" => "string",
+                "description" => "City name to search for hotels"
+              },
+              "check_in" => {
+                "type" => "string",
+                "description" => "Check-in date in YYYY-MM-DD format"
+              },
+              "check_out" => {
+                "type" => "string",
+                "description" => "Check-out date in YYYY-MM-DD format"
+              },
+              "guests" => {
+                "type" => "integer",
+                "description" => "Number of guests"
+              }
+            },
+            "required" => [ "city", "check_in", "check_out" ]
+          },
+          "strict" => false
+        }
+      },
+      {
+        "type" => "function",
+        "function" => {
+          "name" => "get_weather",
+          "description" => "Get weather forecast for a location",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "location" => {
+                "type" => "string",
+                "description" => "City or location name"
+              },
+              "date" => {
+                "type" => "string",
+                "description" => "Date for weather forecast in YYYY-MM-DD format"
+              }
+            },
+            "required" => [ "location" ]
+          },
+          "strict" => false
+        }
+      },
+      {
+        "type" => "function",
+        "function" => {
+          "name" => "book_flight",
+          "description" => "Book a specific flight",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "flight_id" => {
+                "type" => "string",
+                "description" => "The flight ID to book"
+              },
+              "passenger_name" => {
+                "type" => "string",
+                "description" => "Full name of the passenger"
+              },
+              "seat_preference" => {
+                "type" => "string",
+                "enum" => [ "window", "aisle", "middle" ],
+                "description" => "Preferred seat type"
+              }
+            },
+            "required" => [ "flight_id", "passenger_name" ]
+          },
+          "strict" => false
+        }
+      }
+    ]
+  }
+)
+travel_assistant.save!
+
+# Create dataset for travel assistant
+travel_dataset = PromptTracker::Dataset.create!(
+  testable: travel_assistant,
+  name: "Travel Booking Scenarios",
+  description: "Test cases for travel planning and booking with function calls"
+)
+
+travel_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "interlocutor_simulation_prompt" => "You want to book a flight from New York (JFK) to London (LHR) for next week. You're flexible on dates but prefer morning flights. Ask about prices and availability.",
+      "max_turns" => 4
+    }
+  },
+  {
+    row_data: {
+      "interlocutor_simulation_prompt" => "You're planning a vacation to Paris. You need both flights from Los Angeles and a hotel for 5 nights. Also ask about the weather during your trip.",
+      "max_turns" => 5
+    }
+  },
+  {
+    row_data: {
+      "interlocutor_simulation_prompt" => "You want to check hotel options in Tokyo for a business trip. You need a hotel near the city center for 3 nights next month.",
+      "max_turns" => 3
+    }
+  },
+  {
+    row_data: {
+      "interlocutor_simulation_prompt" => "You're looking to book a last-minute trip to Miami. Check if there are flights available from Chicago for this weekend and what the weather will be like.",
+      "max_turns" => 4
+    }
+  },
+  {
+    row_data: {
+      "interlocutor_simulation_prompt" => "You want to plan a family trip to Barcelona for 4 people. You need flights from Boston and a family-friendly hotel. Compare options and prices.",
+      "max_turns" => 5
+    }
+  }
+])
+
+# Create test with Function Call Evaluator
+travel_test = PromptTracker::Test.create!(
+  testable: travel_assistant,
+  name: "Travel Function Usage",
+  description: "Evaluates if the assistant correctly uses travel-related functions",
+  enabled: true
+)
+
+# Function Call Evaluator - check if search functions are called
+travel_test.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FunctionCallEvaluator",
+  enabled: true,
+  config: {
+    "expected_functions" => [ "search_flights", "search_hotels", "get_weather" ],
+    "require_all" => false,  # At least one of these should be called
+    "check_arguments" => false,
+    "threshold_score" => 80
+  }
+)
+
+# Also add a conversation judge for quality
+travel_test.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::ConversationJudgeEvaluator",
+  enabled: true,
+  config: {
+    "judge_model" => "gpt-4o-mini",
+    "evaluation_prompt" => <<~PROMPT.strip,
+      Evaluate this travel booking conversation for:
+      1. Appropriate use of functions to gather information (0-100)
+      2. Providing helpful travel recommendations (0-100)
+      3. Clear communication of options and prices (0-100)
+      4. Professional and friendly tone (0-100)
+
+      Consider the overall quality of the travel planning interaction.
+    PROMPT
+    "threshold_score" => 75
+  }
+)
+
+puts "  ✓ Created travel booking assistant with functions, dataset and test"
+
+# Create a second test specifically for argument validation
+travel_args_test = PromptTracker::Test.create!(
+  testable: travel_assistant,
+  name: "Travel Function Arguments",
+  description: "Validates that function arguments are correctly formatted",
+  enabled: true
+)
+
+travel_args_test.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FunctionCallEvaluator",
+  enabled: true,
+  config: {
+    "expected_functions" => [ "search_flights" ],
+    "require_all" => true,
+    "check_arguments" => true,
+    "expected_arguments" => {
+      "search_flights" => {
+        "origin" => "JFK"  # Expect JFK as origin for the first test case
+      }
+    },
+    "threshold_score" => 80
+  }
+)
+
+puts "  ✓ Created travel function arguments test"
+
+puts "\n  ✅ Created 4 OpenAI assistants with datasets and tests"

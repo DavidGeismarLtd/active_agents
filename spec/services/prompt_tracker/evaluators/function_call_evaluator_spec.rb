@@ -172,6 +172,188 @@ module PromptTracker
           expect(evaluator.passed?).to be false
         end
       end
+
+      describe "argument checking" do
+        let(:conversation_with_flight_search) do
+          {
+            "messages" => [
+              { "role" => "user", "content" => "Find flights from JFK to LHR", "turn" => 1 },
+              {
+                "role" => "assistant",
+                "content" => nil,
+                "tool_calls" => [
+                  {
+                    "id" => "call_flight_1",
+                    "type" => "function",
+                    "function" => {
+                      "name" => "search_flights",
+                      "arguments" => '{"origin": "JFK", "destination": "LHR", "date": "2024-06-15"}'
+                    }
+                  }
+                ],
+                "turn" => 1
+              },
+              { "role" => "assistant", "content" => "Found flights from JFK to LHR.", "turn" => 1 }
+            ]
+          }
+        end
+
+        let(:conversation_with_nested_args) do
+          {
+            "messages" => [
+              { "role" => "user", "content" => "Create an order", "turn" => 1 },
+              {
+                "role" => "assistant",
+                "content" => nil,
+                "tool_calls" => [
+                  {
+                    "id" => "call_order_1",
+                    "type" => "function",
+                    "function" => {
+                      "name" => "create_order",
+                      "arguments" => '{"customer": {"name": "John", "email": "john@example.com"}, "items": ["item1"]}'
+                    }
+                  }
+                ],
+                "turn" => 1
+              }
+            ]
+          }
+        end
+
+        context "with check_arguments: true" do
+          it "returns 100 when arguments match expected values" do
+            evaluator = described_class.new(conversation_with_flight_search, {
+              expected_functions: [ "search_flights" ],
+              require_all: true,
+              check_arguments: true,
+              expected_arguments: {
+                "search_flights" => { "origin" => "JFK", "destination" => "LHR" }
+              }
+            })
+            expect(evaluator.evaluate_score).to eq(100)
+          end
+
+          it "returns reduced score when arguments don't match" do
+            evaluator = described_class.new(conversation_with_flight_search, {
+              expected_functions: [ "search_flights" ],
+              require_all: true,
+              check_arguments: true,
+              expected_arguments: {
+                "search_flights" => { "origin" => "LAX" }  # Expected LAX but got JFK
+              }
+            })
+            expect(evaluator.evaluate_score).to be < 100
+          end
+
+          it "matches nested argument structures" do
+            evaluator = described_class.new(conversation_with_nested_args, {
+              expected_functions: [ "create_order" ],
+              require_all: true,
+              check_arguments: true,
+              expected_arguments: {
+                "create_order" => {
+                  "customer" => { "name" => "John" }
+                }
+              }
+            })
+            expect(evaluator.evaluate_score).to eq(100)
+          end
+
+          it "ignores extra arguments in actual call (subset matching)" do
+            evaluator = described_class.new(conversation_with_flight_search, {
+              expected_functions: [ "search_flights" ],
+              require_all: true,
+              check_arguments: true,
+              expected_arguments: {
+                "search_flights" => { "origin" => "JFK" }  # Only checking origin
+              }
+            })
+            expect(evaluator.evaluate_score).to eq(100)
+          end
+        end
+
+        context "with check_arguments: false" do
+          it "ignores argument values" do
+            evaluator = described_class.new(conversation_with_flight_search, {
+              expected_functions: [ "search_flights" ],
+              require_all: true,
+              check_arguments: false,
+              expected_arguments: {
+                "search_flights" => { "origin" => "LAX" }  # Wrong origin, but should be ignored
+              }
+            })
+            expect(evaluator.evaluate_score).to eq(100)
+          end
+        end
+      end
+
+      describe "multiple function calls" do
+        let(:conversation_with_travel_planning) do
+          {
+            "messages" => [
+              { "role" => "user", "content" => "Plan my trip to Paris", "turn" => 1 },
+              {
+                "role" => "assistant",
+                "content" => nil,
+                "tool_calls" => [
+                  {
+                    "id" => "call_1",
+                    "type" => "function",
+                    "function" => {
+                      "name" => "search_flights",
+                      "arguments" => '{"origin": "JFK", "destination": "CDG"}'
+                    }
+                  },
+                  {
+                    "id" => "call_2",
+                    "type" => "function",
+                    "function" => {
+                      "name" => "search_hotels",
+                      "arguments" => '{"city": "Paris"}'
+                    }
+                  },
+                  {
+                    "id" => "call_3",
+                    "type" => "function",
+                    "function" => {
+                      "name" => "get_weather",
+                      "arguments" => '{"location": "Paris"}'
+                    }
+                  }
+                ],
+                "turn" => 1
+              }
+            ]
+          }
+        end
+
+        it "validates all expected functions with arguments" do
+          evaluator = described_class.new(conversation_with_travel_planning, {
+            expected_functions: [ "search_flights", "search_hotels", "get_weather" ],
+            require_all: true,
+            check_arguments: true,
+            expected_arguments: {
+              "search_flights" => { "destination" => "CDG" },
+              "search_hotels" => { "city" => "Paris" },
+              "get_weather" => { "location" => "Paris" }
+            }
+          })
+          expect(evaluator.evaluate_score).to eq(100)
+        end
+
+        it "generates detailed feedback for multiple functions" do
+          evaluator = described_class.new(conversation_with_travel_planning, {
+            expected_functions: [ "search_flights", "search_hotels", "book_flight" ],
+            require_all: true
+          })
+          feedback = evaluator.generate_feedback
+
+          expect(feedback).to include("search_flights")
+          expect(feedback).to include("search_hotels")
+          expect(feedback).to include("book_flight")
+        end
+      end
     end
   end
 end
