@@ -101,6 +101,49 @@ module PromptTracker
         expect(version.errors[:model_config]).to include("must be a hash")
       end
 
+      describe "response_schema validation" do
+        it "allows nil response_schema" do
+          version = PromptVersion.new(valid_attributes.merge(response_schema: nil))
+          expect(version).to be_valid
+        end
+
+        it "requires response_schema to be a hash" do
+          version = PromptVersion.new(valid_attributes.merge(response_schema: "not a hash"))
+          expect(version).not_to be_valid
+          expect(version.errors[:response_schema]).to include("must be a valid JSON Schema (Hash)")
+        end
+
+        it "requires response_schema to have a type property" do
+          version = PromptVersion.new(valid_attributes.merge(response_schema: { "properties" => {} }))
+          expect(version).not_to be_valid
+          expect(version.errors[:response_schema]).to include("must have a 'type' property")
+        end
+
+        it "requires object type to have properties" do
+          version = PromptVersion.new(valid_attributes.merge(response_schema: { "type" => "object" }))
+          expect(version).not_to be_valid
+          expect(version.errors[:response_schema]).to include("must have 'properties' when type is 'object'")
+        end
+
+        it "accepts valid JSON Schema with object type" do
+          schema = {
+            "type" => "object",
+            "properties" => {
+              "name" => { "type" => "string" }
+            },
+            "required" => [ "name" ]
+          }
+          version = PromptVersion.new(valid_attributes.merge(response_schema: schema))
+          expect(version).to be_valid
+        end
+
+        it "accepts valid JSON Schema with non-object type" do
+          schema = { "type" => "string" }
+          version = PromptVersion.new(valid_attributes.merge(response_schema: schema))
+          expect(version).to be_valid
+        end
+      end
+
       it "allows user_prompt changes when no responses exist" do
         version = PromptVersion.create!(valid_attributes)
         version.user_prompt = "New template"
@@ -572,6 +615,93 @@ module PromptTracker
           config: { min_length: 10, max_length: 100 }
         )
         expect(version.has_monitoring_enabled?).to be true
+      end
+    end
+
+    describe "#has_response_schema?" do
+      it "returns false when no response_schema is defined" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.has_response_schema?).to be false
+      end
+
+      it "returns true when response_schema is defined" do
+        schema = { "type" => "object", "properties" => { "name" => { "type" => "string" } } }
+        version = PromptVersion.create!(valid_attributes.merge(response_schema: schema))
+        expect(version.has_response_schema?).to be true
+      end
+    end
+
+    describe "#structured_output_enabled?" do
+      let(:valid_schema) { { "type" => "object", "properties" => { "name" => { "type" => "string" } } } }
+
+      it "returns false when no response_schema is defined" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.structured_output_enabled?).to be false
+      end
+
+      it "returns false when model does not support structured output" do
+        version = PromptVersion.create!(valid_attributes.merge(
+                                          response_schema: valid_schema,
+                                          model_config: { "provider" => "unknown", "model" => "some-model" }
+                                        ))
+        expect(version.structured_output_enabled?).to be false
+      end
+
+      it "returns true for OpenAI gpt-4o models with response_schema" do
+        version = PromptVersion.create!(valid_attributes.merge(
+                                          response_schema: valid_schema,
+                                          model_config: { "provider" => "openai", "model" => "gpt-4o" }
+                                        ))
+        expect(version.structured_output_enabled?).to be true
+      end
+
+      it "returns true for OpenAI gpt-4o-mini models with response_schema" do
+        version = PromptVersion.create!(valid_attributes.merge(
+                                          response_schema: valid_schema,
+                                          model_config: { "provider" => "openai", "model" => "gpt-4o-mini" }
+                                        ))
+        expect(version.structured_output_enabled?).to be true
+      end
+
+      it "returns true for Anthropic Claude 3 models with response_schema" do
+        version = PromptVersion.create!(valid_attributes.merge(
+                                          response_schema: valid_schema,
+                                          model_config: { "provider" => "anthropic", "model" => "claude-3-5-sonnet" }
+                                        ))
+        expect(version.structured_output_enabled?).to be true
+      end
+    end
+
+    describe "#response_schema_required_properties" do
+      it "returns empty array when no response_schema is defined" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.response_schema_required_properties).to eq([])
+      end
+
+      it "returns required properties from schema" do
+        schema = {
+          "type" => "object",
+          "properties" => { "name" => { "type" => "string" }, "age" => { "type" => "integer" } },
+          "required" => %w[name age]
+        }
+        version = PromptVersion.create!(valid_attributes.merge(response_schema: schema))
+        expect(version.response_schema_required_properties).to eq(%w[name age])
+      end
+    end
+
+    describe "#response_schema_properties" do
+      it "returns empty hash when no response_schema is defined" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.response_schema_properties).to eq({})
+      end
+
+      it "returns properties from schema" do
+        schema = {
+          "type" => "object",
+          "properties" => { "name" => { "type" => "string" } }
+        }
+        version = PromptVersion.create!(valid_attributes.merge(response_schema: schema))
+        expect(version.response_schema_properties).to eq({ "name" => { "type" => "string" } })
       end
     end
   end

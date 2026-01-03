@@ -190,6 +190,101 @@ module PromptTracker
         expect(json["success"]).to be false
         expect(json["errors"]).to be_present
       end
+
+      context "with response_schema" do
+        let(:valid_response_schema) do
+          {
+            "type" => "object",
+            "properties" => {
+              "sentiment" => { "type" => "string", "enum" => %w[positive negative neutral] },
+              "confidence" => { "type" => "number" }
+            },
+            "required" => %w[sentiment confidence]
+          }
+        end
+
+        it "saves response_schema when creating a new version" do
+          expect {
+            post :save, params: {
+              prompt_id: prompt.id,
+              user_prompt: "Analyze: {{text}}",
+              notes: "With structured output",
+              save_action: "new_version",
+              response_schema: valid_response_schema
+            }, format: :json
+          }.to change(PromptVersion, :count).by(1)
+
+          expect(response).to have_http_status(:success)
+          json = JSON.parse(response.body)
+          expect(json["success"]).to be true
+
+          new_version = PromptVersion.find(json["version_id"])
+          expect(new_version.response_schema).to eq(valid_response_schema)
+          expect(new_version.has_response_schema?).to be true
+        end
+
+        it "saves response_schema when updating an existing version" do
+          draft_version = create(:prompt_version, prompt: prompt, status: "draft", user_prompt: "Old template")
+
+          post :save, params: {
+            prompt_id: prompt.id,
+            prompt_version_id: draft_version.id,
+            user_prompt: "Analyze: {{text}}",
+            notes: "Added structured output",
+            save_action: "update",
+            response_schema: valid_response_schema
+          }, format: :json
+
+          expect(response).to have_http_status(:success)
+          json = JSON.parse(response.body)
+          expect(json["success"]).to be true
+          expect(json["action"]).to eq("updated")
+
+          draft_version.reload
+          expect(draft_version.response_schema).to eq(valid_response_schema)
+        end
+
+        it "clears response_schema when empty is passed" do
+          version_with_schema = create(:prompt_version,
+            prompt: prompt,
+            status: "draft",
+            user_prompt: "Old template",
+            response_schema: valid_response_schema
+          )
+
+          post :save, params: {
+            prompt_id: prompt.id,
+            prompt_version_id: version_with_schema.id,
+            user_prompt: "Updated template",
+            notes: "Removed structured output",
+            save_action: "update",
+            response_schema: nil
+          }, format: :json
+
+          expect(response).to have_http_status(:success)
+
+          version_with_schema.reload
+          expect(version_with_schema.response_schema).to be_blank
+          expect(version_with_schema.has_response_schema?).to be false
+        end
+
+        it "returns validation errors for invalid response_schema structure" do
+          invalid_schema = { "invalid" => "schema" } # Missing 'type' property
+
+          post :save, params: {
+            prompt_id: prompt.id,
+            user_prompt: "Template {{var}}",
+            notes: "Invalid schema",
+            save_action: "new_version",
+            response_schema: invalid_schema
+          }, format: :json
+
+          expect(response).to have_http_status(:unprocessable_entity)
+          json = JSON.parse(response.body)
+          expect(json["success"]).to be false
+          expect(json["errors"].join).to include("Response schema")
+        end
+      end
     end
 
     describe "private methods" do

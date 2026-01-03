@@ -10,6 +10,7 @@
 #  model_config     :jsonb
 #  notes            :text
 #  prompt_id        :bigint           not null
+#  response_schema  :jsonb            JSON Schema for structured output
 #  status           :string           default("draft"), not null
 #  system_prompt    :text
 #  user_prompt      :text             not null
@@ -85,6 +86,7 @@ module PromptTracker
     validate :user_prompt_immutable_if_responses_exist, on: :update
     validate :variables_schema_must_be_array
     validate :model_config_must_be_hash
+    validate :response_schema_must_be_valid_json_schema
 
     # Callbacks
     before_validation :set_next_version_number, on: :create, if: -> { version_number.nil? }
@@ -231,6 +233,7 @@ module PromptTracker
         "user_prompt" => user_prompt,
         "variables" => variables_schema,
         "model_config" => model_config,
+        "response_schema" => response_schema,
         "notes" => notes
       }
     end
@@ -240,6 +243,42 @@ module PromptTracker
     # @return [Boolean] true if any evaluator configs exist
     def has_monitoring_enabled?
       evaluator_configs.enabled.exists?
+    end
+
+    # Checks if this version has a response schema defined.
+    #
+    # @return [Boolean] true if response_schema is present
+    def has_response_schema?
+      response_schema.present?
+    end
+
+    # Checks if structured output is enabled and supported.
+    #
+    # Structured output requires:
+    # 1. A response_schema to be defined
+    # 2. A model that supports structured outputs (OpenAI gpt-4o family)
+    #
+    # @return [Boolean] true if structured output can be used
+    def structured_output_enabled?
+      has_response_schema? && model_supports_structured_output?
+    end
+
+    # Returns the list of required properties from the response schema.
+    #
+    # @return [Array<String>] list of required property names
+    def response_schema_required_properties
+      return [] unless has_response_schema?
+
+      response_schema["required"] || []
+    end
+
+    # Returns the properties defined in the response schema.
+    #
+    # @return [Hash] the properties hash from the schema
+    def response_schema_properties
+      return {} unless has_response_schema?
+
+      response_schema["properties"] || {}
     end
 
     # Run a test with a dataset row (for polymorphic testable interface)
@@ -342,6 +381,55 @@ module PromptTracker
       return if model_config.nil? || model_config.is_a?(Hash)
 
       errors.add(:model_config, "must be a hash")
+    end
+
+    # Validates that response_schema is a valid JSON Schema structure.
+    #
+    # A valid JSON Schema must:
+    # 1. Be a Hash
+    # 2. Have a "type" property (typically "object" for structured outputs)
+    # 3. Have "properties" when type is "object"
+    def response_schema_must_be_valid_json_schema
+      return if response_schema.blank?
+
+      unless response_schema.is_a?(Hash)
+        errors.add(:response_schema, "must be a valid JSON Schema (Hash)")
+        return
+      end
+
+      unless response_schema["type"].present?
+        errors.add(:response_schema, "must have a 'type' property")
+        return
+      end
+
+      if response_schema["type"] == "object" && response_schema["properties"].blank?
+        errors.add(:response_schema, "must have 'properties' when type is 'object'")
+      end
+    end
+
+    # Checks if the configured model supports structured outputs.
+    #
+    # Currently, structured outputs are supported by:
+    # - OpenAI: gpt-4o, gpt-4o-mini, gpt-4o-2024-08-06 and newer
+    # - Anthropic: claude-3-5-sonnet (via tool use)
+    #
+    # @return [Boolean] true if the model supports structured outputs
+    def model_supports_structured_output?
+      return false if model_config.blank?
+
+      provider = model_config["provider"]&.to_s
+      model = model_config["model"]&.to_s
+
+      case provider
+      when "openai"
+        # gpt-4o family supports structured outputs
+        model&.start_with?("gpt-4o") || model&.start_with?("gpt-4-turbo")
+      when "anthropic"
+        # Claude 3.5 supports structured outputs via tool use
+        model&.include?("claude-3")
+      else
+        false
+      end
     end
 
     # Determines if variables should be extracted from user_prompt

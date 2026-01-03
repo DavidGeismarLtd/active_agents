@@ -124,12 +124,19 @@ module PromptTracker
       prompt_slug = params[:prompt_slug]
       save_action = params[:save_action] # 'update' or 'new_version'
       model_config = params[:model_config] || {}
+      response_schema = params[:response_schema]
 
       if @prompt
         # Check if we should update existing version or create new one
         if save_action == "update" && @prompt_version && !@prompt_version.has_responses?
           # Update existing version (only if it has no responses)
-          if @prompt_version.update(user_prompt: user_prompt, system_prompt: system_prompt, notes: notes, model_config: model_config)
+          if @prompt_version.update(
+            user_prompt: user_prompt,
+            system_prompt: system_prompt,
+            notes: notes,
+            model_config: model_config,
+            response_schema: response_schema
+          )
             render json: {
               success: true,
               version_id: @prompt_version.id,
@@ -150,7 +157,8 @@ module PromptTracker
             system_prompt: system_prompt,
             status: "draft",
             notes: notes,
-            model_config: model_config
+            model_config: model_config,
+            response_schema: response_schema
           )
 
           if version.save
@@ -189,7 +197,8 @@ module PromptTracker
           system_prompt: system_prompt,
           status: "draft",
           notes: notes,
-          model_config: model_config
+          model_config: model_config,
+          response_schema: response_schema
         )
 
         if prompt.save

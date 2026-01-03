@@ -63,6 +63,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.string :status, default: "draft", null: false
       t.jsonb :variables_schema, default: []
       t.jsonb :model_config, default: {}
+      t.jsonb :response_schema  # JSON Schema for structured output (OpenAI Structured Outputs)
       t.text :notes
       t.string :created_by
       t.timestamps

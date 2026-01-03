@@ -189,6 +189,73 @@
           </div>
         </div>
       </div>
+
+      <!-- Structured Output / Response Schema -->
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#responseSchemaOptions">
+            <i class="bi bi-braces me-2"></i>
+            Structured Output (JSON Schema)
+            <% if @version&.response_schema.present? %>
+              <span class="badge bg-success ms-2">Configured</span>
+            <% end %>
+          </button>
+        </h2>
+        <div id="responseSchemaOptions" class="accordion-collapse collapse" data-bs-parent="#advancedModelConfig">
+          <div class="accordion-body">
+            <div class="alert alert-info mb-3">
+              <i class="bi bi-info-circle me-1"></i>
+              <strong>Structured Outputs</strong> guarantee the LLM response matches your JSON Schema.
+              Supported by OpenAI gpt-4o models and Anthropic Claude 3.
+              <a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank" class="alert-link">
+                Learn more <i class="bi bi-box-arrow-up-right"></i>
+              </a>
+            </div>
+
+            <div class="mb-3">
+              <label for="response-schema" class="form-label">
+                Response Schema (JSON Schema)
+              </label>
+              <textarea
+                id="response-schema"
+                class="form-control font-monospace"
+                rows="10"
+                placeholder='{
+  "type": "object",
+  "properties": {
+    "sentiment": {
+      "type": "string",
+      "enum": ["positive", "negative", "neutral"]
+    },
+    "confidence": {
+      "type": "number"
+    }
+  },
+  "required": ["sentiment", "confidence"]
+}'
+                data-playground-target="responseSchema"
+              ><%= @version&.response_schema.present? ? JSON.pretty_generate(@version.response_schema) : '' %></textarea>
+              <div class="form-text">
+                Define the structure of the LLM response. Leave empty for free-form text responses.
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="click->playground#validateResponseSchema">
+                <i class="bi bi-check-circle me-1"></i>
+                Validate JSON
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="click->playground#clearResponseSchema">
+                <i class="bi bi-x-circle me-1"></i>
+                Clear
+              </button>
+            </div>
+
+            <div id="response-schema-error" class="alert alert-danger mt-2 d-none" data-playground-target="responseSchemaError">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

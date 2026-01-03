@@ -34,7 +34,9 @@ export default class extends Controller {
     "temperatureBadge",
     "aiButton",
     "aiButtonText",
-    "aiButtonIcon"
+    "aiButtonIcon",
+    "responseSchema",
+    "responseSchemaError"
   ]
 
   static values = {
@@ -503,7 +505,8 @@ export default class extends Controller {
       system_prompt: systemPrompt,
       notes: notes,
       save_action: saveAction,
-      model_config: this.getModelConfig()
+      model_config: this.getModelConfig(),
+      response_schema: this.getResponseSchema()
     }
 
     if (this.isStandaloneValue) {
@@ -943,5 +946,83 @@ export default class extends Controller {
     }
 
     return config
+  }
+
+  // Get response schema from form (parsed JSON or null)
+  getResponseSchema() {
+    if (!this.hasResponseSchemaTarget) return null
+
+    const schemaText = this.responseSchemaTarget.value.trim()
+    if (!schemaText) return null
+
+    try {
+      return JSON.parse(schemaText)
+    } catch (e) {
+      // Return null if invalid JSON - validation will catch this
+      return null
+    }
+  }
+
+  // Action: Validate response schema JSON
+  validateResponseSchema() {
+    if (!this.hasResponseSchemaTarget) return
+
+    const schemaText = this.responseSchemaTarget.value.trim()
+    this.hideResponseSchemaError()
+
+    if (!schemaText) {
+      this.showAlert('Response schema is empty (structured output disabled)', 'info')
+      return
+    }
+
+    try {
+      const schema = JSON.parse(schemaText)
+
+      // Basic JSON Schema validation
+      if (typeof schema !== 'object' || schema === null) {
+        this.showResponseSchemaError('Schema must be a JSON object')
+        return
+      }
+
+      if (!schema.type) {
+        this.showResponseSchemaError("Schema must have a 'type' property")
+        return
+      }
+
+      if (schema.type === 'object' && !schema.properties) {
+        this.showResponseSchemaError("Object type schema must have 'properties'")
+        return
+      }
+
+      // Pretty print the valid JSON
+      this.responseSchemaTarget.value = JSON.stringify(schema, null, 2)
+      this.showAlert('Response schema is valid JSON Schema', 'success')
+    } catch (e) {
+      this.showResponseSchemaError(`Invalid JSON: ${e.message}`)
+    }
+  }
+
+  // Action: Clear response schema
+  clearResponseSchema() {
+    if (!this.hasResponseSchemaTarget) return
+
+    this.responseSchemaTarget.value = ''
+    this.hideResponseSchemaError()
+    this.showAlert('Response schema cleared', 'info')
+  }
+
+  // Show response schema error
+  showResponseSchemaError(message) {
+    if (!this.hasResponseSchemaErrorTarget) return
+
+    this.responseSchemaErrorTarget.textContent = message
+    this.responseSchemaErrorTarget.classList.remove('d-none')
+  }
+
+  // Hide response schema error
+  hideResponseSchemaError() {
+    if (!this.hasResponseSchemaErrorTarget) return
+
+    this.responseSchemaErrorTarget.classList.add('d-none')
   }
 }
