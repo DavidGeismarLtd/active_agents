@@ -106,14 +106,16 @@ module PromptTracker
     # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/save (updates specific version or creates new)
     # Save the user_prompt as a new draft version, update existing version, or new prompt
     def save
-      if @prompt
-        if can_update_existing_version?
-          update_existing_version
-        else
-          create_new_version
-        end
+      result = PlaygroundSaveService.call(
+        params: save_params,
+        prompt: @prompt,
+        prompt_version: @prompt_version
+      )
+
+      if result.success?
+        render json: build_success_response(result)
       else
-        create_new_prompt
+        render json: { success: false, errors: result.errors }, status: :unprocessable_entity
       end
     end
 
@@ -150,89 +152,16 @@ module PromptTracker
       schema_param.respond_to?(:to_unsafe_h) ? schema_param.to_unsafe_h : schema_param
     end
 
-    def can_update_existing_version?
-      save_params[:save_action] == "update" &&
-        @prompt_version.present? &&
-        !@prompt_version.has_responses?
-    end
-
-    def update_existing_version
-      if @prompt_version.update(version_attributes)
-        render json: {
-          success: true,
-          version_id: @prompt_version.id,
-          version_number: @prompt_version.version_number,
-          redirect_url: testing_prompt_prompt_version_path(@prompt, @prompt_version),
-          action: "updated"
-        }
-      else
-        render json: {
-          success: false,
-          errors: @prompt_version.errors.full_messages
-        }, status: :unprocessable_entity
-      end
-    end
-
-    def create_new_version
-      version = @prompt.prompt_versions.build(version_attributes.merge(status: "draft"))
-
-      if version.save
-        render json: {
-          success: true,
-          version_id: version.id,
-          version_number: version.version_number,
-          redirect_url: testing_prompt_prompt_version_path(@prompt, version),
-          action: "created"
-        }
-      else
-        render json: {
-          success: false,
-          errors: version.errors.full_messages
-        }, status: :unprocessable_entity
-      end
-    end
-
-    def create_new_prompt
-      if save_params[:prompt_name].blank?
-        render json: {
-          success: false,
-          errors: [ "Prompt name is required" ]
-        }, status: :unprocessable_entity
-        return
-      end
-
-      prompt = Prompt.new(
-        name: save_params[:prompt_name],
-        slug: save_params[:prompt_slug].presence,
-        description: save_params[:notes]
-      )
-
-      version = prompt.prompt_versions.build(version_attributes.merge(status: "draft"))
-
-      if prompt.save
-        render json: {
-          success: true,
-          prompt_id: prompt.id,
-          version_id: version.id,
-          version_number: version.version_number,
-          redirect_url: testing_prompt_prompt_version_path(prompt, version)
-        }
-      else
-        render json: {
-          success: false,
-          errors: prompt.errors.full_messages + version.errors.full_messages
-        }, status: :unprocessable_entity
-      end
-    end
-
-    def version_attributes
-      {
-        user_prompt: save_params[:user_prompt],
-        system_prompt: save_params[:system_prompt],
-        notes: save_params[:notes],
-        model_config: save_params[:model_config],
-        response_schema: save_params[:response_schema]
+    def build_success_response(result)
+      response = {
+        success: true,
+        version_id: result.version.id,
+        version_number: result.version.version_number,
+        redirect_url: testing_prompt_prompt_version_path(result.prompt, result.version),
+        action: result.action.to_s
       }
+      response[:prompt_id] = result.prompt.id if result.action == :created && @prompt.nil?
+      response
     end
 
     # Extract variable names from both system and user prompts
