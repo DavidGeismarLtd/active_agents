@@ -52,10 +52,11 @@ module PromptTracker
     # @param prompt [String] the prompt text
     # @param temperature [Float] the temperature (0.0-2.0)
     # @param max_tokens [Integer] maximum tokens to generate
+    # @param response_schema [Hash, nil] optional JSON Schema for structured output
     # @param options [Hash] additional provider-specific options
     # @return [Hash] response with :text, :usage, :model, :raw keys
     # @raise [ApiError] if API call fails
-    def self.call(provider:, model:, prompt:, temperature: 0.7, max_tokens: nil, **options)
+    def self.call(provider:, model:, prompt:, temperature: 0.7, max_tokens: nil, response_schema: nil, **options)
       # Route to OpenAI Assistants API if provider is openai_assistants
       if provider.to_s == "openai_assistants" || model.to_s.start_with?("asst_")
         return OpenaiAssistantService.call(
@@ -63,6 +64,19 @@ module PromptTracker
           prompt: prompt,
           timeout: options[:timeout] || 60
         )
+      end
+
+      # If response_schema is provided, convert to RubyLLM::Schema and use structured output
+      if response_schema.present?
+        ruby_llm_schema = JsonSchemaAdapter.to_ruby_llm_schema(response_schema)
+        return new(
+          model: model,
+          prompt: prompt,
+          temperature: temperature,
+          max_tokens: max_tokens,
+          schema: ruby_llm_schema,
+          **options
+        ).call_with_schema
       end
 
       # Standard chat completion via RubyLLM

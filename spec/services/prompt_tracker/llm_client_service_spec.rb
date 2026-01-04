@@ -187,6 +187,74 @@ module PromptTracker
           end.not_to raise_error
         end
       end
+
+      context "with response_schema parameter" do
+        let(:response_schema) do
+          {
+            "type" => "object",
+            "properties" => {
+              "sentiment" => { "type" => "string", "description" => "The sentiment" },
+              "confidence" => { "type" => "number", "description" => "Confidence score" }
+            },
+            "required" => %w[sentiment confidence]
+          }
+        end
+
+        let(:schema_chat_double) { double("RubyLLM::Chat with schema") }
+        let(:structured_response) do
+          double(
+            "RubyLLM::Message",
+            content: { sentiment: "positive", confidence: 0.95 },
+            model_id: "gpt-4-0613",
+            input_tokens: 10,
+            output_tokens: 8,
+            raw: {}
+          )
+        end
+
+        before do
+          allow(chat_double).to receive(:with_schema).and_return(schema_chat_double)
+          allow(chat_with_temp_double).to receive(:with_schema).and_return(schema_chat_double)
+          allow(schema_chat_double).to receive(:ask).and_return(structured_response)
+        end
+
+        it "converts JSON Schema to RubyLLM::Schema and uses structured output" do
+          allow(JsonSchemaAdapter).to receive(:to_ruby_llm_schema).and_call_original
+
+          described_class.call(
+            provider: provider,
+            model: model,
+            prompt: prompt,
+            response_schema: response_schema
+          )
+
+          expect(JsonSchemaAdapter).to have_received(:to_ruby_llm_schema).with(response_schema)
+        end
+
+        it "uses with_schema on the chat" do
+          described_class.call(
+            provider: provider,
+            model: model,
+            prompt: prompt,
+            response_schema: response_schema
+          )
+
+          expect(chat_with_temp_double).to have_received(:with_schema)
+        end
+
+        it "returns structured response as JSON" do
+          result = described_class.call(
+            provider: provider,
+            model: model,
+            prompt: prompt,
+            response_schema: response_schema
+          )
+
+          expect(result[:text]).to eq('{"sentiment":"positive","confidence":0.95}')
+          expect(result[:usage][:prompt_tokens]).to eq(10)
+          expect(result[:usage][:completion_tokens]).to eq(8)
+        end
+      end
     end
 
     describe ".call_with_schema" do
