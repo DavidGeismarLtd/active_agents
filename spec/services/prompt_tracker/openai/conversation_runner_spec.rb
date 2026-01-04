@@ -40,6 +40,7 @@ module PromptTracker
         let(:mock_threads) { double("threads") }
         let(:mock_messages) { double("messages") }
         let(:mock_runs) { double("runs") }
+        let(:mock_run_steps) { double("run_steps") }
 
         before do
           # Mock the API key through configuration
@@ -60,6 +61,10 @@ module PromptTracker
           allow(mock_client).to receive(:threads).and_return(mock_threads)
           allow(mock_client).to receive(:messages).and_return(mock_messages)
           allow(mock_client).to receive(:runs).and_return(mock_runs)
+          allow(mock_client).to receive(:run_steps).and_return(mock_run_steps)
+
+          # Mock run_steps list to return empty by default
+          allow(mock_run_steps).to receive(:list).and_return({ "data" => [] })
         end
 
         it "creates a thread and runs a conversation" do

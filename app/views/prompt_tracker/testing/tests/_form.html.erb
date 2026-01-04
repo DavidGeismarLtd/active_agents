@@ -54,14 +54,26 @@
 
       <% available_evaluators = PromptTracker::EvaluatorRegistry.for_testable(test.testable) %>
       <% current_evaluators = test.evaluator_configs.to_a %>
+      <%
+        # Check if testable is an Assistant with vector stores attached
+        testable = test.testable
+        is_assistant = testable.is_a?(PromptTracker::Openai::Assistant)
+        vector_store_ids = is_assistant ? (testable.metadata&.dig("tool_resources", "file_search", "vector_store_ids") || []) : []
+        has_vector_store = vector_store_ids.present?
+      %>
 
       <div id="evaluators-list" class="row">
         <% available_evaluators.each do |key, meta| %>
           <% existing_config = current_evaluators.find { |e| e.evaluator_type == meta[:evaluator_class].name } %>
           <% is_selected = existing_config.present? %>
+          <%
+            # Disable file_search evaluator if no vector store attached
+            is_disabled = (key.to_s == 'file_search' && !has_vector_store)
+            disabled_reason = is_disabled ? "Attach a vector store to the assistant first" : nil
+          %>
 
           <div class="col-lg-6 col-xl-4 mb-3">
-            <div class="card h-100 evaluator-item <%= 'border-primary' if is_selected %>" data-evaluator-key="<%= key %>">
+            <div class="card h-100 evaluator-item <%= 'border-primary' if is_selected %> <%= 'opacity-50' if is_disabled %>" data-evaluator-key="<%= key %>">
               <div class="card-body p-3">
                 <div class="form-check mb-2">
                   <input class="form-check-input"
@@ -70,13 +82,17 @@
                          data-evaluator-key="<%= key %>"
                          data-evaluator-configs-target="checkbox"
                          data-action="change->evaluator-configs#toggleConfig"
-                         <%= 'checked' if is_selected %>>
+                         <%= 'checked' if is_selected %>
+                         <%= 'disabled' if is_disabled %>>
                   <label class="form-check-label w-100" for="evaluator_<%= key %>">
                     <div class="d-flex justify-content-between align-items-start">
                       <div>
                         <strong><i class="bi bi-<%= meta[:icon] %>"></i> <%= meta[:name] %></strong>
                         <br>
                         <small class="text-muted"><%= meta[:description] %></small>
+                        <% if is_disabled %>
+                          <br><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> <%= disabled_reason %></small>
+                        <% end %>
                       </div>
                       <span class="badge bg-secondary ms-2"><%= meta[:category] %></span>
                     </div>
@@ -91,7 +107,7 @@
                     <label class="form-label small mb-1">Configuration</label>
                     <div data-evaluator-key="<%= key %>"
                           data-evaluator-configs-target="configFormContainer">
-                      <%= render partial: "prompt_tracker/evaluator_configs/forms/#{key}", locals: { existing_config: existing_config, evaluator_key: key } %>
+                      <%= render partial: "prompt_tracker/evaluator_configs/forms/#{key}", locals: { existing_config: existing_config, evaluator_key: key, testable: testable } %>
                     </div>
                     <input type="hidden"
                             data-evaluator-key="<%= key %>"

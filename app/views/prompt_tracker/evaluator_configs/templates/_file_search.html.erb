@@ -1,0 +1,42 @@
+<%# Display template for File Search Evaluator configuration %>
+<% config ||= {} %>
+
+<div class="evaluator-display">
+  <h6 class="mb-2">
+    <i class="bi bi-file-earmark-search"></i>
+    File Search
+  </h6>
+  
+  <% expected_files = config['expected_files'] || config[:expected_files] || [] %>
+  <% expected_files = expected_files.is_a?(Array) ? expected_files : expected_files.to_s.split("\n").map(&:strip).reject(&:empty?) %>
+  <% require_all = config.key?('require_all') ? config['require_all'] : (config.key?(:require_all) ? config[:require_all] : true) %>
+  <% threshold_score = config['threshold_score'] || config[:threshold_score] || 100 %>
+  
+  <% if expected_files.any? %>
+    <div class="mb-2">
+      <strong>Expected Files:</strong>
+      <div class="mt-1">
+        <% expected_files.each do |file| %>
+          <span class="badge bg-info-subtle text-info me-1 mb-1">
+            <i class="bi bi-file-earmark"></i> <%= file %>
+          </span>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="mb-2">
+      <strong>Mode:</strong>
+      <span class="badge <%= require_all ? 'bg-primary' : 'bg-secondary' %>">
+        <%= require_all ? 'All files required' : 'At least one file' %>
+      </span>
+    </div>
+    
+    <div class="text-muted small">
+      <i class="bi bi-info-circle"></i>
+      Verifies the assistant searched the expected files during conversation
+    </div>
+  <% else %>
+    <p class="text-muted mb-0">No expected files configured</p>
+  <% end %>
+</div>
+

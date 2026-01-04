@@ -11,7 +11,11 @@ module PromptTracker
       # - Right: Configuration sidebar for assistant settings
       #
       class AssistantPlaygroundController < ApplicationController
-        before_action :set_assistant, only: [ :show, :update_assistant, :send_message, :load_messages ]
+        before_action :set_assistant, only: [
+          :show, :update_assistant, :send_message, :load_messages,
+          :upload_file, :list_files, :delete_file,
+          :create_vector_store, :list_vector_stores, :attach_vector_store, :add_file_to_vector_store
+        ]
         before_action :initialize_service
 
         # GET /testing/openai/assistants/playground/new
@@ -148,6 +152,146 @@ module PromptTracker
               success: true,
               messages: result[:messages]
             }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # POST /testing/openai/assistants/:assistant_id/playground/upload_file
+        #
+        # Uploads a file to OpenAI for use with file_search
+        def upload_file
+          unless params[:file].present?
+            return render json: { success: false, error: "No file provided" }, status: :unprocessable_entity
+          end
+
+          result = @service.upload_file(params[:file])
+
+          if result[:success]
+            render json: {
+              success: true,
+              file: result[:file]
+            }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # GET /testing/openai/assistants/:assistant_id/playground/list_files
+        #
+        # Lists files uploaded for assistants
+        def list_files
+          result = @service.list_files
+
+          if result[:success]
+            render json: {
+              success: true,
+              files: result[:files]
+            }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # DELETE /testing/openai/assistants/:assistant_id/playground/delete_file
+        #
+        # Deletes a file from OpenAI
+        def delete_file
+          result = @service.delete_file(params[:file_id])
+
+          if result[:success]
+            render json: { success: true }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # POST /testing/openai/assistants/:assistant_id/playground/create_vector_store
+        #
+        # Creates a vector store for file_search
+        def create_vector_store
+          result = @service.create_vector_store(
+            name: params[:name] || "Playground Vector Store",
+            file_ids: params[:file_ids] || []
+          )
+
+          if result[:success]
+            render json: {
+              success: true,
+              vector_store: result[:vector_store]
+            }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # GET /testing/openai/assistants/:assistant_id/playground/list_vector_stores
+        #
+        # Lists vector stores
+        def list_vector_stores
+          result = @service.list_vector_stores
+
+          if result[:success]
+            render json: {
+              success: true,
+              vector_stores: result[:vector_stores]
+            }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # POST /testing/openai/assistants/:assistant_id/playground/add_file_to_vector_store
+        #
+        # Adds a file to a vector store
+        def add_file_to_vector_store
+          result = @service.add_file_to_vector_store(
+            vector_store_id: params[:vector_store_id],
+            file_id: params[:file_id]
+          )
+
+          if result[:success]
+            render json: {
+              success: true,
+              vector_store_file: result[:vector_store_file]
+            }
+          else
+            render json: {
+              success: false,
+              error: result[:error]
+            }, status: :unprocessable_entity
+          end
+        end
+
+        # POST /testing/openai/assistants/:assistant_id/playground/attach_vector_store
+        #
+        # Attaches a vector store to an assistant
+        def attach_vector_store
+          result = @service.attach_vector_store_to_assistant(
+            assistant_id: @assistant.assistant_id,
+            vector_store_ids: Array(params[:vector_store_ids])
+          )
+
+          if result[:success]
+            render json: { success: true }
           else
             render json: {
               success: false,

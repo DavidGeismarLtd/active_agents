@@ -177,5 +177,146 @@ module PromptTracker
         expect(result[:usage]).to be_present
       end
     end
+
+    describe "#upload_file" do
+      it "uploads a file to OpenAI" do
+        mock_client = double("OpenAI::Client")
+        mock_files = double("files")
+
+        allow(service).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:files).and_return(mock_files)
+
+        api_response = {
+          "id" => "file-abc123",
+          "filename" => "test.pdf",
+          "bytes" => 1024,
+          "purpose" => "assistants",
+          "status" => "processed",
+          "created_at" => Time.now.to_i
+        }
+
+        allow(mock_files).to receive(:upload).and_return(api_response)
+
+        # Create a mock file
+        mock_file = double("file", tempfile: double("tempfile"))
+
+        result = service.upload_file(mock_file)
+
+        expect(result[:success]).to be true
+        expect(result[:file_id]).to eq("file-abc123")
+        expect(result[:file][:filename]).to eq("test.pdf")
+      end
+
+      it "returns error on failure" do
+        mock_client = double("OpenAI::Client")
+        mock_files = double("files")
+
+        allow(service).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:files).and_return(mock_files)
+        allow(mock_files).to receive(:upload).and_raise(StandardError.new("Upload failed"))
+
+        mock_file = double("file", tempfile: double("tempfile"))
+        result = service.upload_file(mock_file)
+
+        expect(result[:success]).to be false
+        expect(result[:error]).to include("Upload failed")
+      end
+    end
+
+    describe "#list_files" do
+      it "lists files with assistants purpose" do
+        mock_client = double("OpenAI::Client")
+        mock_files = double("files")
+
+        allow(service).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:files).and_return(mock_files)
+
+        api_response = {
+          "data" => [
+            { "id" => "file-1", "filename" => "doc1.pdf", "bytes" => 100, "purpose" => "assistants", "status" => "processed" },
+            { "id" => "file-2", "filename" => "doc2.pdf", "bytes" => 200, "purpose" => "assistants", "status" => "processed" },
+            { "id" => "file-3", "filename" => "other.txt", "bytes" => 50, "purpose" => "fine-tune", "status" => "processed" }
+          ]
+        }
+
+        allow(mock_files).to receive(:list).and_return(api_response)
+
+        result = service.list_files
+
+        expect(result[:success]).to be true
+        expect(result[:files].count).to eq(2)
+        expect(result[:files].map { |f| f[:id] }).to eq([ "file-1", "file-2" ])
+      end
+    end
+
+    describe "#create_vector_store" do
+      it "creates a vector store" do
+        mock_client = double("OpenAI::Client")
+        mock_vector_stores = double("vector_stores")
+
+        allow(service).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:vector_stores).and_return(mock_vector_stores)
+
+        api_response = {
+          "id" => "vs_abc123",
+          "name" => "Test Store",
+          "status" => "completed",
+          "file_counts" => { "total" => 2, "completed" => 2 },
+          "created_at" => Time.now.to_i
+        }
+
+        allow(mock_vector_stores).to receive(:create).and_return(api_response)
+
+        result = service.create_vector_store(name: "Test Store", file_ids: [ "file-1" ])
+
+        expect(result[:success]).to be true
+        expect(result[:vector_store_id]).to eq("vs_abc123")
+        expect(result[:vector_store][:name]).to eq("Test Store")
+      end
+    end
+
+    describe "#get_run_steps" do
+      it "retrieves run steps for a run" do
+        mock_client = double("OpenAI::Client")
+        mock_run_steps = double("run_steps")
+
+        allow(service).to receive(:client).and_return(mock_client)
+        allow(mock_client).to receive(:run_steps).and_return(mock_run_steps)
+
+        api_response = {
+          "data" => [
+            {
+              "id" => "step-1",
+              "type" => "tool_calls",
+              "status" => "completed",
+              "step_details" => {
+                "type" => "tool_calls",
+                "tool_calls" => [
+                  {
+                    "id" => "call-1",
+                    "type" => "file_search",
+                    "file_search" => {
+                      "results" => [
+                        { "file_id" => "file-abc", "file_name" => "policy.pdf", "score" => 0.95 }
+                      ]
+                    }
+                  }
+                ]
+              },
+              "created_at" => Time.now.to_i,
+              "completed_at" => Time.now.to_i
+            }
+          ]
+        }
+
+        allow(mock_run_steps).to receive(:list).and_return(api_response)
+
+        result = service.get_run_steps(thread_id: "thread-123", run_id: "run-123")
+
+        expect(result[:success]).to be true
+        expect(result[:run_steps].count).to eq(1)
+        expect(result[:run_steps].first[:type]).to eq("tool_calls")
+      end
+    end
   end
 end

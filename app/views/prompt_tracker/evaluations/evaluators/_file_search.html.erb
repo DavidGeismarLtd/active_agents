@@ -1,0 +1,170 @@
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0" style="color: #374151;">
+      <i class="bi bi-file-earmark-search"></i>
+      File Search Evaluation
+    </h5>
+  </div>
+  <div class="card-body">
+    <% metadata = evaluation.metadata || {} %>
+    <% expected_files = metadata['expected_files'] || [] %>
+    <% matched_files = metadata['matched_files'] || [] %>
+    <% searched_files = metadata['searched_files'] || [] %>
+    <% file_search_calls = metadata['file_search_calls'] || 0 %>
+    <% require_all = metadata['require_all'] %>
+    
+    <%# Get file search results from config if available %>
+    <% config = metadata['config'] || {} %>
+    <% conversation_data = config['conversation_data'] || {} %>
+    <% run_steps = conversation_data['run_steps'] || [] %>
+    
+    <%# Extract all file search results with scores %>
+    <% 
+      all_search_results = []
+      run_steps.each do |step|
+        if step['file_search_results'].present?
+          step['file_search_results'].each do |fsr|
+            fsr['results']&.each do |result|
+              all_search_results << {
+                file_name: result['file_name'],
+                file_id: result['file_id'],
+                score: result['score'],
+                turn: step['turn']
+              }
+            end
+          end
+        end
+      end
+      
+      # Group by file and get best score
+      files_with_scores = all_search_results.group_by { |r| r[:file_name] }.transform_values do |results|
+        {
+          best_score: results.map { |r| r[:score] }.max,
+          total_hits: results.count,
+          turns: results.map { |r| r[:turn] }.uniq.sort
+        }
+      end
+    %>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="text-center p-3 bg-primary-subtle rounded">
+          <div class="fs-2 fw-bold text-primary"><%= file_search_calls %></div>
+          <div class="small text-muted">Search Calls</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-center p-3 bg-info-subtle rounded">
+          <div class="fs-2 fw-bold text-info"><%= searched_files.uniq.count %></div>
+          <div class="small text-muted">Files Searched</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-center p-3 bg-success-subtle rounded">
+          <div class="fs-2 fw-bold text-success"><%= matched_files.count %></div>
+          <div class="small text-muted">Files Matched</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="text-center p-3 <%= expected_files.count == matched_files.count ? 'bg-success-subtle' : 'bg-warning-subtle' %> rounded">
+          <div class="fs-2 fw-bold <%= expected_files.count == matched_files.count ? 'text-success' : 'text-warning' %>">
+            <%= matched_files.count %>/<%= expected_files.count %>
+          </div>
+          <div class="small text-muted">Expected Found</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expected Files Status -->
+    <div class="mb-4">
+      <h6><i class="bi bi-list-check"></i> Expected Files</h6>
+      <% if expected_files.any? %>
+        <div class="list-group">
+          <% expected_files.each do |file| %>
+            <% is_matched = matched_files.include?(file) %>
+            <% file_data = files_with_scores[file] %>
+            <div class="list-group-item d-flex justify-content-between align-items-center <%= is_matched ? 'list-group-item-success' : 'list-group-item-danger' %>">
+              <div>
+                <i class="bi <%= is_matched ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger' %> me-2"></i>
+                <strong><%= file %></strong>
+                <% if file_data %>
+                  <span class="text-muted ms-2">
+                    (<%= file_data[:total_hits] %> hits across turns <%= file_data[:turns].join(', ') %>)
+                  </span>
+                <% end %>
+              </div>
+              <% if file_data %>
+                <span class="badge bg-primary">
+                  Best score: <%= (file_data[:best_score] * 100).round(1) %>%
+                </span>
+              <% else %>
+                <span class="badge bg-secondary">Not found</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-muted"><em>No expected files configured</em></p>
+      <% end %>
+    </div>
+
+    <!-- All Searched Files with Scores -->
+    <% if files_with_scores.any? %>
+      <div class="mb-4">
+        <h6><i class="bi bi-bar-chart"></i> All Files Searched (by relevance)</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>File Name</th>
+                <th class="text-center">Hits</th>
+                <th class="text-center">Best Score</th>
+                <th>Relevance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% files_with_scores.sort_by { |_, v| -v[:best_score] }.each do |file_name, data| %>
+                <% is_expected = expected_files.include?(file_name) %>
+                <tr class="<%= is_expected ? 'table-success' : '' %>">
+                  <td>
+                    <i class="bi bi-file-earmark<%= is_expected ? '-check text-success' : ' text-muted' %> me-1"></i>
+                    <%= file_name %>
+                    <% if is_expected %>
+                      <span class="badge bg-success-subtle text-success ms-1">Expected</span>
+                    <% end %>
+                  </td>
+                  <td class="text-center"><%= data[:total_hits] %></td>
+                  <td class="text-center"><%= (data[:best_score] * 100).round(1) %>%</td>
+                  <td style="width: 30%;">
+                    <div class="progress" style="height: 20px;">
+                      <% score_pct = (data[:best_score] * 100).round(1) %>
+                      <% bar_class = score_pct >= 50 ? 'bg-success' : score_pct >= 25 ? 'bg-warning' : 'bg-danger' %>
+                      <div class="progress-bar <%= bar_class %>" style="width: <%= score_pct %>%;">
+                        <%= score_pct %>%
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Configuration Info -->
+    <div class="alert alert-secondary mb-3">
+      <strong>Mode:</strong> <%= require_all ? 'All files must be searched' : 'At least one file must be searched' %>
+    </div>
+
+    <!-- Result -->
+    <% if evaluation.feedback.present? %>
+      <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-danger' %> mb-0">
+        <i class="bi <%= evaluation.passed? ? 'bi-check-circle-fill' : 'bi-x-circle-fill' %> me-2"></i>
+        <strong>Result:</strong> <%= evaluation.feedback %>
+      </div>
+    <% end %>
+  </div>
+</div>
+

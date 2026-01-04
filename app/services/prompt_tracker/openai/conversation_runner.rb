@@ -29,7 +29,7 @@ module PromptTracker
     #   # }
     #
     class ConversationRunner
-      attr_reader :assistant_id, :interlocutor_simulation_prompt, :max_turns, :thread_id, :messages
+      attr_reader :assistant_id, :interlocutor_simulation_prompt, :max_turns, :thread_id, :messages, :run_steps
 
       # Initialize the conversation runner
       #
@@ -42,6 +42,7 @@ module PromptTracker
         @max_turns = max_turns
         @thread_id = nil
         @messages = []
+        @run_steps = []
       end
 
       # Run the conversation
@@ -95,6 +96,7 @@ module PromptTracker
         Rails.logger.info "🎉 ConversationRunner: Conversation completed successfully!"
         Rails.logger.info "📊 ConversationRunner: Total messages: #{@messages.count}"
         Rails.logger.info "📊 ConversationRunner: Total assistant turns: #{@messages.count { |m| m[:role] == 'assistant' }}"
+        Rails.logger.info "📊 ConversationRunner: Total run steps: #{@run_steps.count}"
 
         # Return conversation result
         {
@@ -102,6 +104,7 @@ module PromptTracker
           thread_id: @thread_id,
           total_turns: @messages.count { |m| m[:role] == "assistant" },
           status: "completed",
+          run_steps: @run_steps,
           metadata: {
             assistant_id: @assistant_id,
             max_turns: @max_turns,
@@ -176,13 +179,18 @@ module PromptTracker
             assistant_id: @assistant_id
           }
         )
-        Rails.logger.info "🏃 ConversationRunner: Run created: #{run['id']}"
+        run_id = run["id"]
+        Rails.logger.info "🏃 ConversationRunner: Run created: #{run_id}"
         Rails.logger.debug "🏃 ConversationRunner: Run details: #{run.inspect}"
 
         # Wait for completion
         Rails.logger.info "⏳ ConversationRunner: Waiting for run completion..."
-        run = wait_for_run_completion(run["id"])
+        run = wait_for_run_completion(run_id)
         Rails.logger.info "✅ ConversationRunner: Run completed with status: #{run['status']}"
+
+        # Fetch run steps to capture file_search details
+        Rails.logger.info "📋 ConversationRunner: Fetching run steps..."
+        fetch_and_store_run_steps(run_id, turn)
 
         # Get the latest assistant message
         Rails.logger.info "📥 ConversationRunner: Fetching latest assistant message..."
@@ -204,11 +212,60 @@ module PromptTracker
             content: content,
             turn: turn,
             timestamp: Time.current.iso8601,
-            run_id: run["id"]
+            run_id: run_id
           }
         else
           Rails.logger.warn "⚠️ ConversationRunner: No assistant message found in response!"
         end
+      end
+
+      # Fetch run steps and store them for later analysis
+      #
+      # @param run_id [String] the run ID
+      # @param turn [Integer] the conversation turn number
+      def fetch_and_store_run_steps(run_id, turn)
+        client = openai_client
+
+        response = client.run_steps.list(
+          thread_id: @thread_id,
+          run_id: run_id,
+          parameters: { order: "asc" }
+        )
+
+        response["data"].each do |step|
+          step_data = {
+            id: step["id"],
+            run_id: run_id,
+            turn: turn,
+            type: step["type"],
+            status: step["status"],
+            step_details: step["step_details"],
+            created_at: step["created_at"] ? Time.at(step["created_at"]) : nil,
+            completed_at: step["completed_at"] ? Time.at(step["completed_at"]) : nil
+          }
+
+          # Extract file_search results if present
+          if step["type"] == "tool_calls"
+            tool_calls = step.dig("step_details", "tool_calls") || []
+            file_search_calls = tool_calls.select { |tc| tc["type"] == "file_search" }
+
+            if file_search_calls.any?
+              step_data[:file_search_results] = file_search_calls.map do |tc|
+                {
+                  id: tc["id"],
+                  results: tc.dig("file_search", "results") || []
+                }
+              end
+              Rails.logger.info "🔍 ConversationRunner: Found file_search with #{file_search_calls.count} calls"
+            end
+          end
+
+          @run_steps << step_data
+        end
+
+        Rails.logger.info "📋 ConversationRunner: Stored #{response['data'].count} run steps for turn #{turn}"
+      rescue => e
+        Rails.logger.warn "⚠️ ConversationRunner: Failed to fetch run steps: #{e.message}"
       end
 
       # Wait for a run to complete

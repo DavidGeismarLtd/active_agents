@@ -89,6 +89,15 @@ PromptTracker::Engine.routes.draw do
           post :send_message        # Send message in thread
           post :create_thread       # Create new thread
           get  :load_messages       # Load thread messages
+
+          # File management for file_search
+          post :upload_file              # Upload file to OpenAI
+          get  :list_files               # List uploaded files
+          delete :delete_file            # Delete a file
+          post :create_vector_store      # Create a vector store
+          get  :list_vector_stores       # List vector stores
+          post :add_file_to_vector_store # Add file to vector store
+          post :attach_vector_store      # Attach vector store to assistant
         end
 
         # Tests nested under assistants
