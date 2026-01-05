@@ -174,6 +174,259 @@ module PromptTracker
       { success: false, error: e.message }
     end
 
+    # Upload a file to OpenAI for use with assistants
+    #
+    # @param file [File, ActionDispatch::Http::UploadedFile] the file to upload
+    # @return [Hash] result with :success, :file_id, :file keys
+    def upload_file(file)
+      response = client.files.upload(
+        parameters: {
+          file: file.respond_to?(:tempfile) ? file.tempfile : file,
+          purpose: "assistants"
+        }
+      )
+
+      {
+        success: true,
+        file_id: response["id"],
+        file: {
+          id: response["id"],
+          filename: response["filename"],
+          bytes: response["bytes"],
+          purpose: response["purpose"],
+          status: response["status"],
+          created_at: response["created_at"] ? Time.at(response["created_at"]) : nil
+        }
+      }
+    rescue => e
+      Rails.logger.error "Failed to upload file: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # List files uploaded to OpenAI
+    #
+    # @param purpose [String] filter by purpose (default: "assistants")
+    # @return [Hash] result with :success, :files keys
+    def list_files(purpose: "assistants")
+      response = client.files.list
+
+      files = response["data"].select { |f| f["purpose"] == purpose }.map do |f|
+        {
+          id: f["id"],
+          filename: f["filename"],
+          bytes: f["bytes"],
+          purpose: f["purpose"],
+          status: f["status"],
+          created_at: f["created_at"] ? Time.at(f["created_at"]) : nil
+        }
+      end
+
+      { success: true, files: files }
+    rescue => e
+      Rails.logger.error "Failed to list files: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # Delete a file from OpenAI
+    #
+    # @param file_id [String] the file ID to delete
+    # @return [Hash] result with :success key
+    def delete_file(file_id)
+      client.files.delete(id: file_id)
+      { success: true }
+    rescue => e
+      Rails.logger.error "Failed to delete file: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # Create a vector store
+    #
+    # @param name [String] the vector store name
+    # @param file_ids [Array<String>] optional file IDs to add immediately
+    # @return [Hash] result with :success, :vector_store_id, :vector_store keys
+    def create_vector_store(name:, file_ids: [])
+      params = { name: name }
+      params[:file_ids] = file_ids if file_ids.present?
+
+      response = client.vector_stores.create(parameters: params)
+
+      {
+        success: true,
+        vector_store_id: response["id"],
+        vector_store: {
+          id: response["id"],
+          name: response["name"],
+          status: response["status"],
+          file_counts: response["file_counts"],
+          created_at: response["created_at"] ? Time.at(response["created_at"]) : nil
+        }
+      }
+    rescue => e
+      Rails.logger.error "Failed to create vector store: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # List vector stores
+    #
+    # @return [Hash] result with :success, :vector_stores keys
+    def list_vector_stores
+      response = client.vector_stores.list
+
+      vector_stores = response["data"].map do |vs|
+        {
+          id: vs["id"],
+          name: vs["name"],
+          status: vs["status"],
+          file_counts: vs["file_counts"],
+          created_at: vs["created_at"] ? Time.at(vs["created_at"]) : nil
+        }
+      end
+
+      { success: true, vector_stores: vector_stores }
+    rescue => e
+      Rails.logger.error "Failed to list vector stores: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # Add a file to a vector store
+    #
+    # @param vector_store_id [String] the vector store ID
+    # @param file_id [String] the file ID to add
+    # @return [Hash] result with :success, :vector_store_file keys
+    def add_file_to_vector_store(vector_store_id:, file_id:)
+      response = client.vector_store_files.create(
+        vector_store_id: vector_store_id,
+        parameters: { file_id: file_id }
+      )
+
+      {
+        success: true,
+        vector_store_file: {
+          id: response["id"],
+          vector_store_id: response["vector_store_id"],
+          status: response["status"],
+          created_at: response["created_at"] ? Time.at(response["created_at"]) : nil
+        }
+      }
+    rescue => e
+      Rails.logger.error "Failed to add file to vector store: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # Get vector store file status
+    #
+    # @param vector_store_id [String] the vector store ID
+    # @param file_id [String] the file ID
+    # @return [Hash] result with :success, :status keys
+    def get_vector_store_file_status(vector_store_id:, file_id:)
+      response = client.vector_store_files.retrieve(
+        vector_store_id: vector_store_id,
+        id: file_id
+      )
+
+      {
+        success: true,
+        status: response["status"],
+        vector_store_file: {
+          id: response["id"],
+          vector_store_id: response["vector_store_id"],
+          status: response["status"],
+          last_error: response["last_error"]
+        }
+      }
+    rescue => e
+      Rails.logger.error "Failed to get vector store file status: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # List files in a vector store
+    #
+    # @param vector_store_id [String] the vector store ID
+    # @return [Hash] result with :success, :files keys
+    def list_vector_store_files(vector_store_id:)
+      response = client.vector_store_files.list(vector_store_id: vector_store_id)
+
+      files = response["data"].map do |vsf|
+        # Get file details to include filename (cached to avoid N+1 API calls)
+        file_details = Rails.cache.fetch("openai_file_#{vsf['id']}", expires_in: 1.hour) do
+          client.files.retrieve(id: vsf["id"])
+        end
+
+        {
+          id: vsf["id"],
+          vector_store_id: vsf["vector_store_id"],
+          status: vsf["status"],
+          filename: file_details["filename"],
+          bytes: file_details["bytes"],
+          created_at: vsf["created_at"] ? Time.at(vsf["created_at"]) : nil
+        }
+      end
+
+      { success: true, files: files }
+    rescue => e
+      Rails.logger.error "Failed to list vector store files: #{e.message}"
+      { success: false, error: e.message, files: [] }
+    end
+
+    # Attach a vector store to an assistant for file_search
+    #
+    # @param assistant_id [String] the assistant ID
+    # @param vector_store_ids [Array<String>] vector store IDs to attach
+    # @return [Hash] result with :success key
+    def attach_vector_store_to_assistant(assistant_id:, vector_store_ids:)
+      response = client.assistants.modify(
+        id: assistant_id,
+        parameters: {
+          tools: [ { type: "file_search" } ],
+          tool_resources: {
+            file_search: {
+              vector_store_ids: vector_store_ids
+            }
+          }
+        }
+      )
+
+      # Update database
+      assistant = PromptTracker::Openai::Assistant.find_by(assistant_id: assistant_id)
+      if assistant
+        assistant.update!(metadata: build_metadata_from_response(response))
+      end
+
+      { success: true, api_response: response }
+    rescue => e
+      Rails.logger.error "Failed to attach vector store: #{e.message}"
+      { success: false, error: e.message }
+    end
+
+    # Get run steps for a completed run (includes file_search details)
+    #
+    # @param thread_id [String] the thread ID
+    # @param run_id [String] the run ID
+    # @return [Hash] result with :success, :run_steps keys
+    def get_run_steps(thread_id:, run_id:)
+      response = client.run_steps.list(
+        thread_id: thread_id,
+        run_id: run_id,
+        parameters: { order: "asc" }
+      )
+
+      run_steps = response["data"].map do |step|
+        {
+          id: step["id"],
+          type: step["type"],
+          status: step["status"],
+          step_details: step["step_details"],
+          created_at: step["created_at"] ? Time.at(step["created_at"]) : nil,
+          completed_at: step["completed_at"] ? Time.at(step["completed_at"]) : nil
+        }
+      end
+
+      { success: true, run_steps: run_steps }
+    rescue => e
+      Rails.logger.error "Failed to get run steps: #{e.message}"
+      { success: false, error: e.message }
+    end
+
     private
 
     # Build OpenAI client

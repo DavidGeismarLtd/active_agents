@@ -1,0 +1,171 @@
+<%# File Management Section for Assistant Playground %>
+<%# This partial handles file uploads and vector store management for file_search tool %>
+
+<%
+  # Get current vector store IDs from assistant's metadata (tool_resources is stored in metadata)
+  tool_resources = @assistant.metadata&.dig("tool_resources") || {}
+  current_vector_store_ids = tool_resources.dig("file_search", "vector_store_ids") || []
+%>
+
+<div class="card mb-3"
+     data-controller="file-management"
+     data-file-management-assistant-id-value="<%= @assistant.id %>"
+     data-file-management-upload-url-value="<%= @is_new ? '' : upload_file_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-list-files-url-value="<%= @is_new ? '' : list_files_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-delete-file-url-value="<%= @is_new ? '' : delete_file_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-create-vector-store-url-value="<%= @is_new ? '' : create_vector_store_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-list-vector-stores-url-value="<%= @is_new ? '' : list_vector_stores_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-attach-vector-store-url-value="<%= @is_new ? '' : attach_vector_store_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-add-file-to-vector-store-url-value="<%= @is_new ? '' : add_file_to_vector_store_testing_openai_assistant_playground_path(@assistant.id) %>"
+     data-file-management-current-vector-store-ids-value="<%= current_vector_store_ids.to_json %>"
+     data-file-management-is-new-value="<%= @is_new %>">
+
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-folder"></i> Files & Vector Stores</span>
+    <button class="btn btn-sm btn-link"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#filesSection">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+  </div>
+
+  <div id="filesSection" class="collapse show card-body">
+    <% if @is_new %>
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle"></i> Save the assistant first to manage files.
+      </div>
+    <% else %>
+      <!-- File Upload -->
+      <div class="mb-3">
+        <label class="form-label">Upload Files</label>
+        <div class="input-group">
+          <input type="file"
+                 class="form-control"
+                 data-file-management-target="fileInput"
+                 data-action="change->file-management#uploadFile"
+                 multiple
+                 accept=".txt,.pdf,.md,.json,.csv,.html,.xml,.docx,.pptx">
+          <button class="btn btn-outline-primary"
+                  type="button"
+                  data-file-management-target="uploadButton"
+                  data-action="click->file-management#triggerFileInput">
+            <i class="bi bi-upload"></i>
+          </button>
+        </div>
+        <small class="form-text text-muted">
+          Supported: .txt, .pdf, .md, .json, .csv, .html, .xml, .docx, .pptx
+        </small>
+      </div>
+
+      <!-- Upload Progress -->
+      <div class="mb-3" data-file-management-target="uploadProgress" style="display: none;">
+        <div class="progress">
+          <div class="progress-bar progress-bar-striped progress-bar-animated"
+               role="progressbar"
+               style="width: 100%">
+            Uploading...
+          </div>
+        </div>
+      </div>
+
+      <!-- Uploaded Files List -->
+      <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label mb-0">Uploaded Files</label>
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-action="click->file-management#refreshFiles"
+                  data-file-management-target="refreshButton">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+        <div class="files-list border rounded p-2"
+             data-file-management-target="filesList"
+             style="max-height: 200px; overflow-y: auto;">
+          <div class="text-muted small text-center py-2">
+            <i class="bi bi-hourglass"></i> Loading files...
+          </div>
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Vector Store Section -->
+      <div class="mb-3">
+        <label class="form-label">Vector Store</label>
+        <div class="input-group mb-2">
+          <select class="form-select"
+                  data-file-management-target="vectorStoreSelect"
+                  data-action="change->file-management#onVectorStoreChange">
+            <option value="">-- Select or create --</option>
+            <option value="__new__">+ Create new vector store...</option>
+          </select>
+          <button class="btn btn-outline-primary"
+                  type="button"
+                  data-action="click->file-management#attachVectorStore"
+                  data-file-management-target="attachButton"
+                  disabled>
+            <i class="bi bi-link"></i> Attach
+          </button>
+        </div>
+        <small class="form-text text-muted">
+          Vector stores enable semantic search across your files.
+        </small>
+      </div>
+
+      <!-- Current Vector Store Info -->
+      <div data-file-management-target="vectorStoreInfo" style="display: none;">
+        <div class="alert alert-success mb-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <span>
+              <i class="bi bi-check-circle"></i>
+              <span data-file-management-target="vectorStoreName">Vector store attached</span>
+            </span>
+            <button class="btn btn-sm btn-outline-danger"
+                    data-action="click->file-management#detachVectorStore">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Vector Store Modal (with modal-fix controller for z-index) -->
+      <div data-controller="modal-fix">
+        <div class="modal fade" id="newVectorStoreModal" tabindex="-1" data-modal-fix-target="modal">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Create Vector Store</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Name</label>
+                  <input type="text"
+                         class="form-control"
+                         id="newVectorStoreNameInput"
+                         placeholder="e.g., Knowledge Base">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Select files to include</label>
+                  <div id="newVectorStoreModalFilesList"
+                       class="border rounded p-2"
+                       style="max-height: 200px; overflow-y: auto;">
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button"
+                        class="btn btn-primary"
+                        data-action="click->file-management#createVectorStore">
+                  Create & Attach
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
