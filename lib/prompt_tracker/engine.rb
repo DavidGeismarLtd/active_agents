@@ -32,7 +32,11 @@ module PromptTracker
         prompt_tracker/controllers/file_management_controller.js
 =======
         prompt_tracker/controllers/function_editor_controller.js
+<<<<<<< HEAD
 >>>>>>> 654abb8 (function evaluation working)
+=======
+        prompt_tracker/controllers/generate_prompt_controller.js
+>>>>>>> 278e2ad (WIP)
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)

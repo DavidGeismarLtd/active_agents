@@ -1,12 +1,12 @@
 <div class="container-fluid mt-4"
      data-controller="playground"
+     data-playground-generate-prompt-outlet="#generate-prompt-controller"
      <% if @prompt_version %>
        data-playground-prompt-id-value="<%= @prompt.id %>"
        data-playground-version-id-value="<%= @prompt_version.id %>"
        data-playground-version-has-responses-value="<%= @prompt_version.has_responses? %>"
        data-playground-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       data-playground-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-is-standalone-value="false"
      <% elsif @prompt %>
        data-playground-prompt-id-value="<%= @prompt.id %>"
@@ -16,12 +16,10 @@
        <% end %>
        data-playground-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
-       data-playground-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
        data-playground-is-standalone-value="false"
      <% else %>
        data-playground-preview-url-value="<%= preview_testing_playground_path %>"
        data-playground-save-url-value="<%= save_testing_playground_path %>"
-       data-playground-generate-url-value="<%= generate_testing_playground_path %>"
        data-playground-is-standalone-value="true"
      <% end %>
 >
@@ -101,7 +99,7 @@
           <div>
             <button type="button"
                     class="btn btn-sm btn-outline-primary me-2"
-                    data-action="click->playground#handleAIButtonClick"
+                    data-action="click->playground#openGenerateModal"
                     data-playground-target="aiButton"
                     data-bs-toggle="tooltip"
                     data-bs-placement="top"
@@ -416,7 +414,17 @@
   </div>
 
   <!-- Modals (inside playground controller scope) -->
-  <div data-controller="modal-fix">
+  <div data-controller="modal-fix generate-prompt"
+       id="generate-prompt-controller"
+       data-generate-prompt-playground-outlet="[data-controller~='playground']"
+       <% if @prompt_version %>
+         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       <% elsif @prompt %>
+         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
+       <% else %>
+         data-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
+       <% end %>
+  >
     <%= render "prompt_tracker/testing/playground/keyboard_shortcuts_modal" %>
     <%= render "prompt_tracker/testing/playground/template_examples_modal" %>
     <%= render "prompt_tracker/testing/playground/generate_prompt_modal" %>

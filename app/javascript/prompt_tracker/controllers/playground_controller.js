@@ -45,18 +45,24 @@ export default class extends Controller {
     versionHasResponses: Boolean,
     previewUrl: String,
     saveUrl: String,
-    generateUrl: String,
     isStandalone: Boolean
   }
 
+  static outlets = ["generate-prompt"]
+
   connect() {
+    console.log('[PlaygroundController] connect() called')
+    console.log('[PlaygroundController] Element:', this.element)
+    console.log('[PlaygroundController] Has generate-prompt outlet?', this.hasGeneratePromptOutlet)
+
     this.debounceTimer = null
     this.debounceDelay = 500 // ms
 
     this.attachEventListeners()
-    this.attachModalEventListeners() // Attach listeners for modals that get moved by modal-fix
     this.updatePreview() // Initial preview
-    this.updateAIButtonState() // Update button text based on content
+    this.updateAIButtonState() // Update button visibility based on content
+
+    console.log('[PlaygroundController] connect() complete')
   }
 
   disconnect() {
@@ -118,21 +124,6 @@ export default class extends Controller {
 
     // Initial character count
     this.updateCharCount()
-  }
-
-  /**
-   * Attach event listeners for modal buttons
-   * These modals get moved to document.body by modal-fix controller,
-   * so we can't use data-action attributes (they lose controller scope)
-   */
-  attachModalEventListeners() {
-    // Generate Prompt button in modal
-    const generateButton = document.getElementById('generatePromptButton')
-    if (generateButton) {
-      generateButton.addEventListener('click', () => {
-        this.submitGeneration()
-      })
-    }
   }
 
   // Action: User prompt editor input
@@ -718,11 +709,11 @@ export default class extends Controller {
   }
 
   // ========================================
-  // AI BUTTON - GENERATE ONLY
+  // GENERATE PROMPT INTEGRATION
   // ========================================
 
   /**
-   * Check if prompts are empty
+   * Check if prompts are empty (used by generate-prompt controller)
    */
   get isPromptsEmpty() {
     const systemPrompt = this.hasSystemPromptEditorTarget ? this.systemPromptEditorTarget.value.trim() : ''
@@ -731,10 +722,27 @@ export default class extends Controller {
   }
 
   /**
+   * Open generate modal - delegates to generate-prompt controller
+   */
+  openGenerateModal() {
+    console.log('[PlaygroundController] openGenerateModal() called')
+    console.log('[PlaygroundController] Has generate-prompt outlet?', this.hasGeneratePromptOutlet)
+    if (this.hasGeneratePromptOutlet) {
+      console.log('[PlaygroundController] Calling generatePromptOutlet.openModal()')
+      this.generatePromptOutlet.openModal()
+    } else {
+      console.error('[PlaygroundController] No generate-prompt outlet found!')
+      console.log('[PlaygroundController] Outlet selector:', this.element.dataset.playgroundGeneratePromptOutlet)
+    }
+  }
+
+  /**
    * Update AI button visibility based on content state
    * Only show when prompts are empty (generate mode)
    */
   updateAIButtonState() {
+    console.log('[PlaygroundController] updateAIButtonState() called')
+    console.log('[PlaygroundController] Has aiButton target?', this.hasAiButtonTarget)
     if (!this.hasAiButtonTarget) return
 
     if (this.isPromptsEmpty) {
@@ -746,142 +754,26 @@ export default class extends Controller {
         this.aiButtonIconTarget.className = 'bi bi-stars'
       }
     } else {
-      // Hide button when prompts have content
       this.aiButtonTarget.style.display = 'none'
     }
   }
 
   /**
-   * Handle AI button click - opens generate modal
+   * Insert generated prompts from the generate-prompt controller
    */
-  handleAIButtonClick() {
-    this.openGenerateModal()
-  }
-
-  // ========================================
-  // GENERATE FEATURE
-  // ========================================
-
-  /**
-   * Open the generate prompt modal
-   */
-  openGenerateModal() {
-    const modalEl = document.getElementById('generatePromptModal')
-    if (modalEl) {
-      const modal = new Modal(modalEl)
-      modal.show()
-    }
-  }
-
-  /**
-   * Submit generation request
-   */
-  async submitGeneration() {
-    // Use getElementById since modal gets moved to document.body by modal-fix
-    const descriptionTextarea = document.getElementById('generateDescription')
-
-    if (!descriptionTextarea) {
-      return
+  async insertGeneratedPrompts(data) {
+    if (data.system_prompt && this.hasSystemPromptEditorTarget) {
+      await this.animateTextInsertion(this.systemPromptEditorTarget, data.system_prompt)
     }
 
-    const description = descriptionTextarea.value.trim()
-
-    if (!description) {
-      this.showAlert('Please describe what your prompt should do', 'warning')
-      return
+    if (data.user_prompt && this.hasUserPromptEditorTarget) {
+      await this.animateTextInsertion(this.userPromptEditorTarget, data.user_prompt)
     }
 
-    // Close the input modal
-    const inputModalEl = document.getElementById('generatePromptModal')
-    if (inputModalEl) {
-      const inputModal = Modal.getInstance(inputModalEl)
-      if (inputModal) inputModal.hide()
-    }
-
-    // Show generating modal
-    this.showGeneratingModal()
-
-    try {
-      await this.generatePromptFromDescription(description)
-    } catch (error) {
-      console.error('Generation error:', error)
-    } finally {
-      this.hideGeneratingModal()
-      // Clear the description for next time
-      if (descriptionTextarea) {
-        descriptionTextarea.value = ''
-      }
-    }
-  }
-
-  /**
-   * Generate prompt from description with animation
-   */
-  async generatePromptFromDescription(description) {
-    try {
-      const response = await fetch(this.generateUrlValue, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': this.getCsrfToken(),
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ description })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Server error (${response.status})`)
-      }
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Animate the generated prompts
-        if (data.system_prompt && this.hasSystemPromptEditorTarget) {
-          await this.animateTextInsertion(this.systemPromptEditorTarget, data.system_prompt)
-        }
-
-        if (data.user_prompt && this.hasUserPromptEditorTarget) {
-          await this.animateTextInsertion(this.userPromptEditorTarget, data.user_prompt)
-        }
-
-        // Update variables and preview
-        this.updateVariableInputs()
-        this.updatePreview()
-        this.updateAIButtonState()
-
-        // Show success message with explanation
-        const message = data.explanation || 'Prompt generated successfully!'
-        this.showAlert(message, 'success')
-      } else {
-        throw new Error(data.error || 'Generation failed')
-      }
-    } catch (error) {
-      console.error('Generation error:', error)
-      this.showAlert(`Generation failed: ${error.message}`, 'danger')
-    }
-  }
-
-  /**
-   * Show generating modal
-   */
-  showGeneratingModal() {
-    const modalEl = document.getElementById('generatingModal')
-    if (modalEl) {
-      this.generatingModal = new Modal(modalEl)
-      this.generatingModal.show()
-    }
-  }
-
-  /**
-   * Hide generating modal
-   */
-  hideGeneratingModal() {
-    if (this.generatingModal) {
-      this.generatingModal.hide()
-      this.generatingModal = null
-    }
+    // Update variables and preview
+    this.updateVariableInputs()
+    this.updatePreview()
+    this.updateAIButtonState()
   }
 
   handleKeyboardShortcuts(e) {
