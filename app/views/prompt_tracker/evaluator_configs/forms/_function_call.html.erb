@@ -1,0 +1,223 @@
+<%# Form for Function Call Evaluator - checks if expected functions were called %>
+<% existing_config ||= nil %>
+<% config = existing_config&.config || {} %>
+<% evaluator_key ||= 'function_call' %>
+<% namespace ||= 'config' %>
+<% testable ||= nil %>
+<%
+  # Get available functions from the assistant
+  available_functions = []
+  if testable.is_a?(PromptTracker::Openai::Assistant)
+    available_functions = testable.functions
+  end
+  selected_functions = Array(config['expected_functions'] || config[:expected_functions])
+%>
+
+<div class="alert alert-info mb-3">
+  <i class="bi bi-gear"></i>
+  <strong>Function Call Evaluator</strong>
+  <p class="mb-0 mt-1">Checks if the assistant called specific functions during the conversation. Useful for validating that the assistant uses the right tools.</p>
+</div>
+
+<!-- Expected Functions -->
+<div class="mb-3">
+  <label class="form-label">Expected Functions</label>
+  <% if available_functions.any? %>
+    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+      <% available_functions.each do |func| %>
+        <% func_name = func["name"] %>
+        <% func_desc = func["description"] %>
+        <% is_selected = selected_functions.include?(func_name) %>
+        <div class="form-check">
+          <input type="checkbox"
+                 name="<%= namespace %>[expected_functions][]"
+                 id="func_<%= func_name %>"
+                 class="form-check-input"
+                 value="<%= func_name %>"
+                 <%= 'checked' if is_selected %>>
+          <label class="form-check-label" for="func_<%= func_name %>">
+            <code><%= func_name %></code>
+            <% if func_desc.present? %>
+              <small class="text-muted d-block"><%= truncate(func_desc, length: 80) %></small>
+            <% end %>
+          </label>
+        </div>
+      <% end %>
+    </div>
+    <small class="form-text text-muted">
+      Select the functions that should be called by the assistant during the conversation.
+    </small>
+  <% else %>
+    <textarea name="<%= namespace %>[expected_functions]"
+              class="form-control font-monospace"
+              rows="3"
+              placeholder="get_weather&#10;book_flight&#10;search_database"
+              required><%= selected_functions.join("\n") %></textarea>
+    <small class="form-text text-muted">
+      <i class="bi bi-info-circle"></i> No functions defined on this assistant. Enter function names manually (one per line).
+    </small>
+  <% end %>
+</div>
+
+<!-- Require All -->
+<div class="mb-3">
+  <div class="form-check">
+    <input type="hidden" name="<%= namespace %>[require_all]" value="false">
+    <input type="checkbox"
+           name="<%= namespace %>[require_all]"
+           id="require_all_checkbox_<%= evaluator_key %>"
+           class="form-check-input"
+           value="true"
+           <%= 'checked' if config['require_all'] != false && config[:require_all] != false %>>
+    <label class="form-check-label" for="require_all_checkbox_<%= evaluator_key %>">
+      <strong>Require All Functions</strong>
+    </label>
+  </div>
+  <small class="form-text text-muted">
+    If checked, <strong>all</strong> selected functions must be called. If unchecked, passes if <strong>any</strong> is called.
+  </small>
+</div>
+
+<!-- Check Arguments -->
+<div class="mb-3">
+  <div class="form-check">
+    <input type="hidden" name="<%= namespace %>[check_arguments]" value="false">
+    <input type="checkbox"
+           name="<%= namespace %>[check_arguments]"
+           id="check_arguments_checkbox_<%= evaluator_key %>"
+           class="form-check-input"
+           value="true"
+           data-bs-toggle="collapse"
+           data-bs-target="#arguments_section_<%= evaluator_key %>"
+           <%= 'checked' if config['check_arguments'] == true || config[:check_arguments] == true %>>
+    <label class="form-check-label" for="check_arguments_checkbox_<%= evaluator_key %>">
+      <strong>Check Function Arguments</strong>
+    </label>
+  </div>
+  <small class="form-text text-muted">
+    If checked, also validates the arguments passed to each function.
+  </small>
+</div>
+
+<!-- Expected Arguments Section (collapsible) -->
+<%
+  check_args = config['check_arguments'] == true || config[:check_arguments] == true
+  expected_args = config['expected_arguments'] || config[:expected_arguments] || {}
+%>
+<div class="collapse <%= 'show' if check_args %>" id="arguments_section_<%= evaluator_key %>">
+  <div class="mb-3">
+    <label class="form-label">
+      Expected Arguments (JSON)
+      <a class="ms-2 text-decoration-none small" data-bs-toggle="collapse" href="#expectedArgsHelp_<%= evaluator_key %>" role="button" aria-expanded="false" aria-controls="expectedArgsHelp_<%= evaluator_key %>">
+        <i class="bi bi-question-circle"></i> Help
+      </a>
+    </label>
+
+    <!-- Collapsible Help Section -->
+    <div class="collapse mb-2" id="expectedArgsHelp_<%= evaluator_key %>">
+      <div class="card card-body bg-light small">
+        <h6 class="mb-2"><i class="bi bi-book"></i> Expected Arguments Format</h6>
+
+        <p class="mb-2">Define expected arguments for each function. The evaluator uses <strong>subset matching</strong>: actual arguments must contain all expected values, but can have additional fields.</p>
+
+        <h6 class="mb-2">Structure</h6>
+        <pre class="bg-dark text-light p-2 rounded mb-3" style="font-size: 0.75rem;">{
+  "function_name": {
+    "argument_name": "expected_value",
+    ...
+  },
+  ...
+}</pre>
+
+        <h6 class="mb-2"><i class="bi bi-lightbulb"></i> Examples</h6>
+
+        <div class="mb-2">
+          <strong>Basic string matching:</strong>
+          <pre class="bg-dark text-light p-2 rounded mb-0" style="font-size: 0.75rem;">{
+  "get_weather": {
+    "location": "Paris"
+  }
+}</pre>
+          <small class="text-muted">✓ Passes if <code>get_weather</code> was called with <code>location</code> containing "Paris"</small>
+        </div>
+
+        <div class="mb-2">
+          <strong>Multiple arguments:</strong>
+          <pre class="bg-dark text-light p-2 rounded mb-0" style="font-size: 0.75rem;">{
+  "book_flight": {
+    "origin": "NYC",
+    "destination": "London",
+    "class": "business"
+  }
+}</pre>
+          <small class="text-muted">✓ All three arguments must match</small>
+        </div>
+
+        <div class="mb-2">
+          <strong>Multiple functions:</strong>
+          <pre class="bg-dark text-light p-2 rounded mb-0" style="font-size: 0.75rem;">{
+  "search_products": {
+    "category": "electronics"
+  },
+  "add_to_cart": {
+    "quantity": 1
+  }
+}</pre>
+          <small class="text-muted">✓ Each function's arguments are validated separately</small>
+        </div>
+
+        <div class="mb-2">
+          <strong>Nested objects:</strong>
+          <pre class="bg-dark text-light p-2 rounded mb-0" style="font-size: 0.75rem;">{
+  "create_order": {
+    "customer": {
+      "name": "John"
+    }
+  }
+}</pre>
+          <small class="text-muted">✓ Nested structures are matched recursively</small>
+        </div>
+
+        <div class="alert alert-info mb-0 mt-2 py-2">
+          <i class="bi bi-info-circle"></i>
+          <strong>Tip:</strong> You don't need to specify all arguments - only the ones you want to validate. Extra arguments in the actual call are ignored.
+        </div>
+      </div>
+    </div>
+
+    <textarea name="<%= namespace %>[expected_arguments]"
+              class="form-control font-monospace"
+              rows="6"
+              placeholder='{
+  "get_weather": {"location": "New York"},
+  "book_flight": {"destination": "London"}
+}'><%= expected_args.is_a?(Hash) ? JSON.pretty_generate(expected_args) : expected_args %></textarea>
+    <small class="form-text text-muted">
+      Map of function name → expected arguments. Arguments are matched as subsets (actual args must contain expected values).
+    </small>
+  </div>
+</div>
+
+<!-- Threshold Score -->
+<div class="mb-3">
+  <label class="form-label">Threshold Score (0-100)</label>
+  <input type="number"
+         name="<%= namespace %>[threshold_score]"
+         class="form-control"
+         value="<%= config['threshold_score'] || config[:threshold_score] || 80 %>"
+         min="0"
+         max="100"
+         required>
+  <small class="form-text text-muted">
+    Minimum score required to pass.
+  </small>
+</div>
+
+<div class="alert alert-secondary small">
+  <strong>How it works:</strong>
+  <ul class="mb-0 mt-2">
+    <li><strong>Require All ON:</strong> Score = % of expected functions called</li>
+    <li><strong>Require All OFF:</strong> 100% if any expected function called, 0% otherwise</li>
+    <li><strong>With argument checking:</strong> Functions only count as "called" if arguments match</li>
+  </ul>
+</div>

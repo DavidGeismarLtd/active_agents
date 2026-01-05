@@ -1,0 +1,146 @@
+<div class="card mb-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0" style="color: #374151;">
+      <i class="bi bi-gear"></i>
+      Function Call Evaluation
+    </h5>
+  </div>
+  <div class="card-body">
+    <% metadata = evaluation.metadata || {} %>
+    <% expected_functions = metadata['expected_functions'] || [] %>
+    <% called_functions = metadata['called_functions'] || [] %>
+    <% matched_functions = metadata['matched_functions'] || [] %>
+    <% require_all = metadata['require_all'] %>
+    <% check_arguments = metadata['check_arguments'] %>
+    <% argument_failures = metadata['argument_failures'] || [] %>
+    <% all_tool_calls = metadata['all_tool_calls'] || [] %>
+    <% threshold = metadata['threshold'] || 80 %>
+
+    <!-- Mode Info -->
+    <div class="mb-3">
+      <p class="mb-1" style="color: #6B7280; font-size: 0.875rem;"><strong>Mode:</strong></p>
+      <% if require_all %>
+        <span class="badge bg-info">Require All Functions</span>
+      <% else %>
+        <span class="badge bg-secondary">Require Any Function</span>
+      <% end %>
+      <% if check_arguments %>
+        <span class="badge bg-warning text-dark ms-1">+ Argument Checking</span>
+      <% end %>
+    </div>
+
+    <!-- Score Summary -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-danger' %> mb-0">
+          <strong>Score:</strong> <%= number_with_precision(evaluation.score, precision: 0) %>/100
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-secondary mb-0">
+          <strong>Threshold:</strong> <%= threshold %>/100
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="alert alert-secondary mb-0">
+          <strong>Total Calls:</strong> <%= all_tool_calls.length %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expected vs Called Functions -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <h6><i class="bi bi-list-check"></i> Expected Functions</h6>
+        <% if expected_functions.any? %>
+          <ul class="list-group">
+            <% expected_functions.each do |func| %>
+              <% was_called = called_functions.include?(func) %>
+              <% was_matched = matched_functions.include?(func) %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                <code><%= func %></code>
+                <% if was_matched %>
+                  <span class="badge bg-success"><i class="bi bi-check"></i> <%= check_arguments ? 'Matched' : 'Called' %></span>
+                <% elsif was_called && check_arguments %>
+                  <span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> Args Mismatch</span>
+                <% else %>
+                  <span class="badge bg-danger"><i class="bi bi-x"></i> Not Called</span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-muted mb-0"><em>No expected functions configured</em></p>
+        <% end %>
+      </div>
+
+      <div class="col-md-6">
+        <h6><i class="bi bi-telephone-outbound"></i> Functions Called</h6>
+        <% if called_functions.any? %>
+          <ul class="list-group">
+            <% called_functions.each do |func| %>
+              <% was_expected = expected_functions.include?(func) %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                <code><%= func %></code>
+                <% if was_expected %>
+                  <span class="badge bg-success"><i class="bi bi-check"></i> Expected</span>
+                <% else %>
+                  <span class="badge bg-secondary">Extra</span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-muted mb-0"><em>No functions were called</em></p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Argument Failures (if any) -->
+    <% if check_arguments && argument_failures.any? %>
+      <div class="alert alert-danger mb-3">
+        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Argument Mismatches</h6>
+        <ul class="mb-0">
+          <% argument_failures.each do |failure| %>
+            <li><small><%= failure %></small></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <!-- Tool Call Details -->
+    <% if all_tool_calls.any? %>
+      <h6><i class="bi bi-code-slash"></i> Tool Call Details</h6>
+      <div class="accordion mb-3" id="toolCallsAccordion">
+        <% all_tool_calls.each_with_index do |tc, index| %>
+          <% func_name = tc['function_name'] || tc[:function_name] %>
+          <% arguments = tc['arguments'] || tc[:arguments] %>
+          <% call_id = tc['id'] || tc[:id] %>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed py-2" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#toolCall<%= index %>">
+                <code class="me-2"><%= func_name %></code>
+                <small class="text-muted">(<%= call_id %>)</small>
+              </button>
+            </h2>
+            <div id="toolCall<%= index %>" class="accordion-collapse collapse">
+              <div class="accordion-body">
+                <strong>Arguments:</strong>
+                <pre class="bg-light p-2 rounded mt-2 mb-0" style="font-size: 0.875rem;"><code><%= JSON.pretty_generate(arguments) rescue arguments.to_s %></code></pre>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <!-- Overall Feedback -->
+    <% if evaluation.feedback.present? %>
+      <div class="alert <%= evaluation.passed? ? 'alert-success' : 'alert-warning' %> mb-0">
+        <strong>Result:</strong> <%= evaluation.feedback %>
+      </div>
+    <% end %>
+  </div>
+</div>

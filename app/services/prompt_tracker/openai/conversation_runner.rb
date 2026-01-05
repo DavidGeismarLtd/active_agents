@@ -183,9 +183,11 @@ module PromptTracker
         Rails.logger.info "🏃 ConversationRunner: Run created: #{run_id}"
         Rails.logger.debug "🏃 ConversationRunner: Run details: #{run.inspect}"
 
-        # Wait for completion
+        # Wait for completion (may handle function calls along the way)
         Rails.logger.info "⏳ ConversationRunner: Waiting for run completion..."
-        run = wait_for_run_completion(run_id)
+
+        run = wait_for_run_completion(run["id"], turn: turn)
+
         Rails.logger.info "✅ ConversationRunner: Run completed with status: #{run['status']}"
 
         # Fetch run steps to capture file_search details
@@ -271,8 +273,9 @@ module PromptTracker
       # Wait for a run to complete
       #
       # @param run_id [String] the run ID
+      # @param turn [Integer] the conversation turn number (for storing tool calls)
       # @return [Hash] the completed run object
-      def wait_for_run_completion(run_id)
+      def wait_for_run_completion(run_id, turn: nil)
         Rails.logger.info "⏳ ConversationRunner: Waiting for run #{run_id} to complete..."
         client = openai_client
         max_attempts = 30
@@ -284,6 +287,13 @@ module PromptTracker
           attempts += 1
 
           Rails.logger.debug "⏳ ConversationRunner: Poll ##{attempts} - Run status: #{status}"
+
+          # Handle requires_action status (function calls)
+          if status == "requires_action"
+            Rails.logger.info "🔧 ConversationRunner: Run requires action (function calls)"
+            run = handle_requires_action(run, turn: turn)
+            next
+          end
 
           if %w[completed failed cancelled expired].include?(status)
             if status == "completed"
@@ -303,6 +313,88 @@ module PromptTracker
           Rails.logger.debug "⏳ ConversationRunner: Run still #{status}, continuing to wait..."
           sleep 1
         end
+      end
+
+      # Handle requires_action status by storing tool calls and submitting mock outputs
+      #
+      # @param run [Hash] the run object with requires_action status
+      # @param turn [Integer, nil] the conversation turn number
+      # @return [Hash] the updated run object after submitting tool outputs
+      def handle_requires_action(run, turn: nil)
+        tool_calls = run.dig("required_action", "submit_tool_outputs", "tool_calls") || []
+        Rails.logger.info "🔧 ConversationRunner: Processing #{tool_calls.length} tool call(s)"
+
+        # Store tool calls in messages for evaluation
+        formatted_tool_calls = tool_calls.map do |tc|
+          {
+            id: tc["id"],
+            type: tc["type"],
+            function: {
+              name: tc.dig("function", "name"),
+              arguments: tc.dig("function", "arguments")
+            }
+          }
+        end
+
+        # Add a message entry for the tool calls
+        @messages << {
+          role: "assistant",
+          content: nil,
+          tool_calls: formatted_tool_calls,
+          turn: turn,
+          timestamp: Time.current.iso8601,
+          run_id: run["id"]
+        }
+
+        Rails.logger.info "🔧 ConversationRunner: Tool calls: #{formatted_tool_calls.map { |tc| tc[:function][:name] }.join(', ')}"
+
+        # Submit mock tool outputs to continue the run
+        submit_mock_tool_outputs(run["id"], tool_calls)
+      end
+
+      # Submit mock tool outputs to continue a run
+      #
+      # @param run_id [String] the run ID
+      # @param tool_calls [Array<Hash>] the tool calls requiring outputs
+      # @return [Hash] the updated run object
+      def submit_mock_tool_outputs(run_id, tool_calls)
+        client = openai_client
+
+        # Generate mock outputs for each tool call
+        tool_outputs = tool_calls.map do |tc|
+          function_name = tc.dig("function", "name")
+          {
+            tool_call_id: tc["id"],
+            output: generate_mock_tool_output(function_name, tc.dig("function", "arguments"))
+          }
+        end
+
+        Rails.logger.info "🔧 ConversationRunner: Submitting #{tool_outputs.length} mock tool output(s)"
+
+        client.runs.submit_tool_outputs(
+          thread_id: @thread_id,
+          run_id: run_id,
+          parameters: { tool_outputs: tool_outputs }
+        )
+
+        # Wait briefly then retrieve updated run
+        sleep 1
+        client.runs.retrieve(thread_id: @thread_id, id: run_id)
+      end
+
+      # Generate a mock tool output for testing purposes
+      #
+      # @param function_name [String] the function name
+      # @param arguments [String] the function arguments (JSON string)
+      # @return [String] mock output
+      def generate_mock_tool_output(function_name, arguments)
+        # Return a generic mock response - can be customized based on function name
+        JSON.generate({
+          success: true,
+          function: function_name,
+          result: "Mock result for #{function_name}",
+          note: "This is a simulated response for testing purposes"
+        })
       end
 
       # Extract message content from OpenAI message object

@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { Toast, Modal } from "bootstrap"
+import { Toast } from "bootstrap"
 
 // Connects to data-controller="assistant-playground"
 export default class extends Controller {
@@ -25,10 +25,8 @@ export default class extends Controller {
     "saveStatus",
     "toast",
     "toastBody",
-    // Function management targets (only for elements that stay in controller scope)
-    "functionsSection",
-    "functionList"
-    // Note: Modal elements are accessed via getElementById because modal-fix moves them to body
+    // Functions section target for accessing nested function-editor controller
+    "functionsSection"
   ]
 
   static values = {
@@ -58,41 +56,47 @@ export default class extends Controller {
 
     // Setup keyboard shortcuts
     this.setupKeyboardShortcuts()
-
-    // Initialize functions from existing function items in the DOM
-    this.initializeFunctions()
-
-    // Setup modal event listeners (Bootstrap moves modals to body, outside controller scope)
-    this.setupModalEventListeners()
   }
 
   disconnect() {
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout)
     }
-    // Clean up modal event listeners
-    this.cleanupModalEventListeners()
   }
 
-  setupModalEventListeners() {
-    // Bind the handler so we can remove it later
-    this.boundSaveFunctionHandler = this.saveFunction.bind(this)
+  // ========================================
+  // Function Editor Event Handlers
+  // ========================================
 
-    // Listen for clicks on the save function button (using event delegation on document)
-    document.addEventListener("click", this.handleModalButtonClick.bind(this))
+  handleFunctionsChanged(event) {
+    // Store the latest functions from the function-editor controller
+    // Note: We intentionally do NOT auto-save here to avoid unexpected saves
+    // The user should explicitly click "Save" to persist function changes
+    this.functions = event.detail.functions || []
   }
 
-  cleanupModalEventListeners() {
-    document.removeEventListener("click", this.handleModalButtonClick.bind(this))
-  }
-
-  handleModalButtonClick(event) {
-    // Check if the clicked element is the save function button
-    const saveButton = event.target.closest('[data-action*="saveFunction"]')
-    if (saveButton) {
-      event.preventDefault()
-      this.saveFunction()
+  handleNotification(event) {
+    const { type, message } = event.detail
+    if (type === "error") {
+      this.showError(message)
+    } else if (type === "success") {
+      this.showSuccess(message)
     }
+  }
+
+  getFunctions() {
+    // Try to get functions from the function-editor controller
+    if (this.hasFunctionsSectionTarget) {
+      const functionEditorController = this.application.getControllerForElementAndIdentifier(
+        this.functionsSectionTarget,
+        "function-editor"
+      )
+      if (functionEditorController) {
+        return functionEditorController.getFunctions()
+      }
+    }
+    // Fallback to stored functions
+    return this.functions || []
   }
 
   // ========================================
@@ -378,7 +382,7 @@ export default class extends Controller {
       instructions: this.instructionsTarget.value,
       model: this.modelTarget.value,
       tools: tools,
-      functions: this.functions || [],
+      functions: this.getFunctions(),
       temperature: parseFloat(this.temperatureTarget.value),
       top_p: parseFloat(this.topPTarget.value),
       response_format: this.responseFormatTarget.value
@@ -508,288 +512,5 @@ export default class extends Controller {
 
   getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content || ""
-  }
-
-  // ========================================
-  // Function Management
-  // ========================================
-
-  initializeFunctions() {
-    // Parse existing functions from the function list DOM elements
-    this.functions = []
-
-    if (!this.hasFunctionListTarget) return
-
-    const functionItems = this.functionListTarget.querySelectorAll(".function-item")
-    functionItems.forEach((item) => {
-      // We need to store the full function data as data attributes
-      const dataAttr = item.getAttribute("data-function-data")
-      if (dataAttr) {
-        try {
-          this.functions.push(JSON.parse(dataAttr))
-        } catch (e) {
-          console.error("Failed to parse function data:", e)
-        }
-      }
-    })
-
-    console.log(`Initialized ${this.functions.length} functions`)
-  }
-
-  // Helper to get modal elements (they are moved to body by modal-fix controller)
-  getModalElement(id) {
-    return document.getElementById(id)
-  }
-
-  addFunction() {
-    // Reset the modal for adding a new function
-    const editIndex = this.getModalElement("functionEditIndex")
-    const modalTitle = this.getModalElement("functionModalTitle")
-    const saveButtonText = this.getModalElement("functionSaveButtonText")
-    const nameInput = this.getModalElement("functionName")
-    const descriptionInput = this.getModalElement("functionDescription")
-    const parametersInput = this.getModalElement("functionParameters")
-    const strictCheckbox = this.getModalElement("functionStrict")
-
-    if (editIndex) editIndex.value = "-1"
-    if (modalTitle) modalTitle.textContent = "Add Function"
-    if (saveButtonText) saveButtonText.textContent = "Add Function"
-    if (nameInput) nameInput.value = ""
-    if (descriptionInput) descriptionInput.value = ""
-    if (parametersInput) {
-      parametersInput.value = JSON.stringify({
-        type: "object",
-        properties: {},
-        required: []
-      }, null, 2)
-      parametersInput.classList.remove("is-invalid")
-    }
-    if (strictCheckbox) strictCheckbox.checked = false
-
-    this.showFunctionModal()
-  }
-
-  editFunction(event) {
-    const index = parseInt(event.currentTarget.dataset.functionIndex, 10)
-    if (index < 0 || index >= this.functions.length) {
-      this.showError("Function not found")
-      return
-    }
-
-    const func = this.functions[index]
-
-    // Get modal elements
-    const editIndexInput = this.getModalElement("functionEditIndex")
-    const modalTitle = this.getModalElement("functionModalTitle")
-    const saveButtonText = this.getModalElement("functionSaveButtonText")
-    const nameInput = this.getModalElement("functionName")
-    const descriptionInput = this.getModalElement("functionDescription")
-    const parametersInput = this.getModalElement("functionParameters")
-    const strictCheckbox = this.getModalElement("functionStrict")
-
-    // Populate the modal with existing function data
-    if (editIndexInput) editIndexInput.value = index.toString()
-    if (modalTitle) modalTitle.textContent = "Edit Function"
-    if (saveButtonText) saveButtonText.textContent = "Update Function"
-    if (nameInput) nameInput.value = func.name || ""
-    if (descriptionInput) descriptionInput.value = func.description || ""
-    if (parametersInput) {
-      parametersInput.value = JSON.stringify(func.parameters || {}, null, 2)
-      parametersInput.classList.remove("is-invalid")
-    }
-    if (strictCheckbox) strictCheckbox.checked = func.strict || false
-
-    this.showFunctionModal()
-  }
-
-  deleteFunction(event) {
-    const index = parseInt(event.currentTarget.dataset.functionIndex, 10)
-    if (index < 0 || index >= this.functions.length) {
-      this.showError("Function not found")
-      return
-    }
-
-    const func = this.functions[index]
-    if (!confirm(`Are you sure you want to delete the function "${func.name}"?`)) {
-      return
-    }
-
-    this.functions.splice(index, 1)
-    this.renderFunctionList()
-    this.showSuccess("Function deleted")
-
-    // Trigger auto-save if not a new assistant
-    if (!this.isNewValue) {
-      this.debouncedSave()
-    }
-  }
-
-  saveFunction() {
-    // Get modal elements
-    const nameInput = this.getModalElement("functionName")
-    const descriptionInput = this.getModalElement("functionDescription")
-    const parametersInput = this.getModalElement("functionParameters")
-    const parametersError = this.getModalElement("functionParametersError")
-    const editIndexInput = this.getModalElement("functionEditIndex")
-    const strictCheckbox = this.getModalElement("functionStrict")
-
-    // Validate function data
-    const name = nameInput?.value.trim() || ""
-    const description = descriptionInput?.value.trim() || ""
-    const parametersText = parametersInput?.value.trim() || ""
-
-    if (!name) {
-      this.showError("Function name is required")
-      nameInput?.focus()
-      return
-    }
-
-    // Validate function name format
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
-      this.showError("Function name must start with a letter or underscore and contain only alphanumeric characters")
-      nameInput?.focus()
-      return
-    }
-
-    if (!description) {
-      this.showError("Function description is required")
-      descriptionInput?.focus()
-      return
-    }
-
-    // Validate JSON parameters
-    let parameters
-    try {
-      parameters = JSON.parse(parametersText)
-      parametersInput?.classList.remove("is-invalid")
-    } catch (e) {
-      parametersInput?.classList.add("is-invalid")
-      if (parametersError) parametersError.textContent = `Invalid JSON: ${e.message}`
-      this.showError("Invalid JSON in parameters")
-      return
-    }
-
-    // Validate that parameters is an object with type "object"
-    if (typeof parameters !== "object" || parameters.type !== "object") {
-      parametersInput?.classList.add("is-invalid")
-      if (parametersError) parametersError.textContent = "Parameters must be a JSON Schema with type 'object'"
-      this.showError("Parameters must be a JSON Schema with type 'object'")
-      return
-    }
-
-    const editIndex = parseInt(editIndexInput?.value || "-1", 10)
-    const isEditing = editIndex >= 0
-
-    // Check for duplicate names (excluding the current function if editing)
-    const nameExists = this.functions.some((f, i) => {
-      if (isEditing && i === editIndex) return false
-      return f.name.toLowerCase() === name.toLowerCase()
-    })
-
-    if (nameExists) {
-      this.showError(`A function with the name "${name}" already exists`)
-      nameInput?.focus()
-      return
-    }
-
-    const functionData = {
-      name: name,
-      description: description,
-      parameters: parameters,
-      strict: strictCheckbox?.checked || false
-    }
-
-    if (isEditing) {
-      this.functions[editIndex] = functionData
-      this.showSuccess("Function updated")
-    } else {
-      this.functions.push(functionData)
-      this.showSuccess("Function added")
-    }
-
-    this.hideFunctionModal()
-    this.renderFunctionList()
-
-    // Trigger auto-save if not a new assistant
-    if (!this.isNewValue) {
-      this.debouncedSave()
-    }
-  }
-
-  renderFunctionList() {
-    if (!this.hasFunctionListTarget) return
-
-    if (this.functions.length === 0) {
-      this.functionListTarget.innerHTML = `
-        <div class="text-muted small text-center py-2 empty-functions-message">
-          <i class="bi bi-info-circle"></i> No functions defined
-        </div>
-      `
-      return
-    }
-
-    const html = this.functions.map((func, index) => {
-      const paramCount = Object.keys(func.parameters?.properties || {}).length
-      const paramLabel = paramCount === 1 ? "1 parameter" : `${paramCount} parameters`
-      const truncatedDesc = func.description?.length > 60
-        ? func.description.substring(0, 60) + "..."
-        : func.description
-
-      return `
-        <div class="function-item card mb-2" data-function-index="${index}" data-function-data='${JSON.stringify(func).replace(/'/g, "&#39;")}'>
-          <div class="card-body py-2 px-3">
-            <div class="d-flex justify-content-between align-items-start">
-              <div class="function-info flex-grow-1">
-                <strong class="function-name">${this.escapeHtml(func.name)}</strong>
-                <br>
-                <small class="text-muted function-description">${this.escapeHtml(truncatedDesc)}</small>
-                ${paramCount > 0 ? `<br><small class="text-muted"><i class="bi bi-box"></i> ${paramLabel}</small>` : ""}
-              </div>
-              <div class="function-actions btn-group btn-group-sm">
-                <button type="button"
-                        class="btn btn-outline-secondary"
-                        data-action="click->assistant-playground#editFunction"
-                        data-function-index="${index}"
-                        title="Edit">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button"
-                        class="btn btn-outline-danger"
-                        data-action="click->assistant-playground#deleteFunction"
-                        data-function-index="${index}"
-                        title="Delete">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `
-    }).join("")
-
-    this.functionListTarget.innerHTML = html
-  }
-
-  showFunctionModal() {
-    const modalElement = this.getModalElement("functionEditorModal")
-    if (!modalElement) return
-    const modal = new Modal(modalElement)
-    modal.show()
-  }
-
-  hideFunctionModal() {
-    const modalElement = this.getModalElement("functionEditorModal")
-    if (!modalElement) return
-    const modal = Modal.getInstance(modalElement)
-    if (modal) {
-      modal.hide()
-    }
-  }
-
-  escapeHtml(text) {
-    if (!text) return ""
-    const div = document.createElement("div")
-    div.textContent = text
-    return div.innerHTML
   }
 }

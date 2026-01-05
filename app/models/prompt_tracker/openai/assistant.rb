@@ -82,6 +82,20 @@ module PromptTracker
         metadata["last_synced_at"]
       end
 
+      # Returns the list of function tools defined on this assistant
+      #
+      # @return [Array<Hash>] array of function definitions with name, description, parameters
+      def functions
+        tools.select { |t| t["type"] == "function" }.map { |t| t["function"] }
+      end
+
+      # Returns just the function names for easy lookup
+      #
+      # @return [Array<String>] array of function names
+      def function_names
+        functions.map { |f| f["name"] }
+      end
+
       # Fetch assistant details from OpenAI API
       #
       # @return [Boolean] true if successful

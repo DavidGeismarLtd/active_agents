@@ -137,21 +137,24 @@
           <hr class="my-3">
 
           <!-- Functions Section -->
-          <div class="functions-section" data-assistant-playground-target="functionsSection">
+          <div class="functions-section"
+               data-controller="function-editor"
+               data-assistant-playground-target="functionsSection"
+               data-action="function-editor:changed->assistant-playground#handleFunctionsChanged function-editor:notification->assistant-playground#handleNotification">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <label class="form-label mb-0">
                 <i class="bi bi-gear"></i> <strong>Functions</strong>
               </label>
               <button type="button"
                       class="btn btn-sm btn-outline-primary"
-                      data-action="click->assistant-playground#addFunction">
+                      data-action="click->function-editor#addFunction">
                 <i class="bi bi-plus"></i> Add
               </button>
             </div>
             <small class="text-muted d-block mb-2">Define custom functions for your assistant to call</small>
 
             <!-- Function List -->
-            <div class="function-list" data-assistant-playground-target="functionList">
+            <div class="function-list" data-function-editor-target="functionList">
               <%
                 # Extract functions from the assistant's tools array
                 current_functions = (@assistant.tools || []).select { |t| t["type"] == "function" }.map { |t| t["function"] }
@@ -170,8 +173,10 @@
                       parameters: func["parameters"],
                       strict: func["strict"] || false
                     }
+                    # Use ERB's built-in HTML escaping for proper attribute encoding
+                    func_data_json = func_data.to_json
                   %>
-                  <div class="function-item card mb-2" data-function-index="<%= index %>" data-function-data="<%= func_data.to_json.gsub('"', '&quot;') %>">
+                  <div class="function-item card mb-2" data-function-index="<%= index %>" data-function-data="<%= ERB::Util.html_escape(func_data_json) %>">
                     <div class="card-body py-2 px-3">
                       <div class="d-flex justify-content-between align-items-start">
                         <div class="function-info flex-grow-1">
@@ -186,14 +191,14 @@
                         <div class="function-actions btn-group btn-group-sm">
                           <button type="button"
                                   class="btn btn-outline-secondary"
-                                  data-action="click->assistant-playground#editFunction"
+                                  data-action="click->function-editor#editFunction"
                                   data-function-index="<%= index %>"
                                   title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                           <button type="button"
                                   class="btn btn-outline-danger"
-                                  data-action="click->assistant-playground#deleteFunction"
+                                  data-action="click->function-editor#deleteFunction"
                                   data-function-index="<%= index %>"
                                   title="Delete">
                             <i class="bi bi-trash"></i>
@@ -417,7 +422,107 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label" for="functionParameters">Parameters (JSON Schema) <span class="text-danger">*</span></label>
+          <label class="form-label" for="functionParameters">
+            Parameters (JSON Schema) <span class="text-danger">*</span>
+            <a class="ms-2 text-decoration-none small" data-bs-toggle="collapse" href="#parameterSchemaHelp" role="button" aria-expanded="false" aria-controls="parameterSchemaHelp">
+              <i class="bi bi-question-circle"></i> Help
+            </a>
+          </label>
+
+          <!-- Collapsible Help Section -->
+          <div class="collapse mb-2" id="parameterSchemaHelp">
+            <div class="card card-body bg-light small">
+              <h6 class="mb-2"><i class="bi bi-book"></i> JSON Schema Reference</h6>
+
+              <p class="mb-2">Define your function's parameters using <a href="https://json-schema.org/" target="_blank">JSON Schema</a> format.</p>
+
+              <table class="table table-sm table-bordered mb-3">
+                <thead class="table-secondary">
+                  <tr>
+                    <th>Key</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>type</code></td>
+                    <td>Must be <code>"object"</code> at the root level</td>
+                  </tr>
+                  <tr>
+                    <td><code>properties</code></td>
+                    <td>Object containing parameter definitions</td>
+                  </tr>
+                  <tr>
+                    <td><code>required</code></td>
+                    <td>Array of required parameter names</td>
+                  </tr>
+                  <tr>
+                    <td><code>additionalProperties</code></td>
+                    <td>Set to <code>false</code> to disallow extra properties (required for strict mode)</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h6 class="mb-2">Property Types</h6>
+              <table class="table table-sm table-bordered mb-3">
+                <thead class="table-secondary">
+                  <tr>
+                    <th>Type</th>
+                    <th>Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>string</code></td>
+                    <td><code>{"type": "string", "description": "User's name"}</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>number</code></td>
+                    <td><code>{"type": "number", "description": "Temperature in Celsius"}</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>integer</code></td>
+                    <td><code>{"type": "integer", "description": "Number of items"}</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>boolean</code></td>
+                    <td><code>{"type": "boolean", "description": "Enable feature"}</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>array</code></td>
+                    <td><code>{"type": "array", "items": {"type": "string"}}</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>enum</code></td>
+                    <td><code>{"type": "string", "enum": ["small", "medium", "large"]}</code></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h6 class="mb-2"><i class="bi bi-code-square"></i> Complete Example</h6>
+              <pre class="bg-dark text-light p-2 rounded mb-0" style="font-size: 0.75rem;">{
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "City and state, e.g. San Francisco, CA"
+    },
+    "unit": {
+      "type": "string",
+      "enum": ["celsius", "fahrenheit"],
+      "description": "Temperature unit"
+    },
+    "days": {
+      "type": "integer",
+      "description": "Number of days to forecast"
+    }
+  },
+  "required": ["location"],
+  "additionalProperties": false
+}</pre>
+            </div>
+          </div>
+
           <textarea id="functionParameters"
                     class="form-control font-monospace"
                     rows="10"
@@ -453,13 +558,14 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button"
                 class="btn btn-primary"
-                data-action="click->assistant-playground#saveFunction">
+                data-action="click->function-editor#saveFunction">
           <i class="bi bi-check"></i>
           <span id="functionSaveButtonText">Add Function</span>
         </button>
       </div>
     </div>
   </div>
+</div>
 </div>
 
   </div>

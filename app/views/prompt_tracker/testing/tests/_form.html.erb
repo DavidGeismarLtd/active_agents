@@ -107,7 +107,7 @@
                     <label class="form-label small mb-1">Configuration</label>
                     <div data-evaluator-key="<%= key %>"
                           data-evaluator-configs-target="configFormContainer">
-                      <%= render partial: "prompt_tracker/evaluator_configs/forms/#{key}", locals: { existing_config: existing_config, evaluator_key: key, testable: testable } %>
+            <%= render partial: "prompt_tracker/evaluator_configs/forms/#{key}", locals: { existing_config: existing_config, evaluator_key: key, testable: test.testable } %>
                     </div>
                     <input type="hidden"
                             data-evaluator-key="<%= key %>"

@@ -28,7 +28,11 @@ module PromptTracker
         prompt_tracker/controllers/syntax_highlighter_controller.js
         prompt_tracker/controllers/pattern_match_form_controller.js
         prompt_tracker/controllers/batch_select_controller.js
+<<<<<<< HEAD
         prompt_tracker/controllers/file_management_controller.js
+=======
+        prompt_tracker/controllers/function_editor_controller.js
+>>>>>>> 654abb8 (function evaluation working)
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)
