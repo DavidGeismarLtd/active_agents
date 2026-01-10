@@ -64,7 +64,7 @@ module PromptTracker
 
       describe "#evaluate" do
         let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant) }
+        let(:test) { create(:test, testable: assistant, test_mode: :conversational) }
         let(:test_run) { create(:test_run, :for_assistant, test: test) }
         let(:evaluator_with_test_run) do
           described_class.new(conversation_data, config.merge(test_run: test_run))
@@ -122,7 +122,7 @@ module PromptTracker
         it "raises error if conversation_data is nil" do
           evaluator = described_class.new(nil, config)
 
-          expect { evaluator.evaluate }.to raise_error(ArgumentError, /must have conversation_data/)
+          expect { evaluator.evaluate }.to raise_error(ArgumentError, /conversation_data must have messages/)
         end
 
         it "raises error if conversation_data has no messages" do

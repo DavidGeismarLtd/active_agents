@@ -1,12 +1,19 @@
-<% 
+<%
   # Local variables expected:
   # - tests: collection of Test records
   # - testable_param: the testable object (PromptVersion or Assistant)
   # - description: optional custom description text
   # - entity_type: optional entity type name (defaults to "prompt" or "assistant")
-  
+
   testable = tests.first&.testable || testable_param
   description ||= "Validate #{testable.class.name.demodulize.underscore.humanize.downcase} behavior with test cases before deploying to production"
+
+  # Split tests by mode
+  single_turn_tests = tests.select(&:single_turn?)
+  conversational_tests = tests.select(&:conversational?)
+
+  # Determine if this is an assistant (which only supports conversational mode)
+  is_assistant = testable.is_a?(PromptTracker::Openai::Assistant)
 %>
 
 <!-- Tests -->
@@ -23,9 +30,6 @@
     <div class="d-flex gap-2">
       <% if tests.any? %>
         <%= render "prompt_tracker/testing/tests/tests_column_visibility_dropdown", tests: tests, testable_param: testable %>
-        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllTestsModal">
-          <i class="bi bi-play-circle"></i> Run All
-        </button>
       <% end %>
       <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#new-test-modal">
         <i class="bi bi-plus-circle"></i> New Test
@@ -45,7 +49,86 @@
     </div>
 
     <% if tests.any? %>
-      <%= render "prompt_tracker/testing/tests/tests_table", tests: tests, testable_param: testable %>
+      <% if is_assistant %>
+        <%# Assistants only have conversational tests - no tabs needed %>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="badge bg-purple"><i class="bi bi-chat-dots"></i> Conversational Tests</span>
+          <% if conversational_tests.any? %>
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllConversationalTestsModal">
+              <i class="bi bi-play-circle"></i> Run All (<%= conversational_tests.count %>)
+            </button>
+          <% end %>
+        </div>
+        <%= render "prompt_tracker/testing/tests/tests_table", tests: conversational_tests, testable_param: testable %>
+      <% else %>
+        <%# PromptVersions can have both single-turn and conversational tests %>
+        <ul class="nav nav-tabs" id="testModeTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link <%= 'active' if single_turn_tests.any? || conversational_tests.empty? %>"
+                    id="single-turn-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#single-turn-tests"
+                    type="button"
+                    role="tab">
+              <i class="bi bi-chat-left-text"></i> Single-Turn
+              <span class="badge bg-info ms-1"><%= single_turn_tests.count %></span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link <%= 'active' if single_turn_tests.empty? && conversational_tests.any? %>"
+                    id="conversational-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#conversational-tests"
+                    type="button"
+                    role="tab">
+              <i class="bi bi-chat-dots"></i> Conversational
+              <span class="badge bg-purple ms-1"><%= conversational_tests.count %></span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content pt-3" id="testModeTabContent">
+          <!-- Single-Turn Tests Tab -->
+          <div class="tab-pane fade <%= 'show active' if single_turn_tests.any? || conversational_tests.empty? %>"
+               id="single-turn-tests"
+               role="tabpanel">
+            <% if single_turn_tests.any? %>
+              <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllSingleTurnTestsModal">
+                  <i class="bi bi-play-circle"></i> Run All Single-Turn (<%= single_turn_tests.count %>)
+                </button>
+              </div>
+              <%= render "prompt_tracker/testing/tests/tests_table", tests: single_turn_tests, testable_param: testable %>
+            <% else %>
+              <div class="text-center py-4">
+                <i class="bi bi-chat-left-text text-muted" style="font-size: 2rem;"></i>
+                <p class="text-muted mt-2 mb-0">No single-turn tests yet.</p>
+                <small class="text-muted">Single-turn tests validate individual prompt responses.</small>
+              </div>
+            <% end %>
+          </div>
+
+          <!-- Conversational Tests Tab -->
+          <div class="tab-pane fade <%= 'show active' if single_turn_tests.empty? && conversational_tests.any? %>"
+               id="conversational-tests"
+               role="tabpanel">
+            <% if conversational_tests.any? %>
+              <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllConversationalTestsModal">
+                  <i class="bi bi-play-circle"></i> Run All Conversational (<%= conversational_tests.count %>)
+                </button>
+              </div>
+              <%= render "prompt_tracker/testing/tests/tests_table", tests: conversational_tests, testable_param: testable %>
+            <% else %>
+              <div class="text-center py-4">
+                <i class="bi bi-chat-dots text-muted" style="font-size: 2rem;"></i>
+                <p class="text-muted mt-2 mb-0">No conversational tests yet.</p>
+                <small class="text-muted">Conversational tests validate multi-turn interactions. Requires Response API provider.</small>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% else %>
       <!-- Empty state -->
       <div class="text-center py-5">
@@ -55,4 +138,3 @@
     <% end %>
   </div>
 </div>
-

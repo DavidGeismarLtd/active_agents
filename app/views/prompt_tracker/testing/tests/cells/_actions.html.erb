@@ -1,3 +1,9 @@
+<%
+  # Get the testable from the test
+  testable = test.testable
+  is_assistant = testable.is_a?(PromptTracker::Openai::Assistant)
+  custom_context = is_assistant ? "Enter values for the test scenario:" : "Enter values for the prompt variables:"
+%>
 <td data-column="actions">
   <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#edit-test-modal-<%= test.id %>">
     Edit
@@ -5,9 +11,22 @@
   <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#runTestModal-<%= test.id %>">
     Run
   </button>
-</td>
 
-<%= render "prompt_tracker/testing/tests/edit_modal",
+  <%# Modals rendered inside td - valid HTML since td can contain flow content %>
+  <%= render "prompt_tracker/testing/tests/edit_modal",
             test: test,
-            form_partial_path: test.testable.test_form_partial,
+            form_partial_path: testable.test_form_partial,
             form_locals: { test: test, in_modal: true } %>
+  <%= render "prompt_tracker/testing/tests/run_test_modal",
+      testable: testable,
+      test: test,
+      form_url: run_test_path(test),
+      modal_id: "runTestModal-#{test.id}",
+      modal_title: "Run Test: #{test.name}",
+      submit_button_text: "Run Test",
+      datasets_path: datasets_path_for_testable(testable),
+      intro_text: "Choose how to run this test:",
+      dataset_mode_description: "Execute test for all rows in a dataset",
+      custom_mode_description: "Execute test once with manually entered values",
+      custom_variables_context: custom_context %>
+</td>

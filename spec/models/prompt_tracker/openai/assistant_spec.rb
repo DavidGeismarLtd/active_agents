@@ -38,8 +38,8 @@ module PromptTracker
         end
 
         it "has many datasets" do
-          dataset1 = create(:dataset, testable: assistant)
-          dataset2 = create(:dataset, testable: assistant)
+          dataset1 = create(:dataset, :for_assistant, testable: assistant)
+          dataset2 = create(:dataset, :for_assistant, testable: assistant)
 
           expect(assistant.datasets).to include(dataset1, dataset2)
           expect(assistant.datasets.count).to eq(2)
@@ -62,7 +62,7 @@ module PromptTracker
         end
 
         it "destroys dependent datasets when destroyed" do
-          dataset = create(:dataset, testable: assistant)
+          dataset = create(:dataset, :for_assistant, testable: assistant)
           assistant.destroy
 
           expect(Dataset.exists?(dataset.id)).to be false
@@ -153,27 +153,21 @@ module PromptTracker
       describe "#variables_schema" do
         let(:assistant) { create(:openai_assistant) }
 
-        it "returns schema with interlocutor_simulation_prompt and max_turns" do
+        it "returns an empty array by default" do
           schema = assistant.variables_schema
 
           expect(schema).to be_an(Array)
-          expect(schema.length).to eq(2)
+          expect(schema).to be_empty
+        end
 
-          # Check interlocutor_simulation_prompt
-          interlocutor_field = schema.find { |f| f["name"] == "interlocutor_simulation_prompt" }
-          expect(interlocutor_field).to be_present
-          expect(interlocutor_field["type"]).to eq("text")
-          expect(interlocutor_field["required"]).to eq(true)
-          expect(interlocutor_field["description"]).to be_present
-          expect(interlocutor_field["description"]).to include("simulates the user")
-
-          # Check max_turns
-          max_turns_field = schema.find { |f| f["name"] == "max_turns" }
-          expect(max_turns_field).to be_present
-          expect(max_turns_field["type"]).to eq("integer")
-          expect(max_turns_field["required"]).to eq(false)
-          expect(max_turns_field["description"]).to be_present
-          expect(max_turns_field["description"]).to include("conversation turns")
+        it "allows conversational fields to be added by Dataset#required_schema" do
+          # Verify that Dataset adds conversational fields for conversational datasets
+          # This test documents the expected behavior: Assistant has no custom variables,
+          # but conversational datasets will automatically include interlocutor_simulation_prompt and max_turns
+          expect(PromptTracker::Dataset::CONVERSATIONAL_FIELDS).to include(
+            hash_including("name" => "interlocutor_simulation_prompt"),
+            hash_including("name" => "max_turns")
+          )
         end
       end
     end

@@ -2,18 +2,13 @@
 
 module PromptTracker
   module Evaluators
-    # @deprecated Use BaseAssistantsApiEvaluator instead.
+    # @deprecated Use Conversational::BaseAssistantsApiEvaluator instead.
     #   This class is kept for backward compatibility only.
     #
     # Base class for evaluators that work with OpenAI Assistant conversations.
-    # Now an alias for BaseAssistantsApiEvaluator.
+    # Now an alias for Conversational::BaseAssistantsApiEvaluator.
     #
-    # @see BaseAssistantsApiEvaluator
-    class BaseOpenaiAssistantEvaluator < BaseAssistantsApiEvaluator
-      # Maintain backward compatibility with old compatible_with method
-      def self.compatible_with
-        [ PromptTracker::Openai::Assistant ]
-      end
-    end
+    # @see Conversational::BaseAssistantsApiEvaluator
+    BaseOpenaiAssistantEvaluator = Conversational::BaseAssistantsApiEvaluator
   end
 end

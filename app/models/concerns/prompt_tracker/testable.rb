@@ -173,5 +173,24 @@ module PromptTracker
     def test_row_locals(test)
       raise NotImplementedError, "#{self.class.name} must implement #test_row_locals"
     end
+
+    # Returns the API type for this testable.
+    #
+    # This determines which evaluators are compatible with this testable
+    # and how the response data should be normalized before evaluation.
+    #
+    # Including classes must implement this method.
+    #
+    # @return [Symbol] the API type constant from PromptTracker::ApiTypes
+    #
+    # @example PromptVersion (determined by model_config provider)
+    #   version.api_type # => :openai_chat_completion or :openai_response_api
+    #
+    # @example Assistant
+    #   assistant.api_type # => :openai_assistants_api
+    #
+    def api_type
+      raise NotImplementedError, "#{self.class.name} must implement #api_type"
+    end
   end
 end

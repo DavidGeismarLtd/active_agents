@@ -18,7 +18,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LengthEvaluator < BaseChatCompletionEvaluator
+    class LengthEvaluator < SingleResponse::BaseSingleResponseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         min_length: 10,      # Minimum acceptable length

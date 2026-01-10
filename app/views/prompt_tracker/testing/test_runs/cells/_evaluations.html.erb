@@ -1,6 +1,6 @@
 <td data-column="run_evaluations">
-  <% if run.llm_response&.evaluations&.any? %>
-    <% run.llm_response.evaluations.each do |evaluation| %>
+  <% if run.evaluations&.any? %>
+    <% run.evaluations.each do |evaluation| %>
       <div class="mb-1">
         <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#evaluation-modal-<%= evaluation.id %>">
           <% if evaluation.passed? %>
@@ -18,3 +18,4 @@
   <% end %>
   <%= render "prompt_tracker/testing/test_runs/evaluation_modals_for_run", run: run %>
 </td>
+

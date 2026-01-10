@@ -11,7 +11,7 @@ module PromptTracker
   # 5. Broadcasts completion via Turbo Streams
   #
   # Runner routing:
-  # - PromptTracker::PromptVersion (single-turn) → PromptTracker::TestRunners::PromptVersionRunner
+  # - PromptTracker::PromptVersion (single-turn) → PromptTracker::TestRunners::SingleTurnRunner
   # - PromptTracker::PromptVersion (conversational) → PromptTracker::TestRunners::Openai::ResponseApiConversationalRunner
   # - PromptTracker::Openai::Assistant → PromptTracker::TestRunners::Openai::AssistantRunner
   #
@@ -58,6 +58,11 @@ module PromptTracker
 
     # Resolve the runner class based on testable type and test mode
     #
+    # Runner selection matrix:
+    # - PromptVersion + single_turn  → SingleTurnRunner (all providers)
+    # - PromptVersion + conversational → ResponseApiConversationalRunner
+    # - Openai::Assistant → AssistantRunner
+    #
     # @param test [Test] the test configuration
     # @param testable [Object] the testable object
     # @return [Class] the runner class
@@ -68,12 +73,12 @@ module PromptTracker
         if test_is_conversational?(test)
           TestRunners::Openai::ResponseApiConversationalRunner
         else
-          resolve_by_convention(testable)
+          TestRunners::SingleTurnRunner
         end
       when Openai::Assistant
         TestRunners::Openai::AssistantRunner
       else
-        resolve_by_convention(testable)
+        raise ArgumentError, "No runner found for testable type: #{testable.class.name}"
       end
     end
 
@@ -84,22 +89,6 @@ module PromptTracker
     def test_is_conversational?(test)
       # Check if test has test_mode column and is conversational
       test.respond_to?(:conversational?) && test.conversational?
-    end
-
-    # Resolve runner class by convention (fallback)
-    #
-    # @param testable [Object] the testable object
-    # @return [Class] the runner class
-    def resolve_by_convention(testable)
-      testable_class_name = testable.class.name
-      relative_class_name = testable_class_name.sub(/^PromptTracker::/, "")
-      runner_class_name = "PromptTracker::TestRunners::#{relative_class_name}Runner"
-
-      runner_class_name.constantize
-    rescue NameError => e
-      raise ArgumentError, "No runner found for testable type: #{testable_class_name}. " \
-                          "Expected runner class: #{runner_class_name}. " \
-                          "Error: #{e.message}"
     end
   end
 end

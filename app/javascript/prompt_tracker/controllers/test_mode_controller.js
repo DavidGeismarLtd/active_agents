@@ -27,11 +27,11 @@ export default class extends Controller {
    */
   filterEvaluators() {
     const selectedMode = this.getSelectedMode()
-    
+
     this.evaluatorCardTargets.forEach(card => {
       const apiType = card.dataset.apiType
       const shouldShow = this.shouldShowEvaluator(apiType, selectedMode)
-      
+
       if (shouldShow) {
         card.classList.remove("d-none")
       } else {
@@ -51,22 +51,29 @@ export default class extends Controller {
    * Get the currently selected test mode
    */
   getSelectedMode() {
-    const singleTurnRadio = document.getElementById("test_mode_single_turn")
-    const conversationalRadio = document.getElementById("test_mode_conversational")
-    
-    // Check for hidden field (used when mode is forced)
-    const hiddenField = document.querySelector('input[type="hidden"][name*="test_mode"]')
+    // First check radio buttons within this form
+    const form = this.element
+    const singleTurnRadio = form.querySelector('input[type="radio"][id="test_mode_single_turn"]')
+    const conversationalRadio = form.querySelector('input[type="radio"][id="test_mode_conversational"]')
+
+    // If radio buttons exist, use their value
+    if (singleTurnRadio || conversationalRadio) {
+      if (singleTurnRadio && singleTurnRadio.checked) {
+        return "single_turn"
+      }
+      if (conversationalRadio && conversationalRadio.checked) {
+        return "conversational"
+      }
+      // Default to single_turn if radios exist but none selected
+      return "single_turn"
+    }
+
+    // Check for hidden field (used when mode is forced, e.g., for assistants)
+    const hiddenField = form.querySelector('input[type="hidden"][name$="[test_mode]"]')
     if (hiddenField) {
       return hiddenField.value
     }
-    
-    if (singleTurnRadio && singleTurnRadio.checked) {
-      return "single_turn"
-    }
-    if (conversationalRadio && conversationalRadio.checked) {
-      return "conversational"
-    }
-    
+
     // Default to single_turn
     return "single_turn"
   }
@@ -90,4 +97,3 @@ export default class extends Controller {
     }
   }
 }
-

@@ -108,10 +108,17 @@ module PromptTracker
     # @return [Boolean] true if schema matches current testable schema
     def schema_valid?
       return false unless testable
-      return false if testable.variables_schema.blank?
+
+      # For conversational datasets, required_schema includes CONVERSATIONAL_FIELDS
+      # even if testable.variables_schema is empty, so we compare against required_schema
+      expected_schema = required_schema
+
+      # A dataset is valid if it has a schema matching the expected schema
+      # (empty schema for single-turn testables with no variables is also valid)
+      return true if schema.blank? && expected_schema.blank?
 
       # Schema is valid if it matches the expected schema (excluding description field)
-      normalize_schema(schema) == normalize_schema(required_schema)
+      normalize_schema(schema) == normalize_schema(expected_schema)
     end
 
     # Get the required schema for this dataset type

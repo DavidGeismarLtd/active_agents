@@ -20,7 +20,7 @@ module PromptTracker
     #     case_sensitive: false
     #   })
     #
-    class KeywordEvaluator < BaseChatCompletionEvaluator
+    class KeywordEvaluator < SingleResponse::BaseSingleResponseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         required_keywords: [],   # Keywords that must be present

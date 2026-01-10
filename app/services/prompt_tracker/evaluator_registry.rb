@@ -58,10 +58,9 @@ module PromptTracker
 
       # Returns evaluators compatible with a specific test (by test_mode and testable)
       #
-      # This uses the API-based evaluator hierarchy:
-      # - single_turn mode: only BaseChatCompletionEvaluator subclasses
-      # - conversational mode + Assistant: all BaseConversationalEvaluator subclasses
-      # - conversational mode + PromptVersion: BaseConversationalEvaluator subclasses except BaseAssistantsApiEvaluator
+      # V2 Architecture: Filters by:
+      # 1. Test mode (single_turn -> single_response evaluators, conversational -> conversational)
+      # 2. API compatibility (based on testable's api_type)
       #
       # @param test [Test] the test to filter evaluators for
       # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
@@ -74,10 +73,62 @@ module PromptTracker
         test_mode = test.test_mode || "single_turn"
         testable = test.testable
 
-        for_mode(test_mode, testable: testable)
+        # Use V2 API-based filtering if testable supports api_type
+        if testable.respond_to?(:api_type)
+          for_test_v2(test)
+        else
+          # Fall back to legacy mode-based filtering
+          for_mode(test_mode, testable: testable)
+        end
+      end
+
+      # V2 Architecture: Returns evaluators for a specific test
+      # Filters by test mode category AND API type compatibility
+      #
+      # @param test [Test] the test to filter evaluators for
+      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
+      def for_test_v2(test)
+        category = test.single_turn? ? :single_response : :conversational
+        api_type = test.testable.api_type
+
+        all.select do |_key, meta|
+          klass = meta[:evaluator_class]
+          klass.category == category && klass.compatible_with_api?(api_type)
+        end
+      end
+
+      # Returns evaluators by category
+      #
+      # @param category [Symbol] :single_response or :conversational
+      # @return [Hash] hash of evaluator_key => metadata
+      def by_category(category)
+        all.select { |_key, meta| meta[:evaluator_class].category == category }
+      end
+
+      # Returns single_response evaluators
+      #
+      # @return [Hash] hash of evaluator_key => metadata
+      def single_response_evaluators
+        by_category(:single_response)
+      end
+
+      # Returns conversational evaluators
+      #
+      # @return [Hash] hash of evaluator_key => metadata
+      def conversational_evaluators
+        by_category(:conversational)
+      end
+
+      # Returns evaluators compatible with a specific API type
+      #
+      # @param api_type [Symbol] the API type to filter by
+      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
+      def for_api(api_type)
+        all.select { |_key, meta| meta[:evaluator_class].compatible_with_api?(api_type) }
       end
 
       # Returns evaluators compatible with a specific mode and optional testable
+      # @deprecated Use for_test_v2 with api_type-based filtering instead
       #
       # @param test_mode [String, Symbol] the test mode (:single_turn or :conversational)
       # @param testable [Object, nil] optional testable for additional filtering
@@ -87,18 +138,18 @@ module PromptTracker
           klass = meta[:evaluator_class]
 
           if test_mode.to_s == "single_turn"
-            # Only Chat Completion evaluators
-            klass < Evaluators::BaseChatCompletionEvaluator
+            # Only single-response evaluators
+            klass < Evaluators::SingleResponse::BaseSingleResponseEvaluator
           elsif testable.is_a?(PromptTracker::Openai::Assistant)
             # All conversational evaluators (including Assistants-specific)
-            klass < Evaluators::BaseConversationalEvaluator
+            klass < Evaluators::Conversational::BaseConversationalEvaluator
           elsif testable.present?
             # PromptVersion in conversational mode - exclude Assistants-specific
-            klass < Evaluators::BaseConversationalEvaluator &&
-              !(klass < Evaluators::BaseAssistantsApiEvaluator)
+            klass < Evaluators::Conversational::BaseConversationalEvaluator &&
+              !(klass < Evaluators::Conversational::BaseAssistantsApiEvaluator)
           else
             # No testable specified - show all conversational (conservative default)
-            klass < Evaluators::BaseConversationalEvaluator
+            klass < Evaluators::Conversational::BaseConversationalEvaluator
           end
         end
       end
@@ -117,6 +168,30 @@ module PromptTracker
       # @return [Boolean] true if evaluator exists
       def exists?(key)
         registry.key?(key.to_sym)
+      end
+
+      # Returns the appropriate normalizer for an API type
+      #
+      # @param api_type [Symbol] the API type from ApiTypes
+      # @return [Evaluators::Normalizers::BaseNormalizer] the normalizer instance
+      # @raise [ArgumentError] if API type is unknown
+      #
+      # @example Get normalizer for Chat Completion
+      #   normalizer = EvaluatorRegistry.normalizer_for(ApiTypes::OPENAI_CHAT_COMPLETION)
+      #   normalized = normalizer.normalize_single_response(raw_response)
+      def normalizer_for(api_type)
+        case api_type
+        when ApiTypes::OPENAI_CHAT_COMPLETION
+          Evaluators::Normalizers::ChatCompletionNormalizer.new
+        when ApiTypes::OPENAI_RESPONSE_API
+          Evaluators::Normalizers::ResponseApiNormalizer.new
+        when ApiTypes::OPENAI_ASSISTANTS_API
+          Evaluators::Normalizers::AssistantsApiNormalizer.new
+        when ApiTypes::ANTHROPIC_MESSAGES
+          Evaluators::Normalizers::AnthropicNormalizer.new
+        else
+          raise ArgumentError, "Unknown API type: #{api_type}"
+        end
       end
 
       # Builds an instance of an evaluator

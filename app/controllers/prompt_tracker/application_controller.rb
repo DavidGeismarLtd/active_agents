@@ -2,7 +2,8 @@ module PromptTracker
   class ApplicationController < ActionController::Base
     include PromptTracker::Concerns::BasicAuthentication
 
-    # Make DatasetsHelper available in all views
+    # Make helpers available in all views (including background job rendering)
     helper DatasetsHelper
+    helper TestsHelper
   end
 end

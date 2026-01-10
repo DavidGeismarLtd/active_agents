@@ -80,6 +80,8 @@ module PromptTracker
     attr_accessor :evaluator_configs_json
 
     # Callbacks
+    # Auto-set test_mode for assistants (which only support conversational mode)
+    before_validation :set_default_test_mode, on: :create
 
     # Custom setter to handle evaluator_configs as JSON array (for backward compatibility with forms)
     def evaluator_configs=(configs)
@@ -141,6 +143,40 @@ module PromptTracker
       testable.run_test(test: self, dataset_row: dataset_row)
     end
 
+    # Returns the partial path for test run rows based on test mode
+    #
+    # For conversational tests, uses a generic conversational row partial.
+    # For single-turn tests, delegates to the testable's default partial.
+    #
+    # @return [String] the partial path
+    #
+    # @example Single-turn test
+    #   test.test_run_row_partial # => "prompt_tracker/testing/test_runs/prompt_versions/row"
+    #
+    # @example Conversational test
+    #   test.test_run_row_partial # => "prompt_tracker/testing/test_runs/conversational_row"
+    #
+    def test_run_row_partial
+      if conversational?
+        "prompt_tracker/testing/test_runs/conversational_row"
+      else
+        testable.test_run_row_partial
+      end
+    end
+
+    # Returns the column headers for test runs based on test mode
+    #
+    # Conversational tests show conversation data instead of rendered prompts.
+    #
+    # @return [Array<Hash>] array of column definitions
+    def test_run_table_headers
+      if conversational?
+        conversational_test_run_headers
+      else
+        testable.test_run_table_headers
+      end
+    end
+
     # Check if testable supports the current test mode
     #
     # @return [Boolean] true if testable supports this test mode
@@ -162,6 +198,16 @@ module PromptTracker
     end
 
     private
+
+    # Auto-set test_mode based on testable type
+    # Assistants only support conversational mode
+    def set_default_test_mode
+      return unless testable.present?
+
+      if testable.is_a?(Openai::Assistant)
+        self.test_mode = :conversational
+      end
+    end
 
     # Validates that testable supports the selected test mode
     def testable_supports_test_mode
@@ -186,6 +232,22 @@ module PromptTracker
       if single_turn? && dataset.conversational?
         errors.add(:dataset, "cannot use a conversational dataset for single-turn tests")
       end
+    end
+
+    # Returns table headers for conversational test runs
+    #
+    # @return [Array<Hash>] array of column definitions
+    def conversational_test_run_headers
+      [
+        { key: "run_status", label: "Status", width: "10%" },
+        { key: "run_time", label: "Run Time", width: "12%" },
+        { key: "response_time", label: "Response Time", width: "10%" },
+        { key: "run_cost", label: "Cost", width: "8%" },
+        { key: "conversation", label: "Conversation", width: "30%" },
+        { key: "run_evaluations", label: "Evaluations", width: "10%" },
+        { key: "human_evaluations", label: "Human Evaluations", width: "10%" },
+        { key: "actions", label: "Actions", width: "5%" }
+      ]
     end
 
     def sync_evaluator_configs_from_json

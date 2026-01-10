@@ -10,6 +10,7 @@
   # - datasets_path: Path to create a new dataset
   # - test: (optional) The test object for single test modals
   # - tests: (optional) Collection of tests for run-all modals
+  # - test_mode: (optional) Filter datasets by this mode ("single_turn" or "conversational")
   # - intro_text: (optional) Introductory text in modal body
   # - dataset_mode_description: Description for dataset mode radio button
   # - custom_mode_description: Description for custom mode radio button
@@ -17,8 +18,11 @@
 %>
 
 
+
 <% is_run_all = local_assigns[:tests].present? %>
 <% test_id_suffix = local_assigns[:test].present? ? test.id : "" %>
+<%# Determine test_mode: from local variable, from single test, or nil (show all) %>
+<% effective_test_mode = local_assigns[:test_mode] || (local_assigns[:test].present? ? test.test_mode : nil) %>
 
 <div class="modal fade" id="<%= modal_id %>" tabindex="-1"
      data-controller="modal-fix run-test-modal"
@@ -81,13 +85,16 @@
                 f: f,
                 is_run_all: is_run_all,
                 tests: local_assigns[:tests],
-                datasets_path: datasets_path %>
+                datasets_path: datasets_path,
+                test_mode: effective_test_mode %>
           </div>
 
           <!-- Custom Variables (shown when run_mode=single) -->
           <div data-run-test-modal-target="customSection" style="display: none;">
             <%= render "prompt_tracker/testing/tests/custom_variables_fields",
                 testable: testable,
+                test: local_assigns[:test],
+                test_mode: effective_test_mode,
                 context_description: custom_variables_context %>
           </div>
         </div>

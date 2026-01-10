@@ -32,6 +32,7 @@ module PromptTracker
         prompt_tracker/controllers/function_editor_controller.js
         prompt_tracker/controllers/generate_prompt_controller.js
         prompt_tracker/controllers/conversation_controller.js
+        prompt_tracker/controllers/test_mode_controller.js
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)

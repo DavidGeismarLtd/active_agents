@@ -1,4 +1,3 @@
-<% testable = test.testable %>
 <% latest_runs = test.test_runs.includes(:human_evaluations, :evaluations, llm_response: :evaluations).order(created_at: :desc).limit(5) %>
 <% total_count = test.test_runs.count %>
 
@@ -15,7 +14,7 @@
       <table class="table table-sm table-bordered bg-white mb-0">
         <thead>
           <tr>
-            <% testable.test_run_table_headers.each do |header| %>
+            <% test.test_run_table_headers.each do |header| %>
               <th style="width: <%= header[:width] %>;" data-column="<%= header[:key] %>" class="<%= 'text-end' if header[:align] == 'end' %>">
                 <%= header[:label] %>
               </th>
@@ -24,7 +23,7 @@
         </thead>
         <tbody id="test-runs-tbody-<%= test.id %>">
           <% latest_runs.each do |run| %>
-            <%= render testable.test_run_row_partial, run: run %>
+            <%= render test.test_run_row_partial, run: run %>
           <% end %>
         </tbody>
       </table>

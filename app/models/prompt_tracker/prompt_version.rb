@@ -432,6 +432,41 @@ module PromptTracker
       end
     end
 
+    # Returns the API type for this PromptVersion based on the model_config provider.
+    #
+    # The API type determines:
+    # - Which evaluators are compatible with this PromptVersion
+    # - How response data should be normalized before evaluation
+    #
+    # @return [Symbol] the API type constant from PromptTracker::ApiTypes
+    #
+    # @example OpenAI Chat Completion provider
+    #   version.api_type # => :openai_chat_completion
+    #
+    # @example OpenAI Responses provider
+    #   version.api_type # => :openai_response_api
+    #
+    # @example Anthropic provider
+    #   version.api_type # => :anthropic_messages
+    #
+    def api_type
+      return ApiTypes::OPENAI_CHAT_COMPLETION if model_config.blank?
+
+      provider = model_config["provider"]&.to_s
+
+      case provider
+      when "openai"
+        ApiTypes::OPENAI_CHAT_COMPLETION
+      when "openai_responses"
+        ApiTypes::OPENAI_RESPONSE_API
+      when "anthropic"
+        ApiTypes::ANTHROPIC_MESSAGES
+      else
+        # Unknown provider - assume Chat Completion style
+        ApiTypes::OPENAI_CHAT_COMPLETION
+      end
+    end
+
     # Determines if variables should be extracted from user_prompt
     def should_extract_variables?
       # Only extract if:

@@ -21,7 +21,7 @@ module PromptTracker
     #     require_headers: true
     #   })
     #
-    class FormatEvaluator < BaseChatCompletionEvaluator
+    class FormatEvaluator < SingleResponse::BaseSingleResponseEvaluator
       # Supported formats
       FORMATS = %i[json markdown plain_text].freeze
 

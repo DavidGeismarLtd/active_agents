@@ -1,7 +1,7 @@
 <%# Append new rows to the tbody %>
 <%= turbo_stream.append "test-runs-tbody-#{@test.id}" do %>
   <% @additional_runs.each do |run| %>
-    <%= render @testable.test_run_row_partial, run: run %>
+    <%= render @test.test_run_row_partial, run: run %>
   <% end %>
 <% end %>
 

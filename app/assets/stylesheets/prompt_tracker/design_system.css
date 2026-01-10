@@ -385,6 +385,19 @@ body {
   border: 1px solid #17A2B8;
 }
 
+/* Purple Badge - for conversational tests */
+.badge.bg-purple,
+.badge.badge-purple {
+  background: #6f42c1 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #6f42c1;
+}
+
+[data-theme="dark"] .badge.bg-purple,
+[data-theme="dark"] .badge.badge-purple {
+  box-shadow: 0 0 10px rgba(111, 66, 193, 0.3);
+}
+
 /* Dark Badge */
 .badge.bg-dark,
 .badge.badge-dark {

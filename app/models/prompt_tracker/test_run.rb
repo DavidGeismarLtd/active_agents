@@ -163,8 +163,9 @@ module PromptTracker
       stream_name = testable.testable_stream_name
 
       # Render with ApplicationController to include helpers
+      # Use test.test_run_row_partial to handle conversational vs single-turn mode
       test_run_html = PromptTracker::ApplicationController.render(
-        partial: testable.test_run_row_partial,
+        partial: test.test_run_row_partial,
         locals: { run: self }
       )
 

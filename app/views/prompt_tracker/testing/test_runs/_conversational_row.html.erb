@@ -1,10 +1,12 @@
+<%# Generic row partial for conversational test runs (all testable types) %>
 <tr id="test_run_<%= run.id %>">
   <%= render "prompt_tracker/testing/test_runs/cells/status", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/run_time", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/response_time", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/cost", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/conversation", run: run %>
-  <%= render "prompt_tracker/testing/test_runs/cells/openai_assistants/evaluations", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/cells/evaluations", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/human_evaluations", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/actions", run: run %>
 </tr>
+

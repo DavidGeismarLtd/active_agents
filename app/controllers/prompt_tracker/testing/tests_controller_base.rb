@@ -27,8 +27,16 @@ module PromptTracker
       end
 
       # POST /tests/run_all
+      # Runs all enabled tests of a specific test_mode (if provided)
+      #
+      # @param test_mode [String] optional - "single_turn" or "conversational" to filter tests
       def run_all
         enabled_tests = @testable.tests.enabled
+
+        # Filter by test_mode if specified (e.g., from "Run All Single-Turn" or "Run All Conversational" buttons)
+        if params[:test_mode].present?
+          enabled_tests = enabled_tests.where(test_mode: params[:test_mode])
+        end
 
         if enabled_tests.empty?
           redirect_to testable_path,

@@ -6,16 +6,36 @@
   # - f: The form builder
   # - is_run_all: Boolean indicating if this is for run-all (affects messaging)
   # - datasets_path: Path to create a new dataset
+  # - test_mode: (optional) Filter datasets by type ("single_turn" or "conversational")
+
+  # Filter datasets by test_mode if provided
+  available_datasets = if local_assigns[:test_mode].present?
+    testable.datasets.where(dataset_type: local_assigns[:test_mode])
+  else
+    testable.datasets
+  end
+
+  # Human-readable mode name for messages
+  mode_label = case local_assigns[:test_mode]
+    when "single_turn" then "single-turn"
+    when "conversational" then "conversational"
+    else nil
+  end
 %>
 
-<% if testable.datasets.any? %>
+<% if available_datasets.any? %>
   <div class="mb-3">
     <%= f.label :dataset_id, "Select Dataset", class: "form-label" %>
     <% if testable.is_a?(PromptTracker::PromptVersion) %>
       <span class="text-danger">*</span>
     <% end %>
+    <% if mode_label %>
+      <span class="badge bg-<%= local_assigns[:test_mode] == 'single_turn' ? 'info' : 'purple' %> ms-1">
+        <%= mode_label %> datasets only
+      </span>
+    <% end %>
     <%= f.select :dataset_id,
-        options_from_collection_for_select(testable.datasets, :id, :name),
+        options_from_collection_for_select(available_datasets, :id, :name),
         { prompt: "Choose a dataset..." },
         class: "form-select",
         data: { "run-test-modal-target": "datasetSelect" } %>
@@ -40,9 +60,14 @@
 <% else %>
   <div class="alert alert-warning">
     <i class="bi bi-exclamation-triangle"></i>
-    No datasets available for this <%= testable.class.name.demodulize.underscore.humanize.downcase %>.
-    <%= link_to "Create a dataset", datasets_path, class: "alert-link" %>
-    to run tests against multiple data rows.
+    <% if mode_label %>
+      No <%= mode_label %> datasets available for this <%= testable.class.name.demodulize.underscore.humanize.downcase %>.
+      <%= link_to "Create a #{mode_label} dataset", datasets_path, class: "alert-link" %>
+      to run tests against multiple data rows.
+    <% else %>
+      No datasets available for this <%= testable.class.name.demodulize.underscore.humanize.downcase %>.
+      <%= link_to "Create a dataset", datasets_path, class: "alert-link" %>
+      to run tests against multiple data rows.
+    <% end %>
   </div>
 <% end %>
-

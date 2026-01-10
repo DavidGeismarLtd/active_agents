@@ -96,6 +96,15 @@ module PromptTracker
         functions.map { |f| f["name"] }
       end
 
+      # Returns the API type for this Assistant.
+      #
+      # Assistants always use the OpenAI Assistants API.
+      #
+      # @return [Symbol] :openai_assistants_api
+      def api_type
+        ApiTypes::OPENAI_ASSISTANTS_API
+      end
+
       # Fetch assistant details from OpenAI API
       #
       # @return [Boolean] true if successful
@@ -171,25 +180,15 @@ module PromptTracker
 
       # Returns the variables schema for assistant datasets
       #
-      # Assistants have a fixed schema for conversation testing scenarios.
-      # This schema is used when creating datasets for this assistant.
+      # Assistants have no custom variables by default. Conversational fields
+      # (interlocutor_simulation_prompt, max_turns) are automatically added
+      # by Dataset#required_schema when creating conversational datasets.
       #
-      # @return [Array<Hash>] array of variable definitions
+      # Override this method in subclasses to add custom variables.
+      #
+      # @return [Array<Hash>] array of variable definitions (empty by default)
       def variables_schema
-        [
-          {
-            "name" => "interlocutor_simulation_prompt",
-            "type" => "text",
-            "required" => true,
-            "description" => "A detailed prompt that simulates the user/patient/customer in the conversation. Should describe their situation, emotional state, concerns, and how they should behave. Example: 'You are a patient experiencing a severe headache with sensitivity to light. You're worried it might be a migraine. Be concerned but cooperative.'"
-          },
-          {
-            "name" => "max_turns",
-            "type" => "integer",
-            "required" => false,
-            "description" => "Maximum number of conversation turns (back-and-forth exchanges) to simulate. Typically 2-5 turns. Leave blank to use default."
-          }
-        ]
+        []
       end
 
       # Returns the column headers for the tests table

@@ -25,7 +25,15 @@ FactoryBot.define do
     description { "Test description" }
     enabled { true }
     metadata { {} }
+    # Default test_mode, but will be overridden by after(:build) for assistants
     test_mode { :single_turn }
+
+    # Automatically set test_mode to conversational for assistants
+    after(:build) do |test|
+      if test.testable.is_a?(PromptTracker::Openai::Assistant)
+        test.test_mode = :conversational
+      end
+    end
 
     # Trait for prompt version tests
     trait :for_prompt_version do
