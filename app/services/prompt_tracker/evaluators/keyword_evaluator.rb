@@ -20,7 +20,7 @@ module PromptTracker
     #     case_sensitive: false
     #   })
     #
-    class KeywordEvaluator < SingleResponse::BaseSingleResponseEvaluator
+    class KeywordEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         required_keywords: [],   # Keywords that must be present
@@ -47,8 +47,8 @@ module PromptTracker
         }
       end
 
-      def initialize(response_text, config = {})
-        super(response_text, DEFAULT_CONFIG.merge(config.deep_symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.deep_symbolize_keys))
       end
 
       def evaluate_score

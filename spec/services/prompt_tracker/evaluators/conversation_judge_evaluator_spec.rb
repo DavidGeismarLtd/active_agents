@@ -28,7 +28,9 @@ module PromptTracker
 
       describe "#initialize" do
         it "sets instance variables" do
-          expect(evaluator.conversation_data).to eq(conversation_data)
+          # conversation_data is normalized by the base class
+          expect(evaluator.conversation_data[:messages].length).to eq(4)
+          expect(evaluator.conversation_data[:messages].first[:content]).to eq("Hello")
           expect(evaluator.config[:judge_model]).to eq("gpt-4o")
           expect(evaluator.config[:evaluation_prompt]).to include("empathy")
           expect(evaluator.config[:threshold_score]).to eq(70)
@@ -64,7 +66,7 @@ module PromptTracker
 
       describe "#evaluate" do
         let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant, test_mode: :conversational) }
+        let(:test) { create(:test, testable: assistant) }
         let(:test_run) { create(:test_run, :for_assistant, test: test) }
         let(:evaluator_with_test_run) do
           described_class.new(conversation_data, config.merge(test_run: test_run))
@@ -119,10 +121,11 @@ module PromptTracker
           expect(evaluation.passed).to be false
         end
 
-        it "raises error if conversation_data is nil" do
+        it "handles nil conversation_data by normalizing to empty response" do
+          # nil is normalized to a single empty assistant message
           evaluator = described_class.new(nil, config)
-
-          expect { evaluator.evaluate }.to raise_error(ArgumentError, /conversation_data must have messages/)
+          # Should evaluate without error (normalization handles nil)
+          expect { evaluator.evaluate_score }.not_to raise_error
         end
 
         it "raises error if conversation_data has no messages" do

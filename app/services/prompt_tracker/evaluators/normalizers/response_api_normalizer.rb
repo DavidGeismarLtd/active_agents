@@ -50,7 +50,8 @@ module PromptTracker
             tool_usage: extract_tool_usage(output),
             file_search_results: extract_file_search_results(output),
             web_search_results: extract_web_search_results(output),
-            code_interpreter_results: extract_code_interpreter_results(output)
+            code_interpreter_results: extract_code_interpreter_results(output),
+            run_steps: []  # Response API doesn't have run_steps
           }
         end
 

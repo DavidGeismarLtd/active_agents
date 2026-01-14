@@ -6,7 +6,6 @@
 #
 #  id                       :bigint           not null, primary key
 #  test_id                  :bigint           not null
-#  llm_response_id          :bigint
 #  dataset_id               :bigint
 #  dataset_row_id           :bigint
 #  status                   :string           default("pending"), not null
@@ -20,7 +19,7 @@
 #  execution_time_ms        :integer
 #  cost_usd                 :decimal(10, 6)
 #  metadata                 :jsonb            not null
-#  conversation_data        :jsonb            not null (for assistant tests)
+#  output_data              :jsonb            (unified output for all test types)
 #  created_at               :datetime         not null
 #  updated_at               :datetime         not null
 #
@@ -32,7 +31,7 @@ module PromptTracker
   # - Evaluator results
   # - Performance metrics
   # - Error details
-  # - For assistant tests: conversation_data with per-message scores
+  # - output_data with unified format for all test types
   #
   # @example Access test run results
   #   run = TestRun.last
@@ -41,10 +40,11 @@ module PromptTracker
   #   puts "Evaluators: #{run.passed_evaluators}/#{run.total_evaluators}"
   #   puts "Time: #{run.execution_time_ms}ms"
   #
-  # @example Access conversation data (for assistant tests)
-  #   run.conversation_data.each do |message|
+  # @example Access output data
+  #   puts "Rendered prompt: #{run.rendered_prompt}"
+  #   puts "Response: #{run.response_text}"
+  #   run.output_messages.each do |message|
   #     puts "#{message['role']}: #{message['content']}"
-  #     puts "Score: #{message['score']}" if message['score']
   #   end
   #
   class TestRun < ApplicationRecord
@@ -55,10 +55,6 @@ module PromptTracker
                class_name: "PromptTracker::Test",
                foreign_key: :test_id,
                touch: true
-
-    belongs_to :llm_response,
-               class_name: "PromptTracker::LlmResponse",
-               optional: true
 
     belongs_to :dataset,
                class_name: "PromptTracker::Dataset",
@@ -154,6 +150,88 @@ module PromptTracker
     def prompt_version
       return nil unless prompt_version_test?
       test.testable
+    end
+
+    # =========================================================================
+    # Output Data Accessors
+    # Unified access to test output regardless of test type (single-turn or multi-turn)
+    # =========================================================================
+
+    # Get all output messages (works for single-turn and multi-turn)
+    #
+    # @return [Array<Hash>] array of message hashes with 'role' and 'content' keys
+    def output_messages
+      output_data&.dig("messages") || []
+    end
+
+    # Get the rendered prompt sent to the LLM
+    #
+    # @return [String, nil] the rendered prompt
+    def rendered_prompt
+      output_data&.dig("rendered_prompt")
+    end
+
+    # Get the final response text (last assistant message)
+    #
+    # @return [String, nil] the response text
+    def response_text
+      output_messages.select { |m| m["role"] == "assistant" }.last&.dig("content")
+    end
+
+    # Check if this is a multi-turn conversation
+    #
+    # @return [Boolean] true if more than one assistant message
+    def multi_turn?
+      output_messages.count { |m| m["role"] == "assistant" } > 1
+    end
+
+    # Get the model used for this test run
+    #
+    # @return [String, nil] the model name
+    def model
+      output_data&.dig("model")
+    end
+
+    # Get the provider used for this test run
+    #
+    # @return [String, nil] the provider name
+    def provider
+      output_data&.dig("provider")
+    end
+
+    # Get token usage information
+    #
+    # @return [Hash] token usage with prompt_tokens, completion_tokens, total_tokens
+    def tokens
+      output_data&.dig("tokens") || {}
+    end
+
+    # Get response time in milliseconds
+    #
+    # @return [Integer, nil] response time
+    def llm_response_time_ms
+      output_data&.dig("response_time_ms")
+    end
+
+    # Get total number of conversation turns
+    #
+    # @return [Integer] number of turns
+    def total_turns
+      output_data&.dig("total_turns") || output_messages.count { |m| m["role"] == "assistant" }
+    end
+
+    # Get tools used in this test run
+    #
+    # @return [Array<String>] array of tool names
+    def tools_used
+      output_data&.dig("tools_used") || []
+    end
+
+    # Get tool outputs from this test run
+    #
+    # @return [Hash] tool outputs keyed by tool name
+    def tool_outputs
+      output_data&.dig("tool_outputs") || {}
     end
 
     private

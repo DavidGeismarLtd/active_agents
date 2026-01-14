@@ -55,20 +55,16 @@ module PromptTracker
   #
   class Evaluation < ApplicationRecord
     # Associations
+    # For production tracked call evaluations
     belongs_to :llm_response,
                class_name: "PromptTracker::LlmResponse",
                inverse_of: :evaluations,
                optional: true
 
-    # Association to test run (renamed from prompt_test_run)
+    # For test run evaluations
     belongs_to :test_run,
                class_name: "PromptTracker::TestRun",
                optional: true
-
-    # Backward compatibility alias
-    def prompt_test_run
-      test_run
-    end
 
     belongs_to :evaluator_config,
                class_name: "PromptTracker::EvaluatorConfig",
@@ -92,6 +88,7 @@ module PromptTracker
     validates :evaluation_context, presence: true, inclusion: { in: %w[tracked_call test_run manual] }
 
     validate :metadata_must_be_hash
+    validate :must_have_evaluatable
 
     # Enums
     enum evaluation_context: {
@@ -188,6 +185,19 @@ module PromptTracker
       return if metadata.nil? || metadata.is_a?(Hash)
 
       errors.add(:metadata, "must be a hash")
+    end
+
+    # Validates that evaluation belongs to exactly one evaluatable (llm_response OR test_run)
+    # - Production evaluations (tracked_call context) should have llm_response_id
+    # - Test evaluations (test_run context) should have test_run_id
+    def must_have_evaluatable
+      if llm_response_id.nil? && test_run_id.nil?
+        errors.add(:base, "must belong to either llm_response or test_run")
+      end
+
+      if llm_response_id.present? && test_run_id.present?
+        errors.add(:base, "cannot belong to both llm_response and test_run")
+      end
     end
   end
 end

@@ -24,7 +24,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class ExactMatchEvaluator < SingleResponse::BaseSingleResponseEvaluator
+    class ExactMatchEvaluator < BaseNormalizedEvaluator
       DEFAULT_CONFIG = {
         expected_text: "",      # The exact text to match
         case_sensitive: false,  # Whether matching is case-sensitive
@@ -50,8 +50,8 @@ module PromptTracker
         }
       end
 
-      def initialize(response_text, config = {})
-        super(response_text, DEFAULT_CONFIG.merge(config))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

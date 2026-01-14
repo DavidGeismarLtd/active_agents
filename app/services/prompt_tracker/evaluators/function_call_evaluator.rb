@@ -20,7 +20,7 @@ module PromptTracker
     #     require_all: false  # Pass if ANY function is called
     #   })
     #
-    class FunctionCallEvaluator < Conversational::BaseConversationalEvaluator
+    class FunctionCallEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         expected_functions: [],      # Array of function names that should be called
@@ -54,10 +54,10 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param conversation_data [Hash] the conversation data with messages array
+      # @param data [Hash] the normalized data with messages array
       # @param config [Hash] configuration options
-      def initialize(conversation_data, config = {})
-        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.symbolize_keys))
       end
 
       # Calculate score based on function calls

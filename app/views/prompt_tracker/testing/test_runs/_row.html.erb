@@ -1,11 +1,14 @@
+<%# Unified row partial for all test runs %>
+<%# Works for single-turn and multi-turn tests, all testable types %>
 <tr id="test_run_<%= run.id %>">
   <%= render "prompt_tracker/testing/test_runs/cells/status", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/run_time", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/response_time", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/cost", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/rendered_prompt", run: run %>
-  <%= render "prompt_tracker/testing/test_runs/cells/response", run: run %>
+  <%= render "prompt_tracker/testing/test_runs/cells/output_messages", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/evaluations", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/human_evaluations", run: run %>
   <%= render "prompt_tracker/testing/test_runs/cells/actions", run: run %>
 </tr>
+

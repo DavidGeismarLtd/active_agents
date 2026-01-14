@@ -22,7 +22,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class PatternMatchEvaluator < SingleResponse::BaseSingleResponseEvaluator
+    class PatternMatchEvaluator < BaseNormalizedEvaluator
       DEFAULT_CONFIG = {
         patterns: [],      # Array of regex pattern strings (e.g., ["/Hello/", "/world/i"])
         match_all: true    # true = all must match, false = any must match
@@ -46,8 +46,8 @@ module PromptTracker
         }
       end
 
-      def initialize(response_text, config = {})
-        super(response_text, DEFAULT_CONFIG.merge(config))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

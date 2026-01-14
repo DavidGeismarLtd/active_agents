@@ -1,17 +1,19 @@
+<%# Rendered prompt cell - reads from output_data %>
 <td data-column="rendered_prompt">
-  <% if run.llm_response&.rendered_prompt.present? %>
+  <% rendered_prompt = run.output_data&.dig("rendered_prompt") %>
+  <% if rendered_prompt.present? %>
     <% prompt_id = "prompt-#{run.id}" %>
     <div class="expandable-text">
       <div id="<%= prompt_id %>-truncated">
-        <small class="text-muted"><%= truncate(run.llm_response.rendered_prompt, length: 100) %></small>
-        <% if run.llm_response.rendered_prompt.length > 100 %>
+        <small class="text-muted"><%= truncate(rendered_prompt, length: 100) %></small>
+        <% if rendered_prompt.length > 100 %>
           <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= prompt_id %>-truncated').style.display='none'; document.getElementById('<%= prompt_id %>-full').style.display='block';">
             <i class="bi bi-chevron-down"></i>
           </button>
         <% end %>
       </div>
       <div id="<%= prompt_id %>-full" style="display: none;">
-        <small class="text-muted" style="white-space: pre-wrap;"><%= run.llm_response.rendered_prompt %></small>
+        <small class="text-muted" style="white-space: pre-wrap;"><%= rendered_prompt %></small>
         <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= prompt_id %>-full').style.display='none'; document.getElementById('<%= prompt_id %>-truncated').style.display='block';">
           <i class="bi bi-chevron-up"></i>
         </button>

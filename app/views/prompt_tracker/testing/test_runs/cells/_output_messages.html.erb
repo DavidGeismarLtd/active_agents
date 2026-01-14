@@ -1,0 +1,57 @@
+<%# Unified output messages cell - displays messages from output_data %>
+<%# Works for both single-turn (1 message) and multi-turn (conversation) test runs %>
+<td data-column="output_messages">
+  <% messages = run.output_data&.dig("messages") || [] %>
+  <% if messages.any? %>
+    <% if messages.length == 1 %>
+      <%# Single-turn: show response text directly %>
+      <% response_text = messages.first["content"] || "" %>
+      <% response_id = "response-#{run.id}" %>
+      <div class="expandable-text">
+        <div id="<%= response_id %>-truncated">
+          <small class="text-muted"><%= truncate(response_text, length: 100) %></small>
+          <% if response_text.length > 100 %>
+            <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= response_id %>-truncated').style.display='none'; document.getElementById('<%= response_id %>-full').style.display='block';">
+              <i class="bi bi-chevron-down"></i>
+            </button>
+          <% end %>
+        </div>
+        <div id="<%= response_id %>-full" style="display: none;">
+          <small class="text-muted" style="white-space: pre-wrap;"><%= response_text %></small>
+          <button class="btn btn-link btn-sm p-0 ms-1" type="button" onclick="document.getElementById('<%= response_id %>-full').style.display='none'; document.getElementById('<%= response_id %>-truncated').style.display='block';">
+            <i class="bi bi-chevron-up"></i>
+          </button>
+        </div>
+      </div>
+    <% else %>
+      <%# Multi-turn: show conversation view %>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#conversation-<%= run.id %>" aria-expanded="false">
+        <i class="bi bi-chat-dots"></i> View Conversation (<%= messages.length %> messages)
+      </button>
+      <div class="collapse mt-2" id="conversation-<%= run.id %>">
+        <div class="card card-body">
+          <% messages.each_with_index do |message, index| %>
+            <div class="mb-3 <%= message['role'] == 'user' ? 'text-end' : '' %>">
+              <div class="d-inline-block text-start" style="max-width: 80%;">
+                <div class="mb-1">
+                  <% if message['role'] == 'user' %>
+                    <span class="badge bg-primary">User</span>
+                  <% else %>
+                    <span class="badge bg-success">Assistant</span>
+                  <% end %>
+                  <small class="text-muted">Turn <%= (index / 2.0).ceil %></small>
+                </div>
+                <div class="p-2 rounded <%= message['role'] == 'user' ? 'bg-primary text-white' : 'bg-light' %>">
+                  <%= simple_format(message['content']) %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <span class="text-muted">-</span>
+  <% end %>
+</td>
+

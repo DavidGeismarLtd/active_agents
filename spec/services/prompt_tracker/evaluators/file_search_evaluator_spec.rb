@@ -47,7 +47,8 @@ module PromptTracker
 
       describe "#initialize" do
         it "sets instance variables" do
-          expect(evaluator.conversation_data).to eq(conversation_data)
+          # conversation_data is normalized by the base class
+          expect(evaluator.conversation_data[:file_search_results]).to be_present
           expect(evaluator.config[:expected_files]).to eq([ "policy.pdf", "guidelines.txt" ])
           expect(evaluator.config[:require_all]).to be true
         end
@@ -208,7 +209,7 @@ module PromptTracker
 
       describe "#evaluate" do
         let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant, test_mode: :conversational) }
+        let(:test) { create(:test, testable: assistant) }
         let(:test_run) { create(:test_run, :for_assistant, test: test) }
         let(:evaluator_with_test_run) do
           described_class.new(conversation_data, config.merge(test_run: test_run))

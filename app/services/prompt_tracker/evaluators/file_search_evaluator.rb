@@ -15,7 +15,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class FileSearchEvaluator < Conversational::BaseAssistantsApiEvaluator
+    class FileSearchEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         expected_files: [],
@@ -45,10 +45,17 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param conversation_data [Hash] the conversation data with run_steps
+      # @param data [Hash] the normalized data with file_search_results
       # @param config [Hash] configuration options
-      def initialize(conversation_data, config = {})
-        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      end
+
+      # Returns compatible API types - only Assistants API has file_search
+      #
+      # @return [Array<Symbol>] array containing only Assistants API
+      def self.compatible_with_apis
+        [ ApiTypes::OPENAI_ASSISTANTS_API ]
       end
 
       # Calculate score based on file search matching
@@ -133,19 +140,8 @@ module PromptTracker
         @expected_files ||= Array(config[:expected_files]).map(&:to_s).map(&:strip).reject(&:empty?)
       end
 
-      # Extract file_search results from run_steps
-      #
-      # @return [Array<Hash>] file search result data
-      def file_search_results
-        @file_search_results ||= begin
-          run_steps = conversation_data["run_steps"] || conversation_data[:run_steps] || []
-
-          run_steps.flat_map do |step|
-            step_sym = step.deep_symbolize_keys
-            step_sym[:file_search_results] || []
-          end.compact
-        end
-      end
+      # Override to use the base class file_search_results accessor
+      # which already handles the normalized data format
 
       # Extract all searched file names from results
       #

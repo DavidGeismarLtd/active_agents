@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
+ActiveRecord::Schema[7.2].define(version: 2026_01_14_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -151,7 +151,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
     t.string "ab_variant"
     t.bigint "trace_id"
     t.bigint "span_id"
-    t.boolean "is_test_run", default: false, null: false
     t.string "conversation_id"
     t.integer "turn_number"
     t.string "response_id"
@@ -165,7 +164,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
     t.index [ "conversation_id", "turn_number" ], name: "index_llm_responses_on_conversation_turn"
     t.index [ "conversation_id" ], name: "index_prompt_tracker_llm_responses_on_conversation_id"
     t.index [ "environment" ], name: "index_prompt_tracker_llm_responses_on_environment"
-    t.index [ "is_test_run" ], name: "index_prompt_tracker_llm_responses_on_is_test_run"
     t.index [ "model" ], name: "index_prompt_tracker_llm_responses_on_model"
     t.index [ "previous_response_id" ], name: "index_prompt_tracker_llm_responses_on_previous_response_id"
     t.index [ "prompt_version_id" ], name: "index_prompt_tracker_llm_responses_on_prompt_version_id"
@@ -287,7 +285,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
 
   create_table "prompt_tracker_test_runs", force: :cascade do |t|
     t.bigint "test_id", null: false
-    t.bigint "llm_response_id"
     t.bigint "dataset_id"
     t.bigint "dataset_row_id"
     t.string "status", default: "pending", null: false
@@ -301,12 +298,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
     t.integer "execution_time_ms"
     t.decimal "cost_usd", precision: 10, scale: 6
     t.jsonb "metadata", default: {}, null: false
-    t.jsonb "conversation_data"
+    t.jsonb "output_data"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index [ "conversation_data" ], name: "index_prompt_tracker_test_runs_on_conversation_data", using: :gin
     t.index [ "created_at" ], name: "index_prompt_tracker_test_runs_on_created_at"
-    t.index [ "llm_response_id" ], name: "index_prompt_tracker_test_runs_on_llm_response_id"
+    t.index [ "output_data" ], name: "index_prompt_tracker_test_runs_on_output_data", using: :gin
     t.index [ "passed" ], name: "index_prompt_tracker_test_runs_on_passed"
     t.index [ "status" ], name: "index_prompt_tracker_test_runs_on_status"
     t.index [ "test_id" ], name: "index_prompt_tracker_test_runs_on_test_id"
@@ -320,13 +316,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
     t.boolean "enabled", default: true, null: false
     t.jsonb "tags", default: [], null: false
     t.jsonb "metadata", default: {}, null: false
-    t.integer "test_mode", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index [ "enabled" ], name: "index_prompt_tracker_tests_on_enabled"
     t.index [ "name" ], name: "index_prompt_tracker_tests_on_name"
     t.index [ "tags" ], name: "index_prompt_tracker_tests_on_tags", using: :gin
-    t.index [ "test_mode" ], name: "index_prompt_tracker_tests_on_test_mode"
     t.index [ "testable_type", "testable_id" ], name: "index_prompt_tracker_tests_on_testable_type_and_testable_id"
   end
 
@@ -364,6 +358,5 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_07_132516) do
   add_foreign_key "prompt_tracker_spans", "prompt_tracker_traces", column: "trace_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_dataset_rows", column: "dataset_row_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_datasets", column: "dataset_id"
-  add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_llm_responses", column: "llm_response_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_tests", column: "test_id"
 end

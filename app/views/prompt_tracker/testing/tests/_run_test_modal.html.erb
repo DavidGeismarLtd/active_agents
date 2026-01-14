@@ -21,8 +21,8 @@
 
 <% is_run_all = local_assigns[:tests].present? %>
 <% test_id_suffix = local_assigns[:test].present? ? test.id : "" %>
-<%# Determine test_mode: from local variable, from single test, or nil (show all) %>
-<% effective_test_mode = local_assigns[:test_mode] || (local_assigns[:test].present? ? test.test_mode : nil) %>
+<%# Determine test_mode: from local variable, from single test's derived mode, or nil (show all) %>
+<% effective_test_mode = local_assigns[:test_mode] || (local_assigns[:test].present? ? (test.conversational? ? :conversational : :single_turn) : nil) %>
 
 <div class="modal fade" id="<%= modal_id %>" tabindex="-1"
      data-controller="modal-fix run-test-modal"

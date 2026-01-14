@@ -23,7 +23,7 @@ module PromptTracker
     #   #    - score: 85 (average of all message scores)
     #   #    - metadata: { message_scores: [90, 80, 85], ... }
     #
-    class ConversationJudgeEvaluator < Conversational::BaseConversationalEvaluator
+    class ConversationJudgeEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         judge_model: "gpt-4o",
@@ -53,10 +53,10 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param conversation_data [Hash] the conversation data with messages array
+      # @param data [Hash] the normalized data with messages array
       # @param config [Hash] configuration options
-      def initialize(conversation_data, config = {})
-        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.symbolize_keys))
       end
 
       # Calculate score by averaging all assistant message scores

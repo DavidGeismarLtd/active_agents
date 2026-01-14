@@ -79,8 +79,7 @@ medical_test = PromptTracker::Test.create!(
   testable: medical_assistant,
   name: "Symptom Triage Quality",
   description: "Evaluates quality of symptom triage conversations",
-  enabled: true,
-  test_mode: :conversational
+  enabled: true
 )
 
 medical_test.evaluator_configs.create!(
@@ -176,8 +175,7 @@ support_test = PromptTracker::Test.create!(
   testable: support_assistant,
   name: "Support Quality & Resolution",
   description: "Evaluates quality of customer support conversations",
-  enabled: true,
-  test_mode: :conversational
+  enabled: true
 )
 
 support_test.evaluator_configs.create!(
@@ -273,8 +271,7 @@ tech_test = PromptTracker::Test.create!(
   testable: tech_assistant,
   name: "Technical Troubleshooting Quality",
   description: "Evaluates quality of technical support conversations",
-  enabled: true,
-  test_mode: :conversational
+  enabled: true
 )
 
 tech_test.evaluator_configs.create!(
@@ -480,8 +477,7 @@ travel_test = PromptTracker::Test.create!(
   testable: travel_assistant,
   name: "Travel Function Usage",
   description: "Evaluates if the assistant correctly uses travel-related functions",
-  enabled: true,
-  test_mode: :conversational
+  enabled: true
 )
 
 # Function Call Evaluator - check if search functions are called
@@ -522,8 +518,7 @@ travel_args_test = PromptTracker::Test.create!(
   testable: travel_assistant,
   name: "Travel Function Arguments",
   description: "Validates that function arguments are correctly formatted",
-  enabled: true,
-  test_mode: :conversational
+  enabled: true
 )
 
 travel_args_test.evaluator_configs.create!(

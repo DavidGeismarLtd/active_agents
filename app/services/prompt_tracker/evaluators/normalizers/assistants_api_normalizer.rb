@@ -52,7 +52,10 @@ module PromptTracker
           {
             messages: normalize_messages(messages),
             tool_usage: extract_tool_usage(messages, run_steps),
-            file_search_results: extract_file_search_results(run_steps)
+            file_search_results: extract_file_search_results(run_steps),
+            web_search_results: [],  # Assistants API doesn't have web search
+            code_interpreter_results: extract_code_interpreter_results(run_steps),
+            run_steps: run_steps
           }
         end
 
@@ -190,6 +193,70 @@ module PromptTracker
             turn += 1 if (msg[:role] || msg["role"]) == "user"
           end
           turn
+        end
+
+        # Extract code interpreter results from run_steps
+        #
+        # @param run_steps [Array<Hash>] array of run step data
+        # @return [Array<Hash>] array of code interpreter results
+        def extract_code_interpreter_results(run_steps)
+          run_steps.flat_map do |step|
+            step_details = step["step_details"] || step[:step_details] || {}
+            tool_calls = step_details["tool_calls"] || step_details[:tool_calls] || []
+
+            tool_calls.filter_map do |tc|
+              next unless (tc["type"] || tc[:type]) == "code_interpreter"
+
+              ci = tc["code_interpreter"] || tc[:code_interpreter] || {}
+              input = ci["input"] || ci[:input] || ""
+              outputs = ci["outputs"] || ci[:outputs] || []
+
+              {
+                id: tc["id"] || tc[:id],
+                status: "completed",  # Assistants API doesn't expose status per tool call
+                code: input,
+                language: detect_language(input),
+                output: extract_code_outputs(outputs),
+                files_created: extract_files_from_outputs(outputs),
+                error: nil
+              }
+            end
+          end
+        end
+
+        def detect_language(code)
+          return nil if code.nil? || code.empty?
+
+          # Simple heuristic detection
+          return "python" if code.include?("import ") || code.include?("def ") || code.include?("print(")
+          return "javascript" if code.include?("const ") || code.include?("let ") || code.include?("function ")
+          return "ruby" if code.include?("require ") || (code.include?("def ") && code.include?("end"))
+
+          nil
+        end
+
+        def extract_code_outputs(outputs)
+          outputs.filter_map do |output|
+            type = output["type"] || output[:type]
+            case type
+            when "logs"
+              output["logs"] || output[:logs]
+            when "image"
+              "[Image output]"
+            else
+              output["text"] || output[:text]
+            end
+          end.join("\n")
+        end
+
+        def extract_files_from_outputs(outputs)
+          outputs.filter_map do |output|
+            type = output["type"] || output[:type]
+            next unless type == "image"
+
+            file_id = output.dig("image", "file_id") || output.dig(:image, :file_id)
+            { file_id: file_id } if file_id
+          end
         end
       end
     end

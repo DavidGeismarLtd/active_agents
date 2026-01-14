@@ -18,7 +18,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LengthEvaluator < SingleResponse::BaseSingleResponseEvaluator
+    class LengthEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         min_length: 10,      # Minimum acceptable length
@@ -43,8 +43,8 @@ module PromptTracker
         }
       end
 
-      def initialize(response_text, config = {})
-        super(response_text, DEFAULT_CONFIG.merge(config))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config))
       end
 
       def evaluate_score

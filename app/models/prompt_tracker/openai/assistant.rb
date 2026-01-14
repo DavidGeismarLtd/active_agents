@@ -209,7 +209,7 @@ module PromptTracker
       # Returns the column headers for the test runs table
       #
       # Defines which columns to display in the test runs accordion for this testable type.
-      # Assistants show conversation data instead of rendered prompts.
+      # Uses unified output_data structure for all test types.
       #
       # @return [Array<Hash>] array of column definitions
       def test_run_table_headers
@@ -218,7 +218,8 @@ module PromptTracker
           { key: "run_time", label: "Run Time", width: "12%" },
           { key: "response_time", label: "Response Time", width: "10%" },
           { key: "run_cost", label: "Cost", width: "8%" },
-          { key: "conversation", label: "Conversation", width: "30%" },
+          { key: "rendered_prompt", label: "Rendered Prompt", width: "15%" },
+          { key: "output_messages", label: "Output", width: "25%" },
           { key: "run_evaluations", label: "Evaluations", width: "10%" },
           { key: "human_evaluations", label: "Human Evaluations", width: "10%" },
           { key: "actions", label: "Actions", width: "5%" }

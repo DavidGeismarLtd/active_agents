@@ -118,7 +118,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.string :ab_variant
       t.bigint :trace_id
       t.bigint :span_id
-      t.boolean :is_test_run, default: false, null: false
 
       # Multi-turn conversation tracking
       t.string :conversation_id  # Groups related responses in a multi-turn conversation
@@ -145,7 +144,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_llm_responses, :ab_test_id
     add_index :prompt_tracker_llm_responses, :trace_id
     add_index :prompt_tracker_llm_responses, :span_id
-    add_index :prompt_tracker_llm_responses, :is_test_run
     add_index :prompt_tracker_llm_responses, :conversation_id
     add_index :prompt_tracker_llm_responses, [ :conversation_id, :turn_number ], name: "index_llm_responses_on_conversation_turn"
     add_index :prompt_tracker_llm_responses, :tools_used, using: :gin
@@ -252,9 +250,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.jsonb :tags, default: [], null: false
       t.jsonb :metadata, default: {}, null: false
 
-      # Test mode: single_turn (0) or conversational (1)
-      t.integer :test_mode, default: 0, null: false
-
       t.timestamps
     end
 
@@ -262,7 +257,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_tests, :name
     add_index :prompt_tracker_tests, :enabled
     add_index :prompt_tracker_tests, :tags, using: :gin
-    add_index :prompt_tracker_tests, :test_mode
 
     # ============================================================================
     # TABLE 9: prompt_test_suites
@@ -289,7 +283,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     # ============================================================================
     create_table :prompt_tracker_test_runs do |t|
       t.bigint :test_id, null: false
-      t.bigint :llm_response_id
       t.bigint :dataset_id
       t.bigint :dataset_row_id
       t.string :status, default: "pending", null: false
@@ -304,18 +297,18 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.decimal :cost_usd, precision: 10, scale: 6
       t.jsonb :metadata, default: {}, null: false
 
-      # For assistant conversation tests - stores conversation messages with per-message scores
-      t.jsonb :conversation_data
+      # Unified output storage for all test types (single-turn and conversational)
+      # Structure: { rendered_prompt, model, provider, messages, tokens, status, ... }
+      t.jsonb :output_data
 
       t.timestamps
     end
 
     add_index :prompt_tracker_test_runs, :test_id
-    add_index :prompt_tracker_test_runs, :llm_response_id
     add_index :prompt_tracker_test_runs, :status
     add_index :prompt_tracker_test_runs, :passed
     add_index :prompt_tracker_test_runs, :created_at
-    add_index :prompt_tracker_test_runs, :conversation_data, using: :gin
+    add_index :prompt_tracker_test_runs, :output_data, using: :gin
 
     # ============================================================================
     # TABLE 11: prompt_test_suite_runs
@@ -485,7 +478,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_foreign_key :prompt_tracker_llm_responses, :prompt_tracker_prompt_versions, column: :prompt_version_id
     add_foreign_key :prompt_tracker_llm_responses, :prompt_tracker_spans, column: :span_id
     add_foreign_key :prompt_tracker_llm_responses, :prompt_tracker_traces, column: :trace_id
-    add_foreign_key :prompt_tracker_test_runs, :prompt_tracker_llm_responses, column: :llm_response_id
     add_foreign_key :prompt_tracker_test_runs, :prompt_tracker_tests, column: :test_id
     add_foreign_key :prompt_tracker_test_runs, :prompt_tracker_datasets, column: :dataset_id
     add_foreign_key :prompt_tracker_test_runs, :prompt_tracker_dataset_rows, column: :dataset_row_id

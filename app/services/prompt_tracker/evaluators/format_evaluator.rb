@@ -21,7 +21,7 @@ module PromptTracker
     #     require_headers: true
     #   })
     #
-    class FormatEvaluator < SingleResponse::BaseSingleResponseEvaluator
+    class FormatEvaluator < BaseNormalizedEvaluator
       # Supported formats
       FORMATS = %i[json markdown plain_text].freeze
 
@@ -57,8 +57,8 @@ module PromptTracker
         }
       end
 
-      def initialize(response_text, config = {})
-        super(response_text, DEFAULT_CONFIG.merge(config))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config))
         validate_config!
       end
 

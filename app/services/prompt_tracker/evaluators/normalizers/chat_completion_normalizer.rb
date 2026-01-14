@@ -45,7 +45,10 @@ module PromptTracker
           {
             messages: normalize_messages(messages),
             tool_usage: extract_tool_usage_from_messages(messages),
-            file_search_results: []  # Chat Completion doesn't have file search
+            file_search_results: [],  # Chat Completion doesn't have file search
+            web_search_results: [],   # Chat Completion doesn't have web search
+            code_interpreter_results: [],  # Chat Completion doesn't have code interpreter
+            run_steps: []  # Chat Completion doesn't have run_steps
           }
         end
 

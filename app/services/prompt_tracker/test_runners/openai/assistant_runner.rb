@@ -39,8 +39,25 @@ module PromptTracker
 
           conversation_result = conversation_runner.run!
 
-          # Store conversation data
-          test_run.update!(conversation_data: conversation_result)
+          # Build unified output_data structure
+          # conversation_result is a hash with messages, total_turns, etc.
+          output_data = {
+            "rendered_prompt" => testable.instructions,
+            "model" => testable.model,
+            "provider" => "openai_assistants",
+            "messages" => conversation_result[:messages] || conversation_result["messages"] || [],
+            "total_turns" => conversation_result[:total_turns] || conversation_result["total_turns"],
+            "status" => conversation_result[:status] || conversation_result["status"] || "completed",
+            "thread_id" => conversation_result[:thread_id] || conversation_result["thread_id"],
+            "tools_used" => testable.tools || [],
+            "metadata" => {
+              "assistant_id" => testable.assistant_id,
+              "assistant_name" => testable.name
+            }
+          }
+
+          # Store in output_data
+          test_run.update!(output_data: output_data)
 
           # Run evaluators
           evaluator_results = run_assistant_evaluators
@@ -109,10 +126,10 @@ module PromptTracker
             )
 
             # Build and run the evaluator using EvaluatorRegistry
-            # Pass conversation_data (Hash) as the evaluated data
+            # Pass output_data (Hash) as the evaluated data
             evaluator = EvaluatorRegistry.build(
               evaluator_key,
-              test_run.conversation_data,
+              test_run.output_data,
               evaluator_config
             )
             evaluation = evaluator.evaluate

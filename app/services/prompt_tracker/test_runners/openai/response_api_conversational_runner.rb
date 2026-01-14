@@ -49,11 +49,24 @@ module PromptTracker
 
           conversation_result = conversation_runner.run!
 
-          # Store conversation data
-          test_run.update!(conversation_data: conversation_result.to_h)
+          # Build unified output_data structure
+          output_data = {
+            "rendered_prompt" => system_prompt,
+            "model" => model,
+            "provider" => "openai_responses",
+            "messages" => conversation_result.messages,
+            "total_turns" => conversation_result.total_turns,
+            "status" => conversation_result.status,
+            "tools_used" => tools.map(&:to_s),
+            "previous_response_id" => conversation_result.previous_response_id,
+            "metadata" => conversation_result.metadata
+          }
+
+          # Store in output_data
+          test_run.update!(output_data: output_data)
 
           # Run evaluators
-          evaluator_results = run_evaluators(conversation_result.to_h)
+          evaluator_results = run_evaluators(output_data)
 
           # Calculate pass/fail
           passed = evaluator_results.all? { |r| r[:passed] }

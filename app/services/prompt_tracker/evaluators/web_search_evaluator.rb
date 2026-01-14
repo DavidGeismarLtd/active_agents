@@ -20,7 +20,7 @@ module PromptTracker
     #     require_all_queries: false
     #   })
     #
-    class WebSearchEvaluator < Conversational::BaseConversationalEvaluator
+    class WebSearchEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         require_web_search: true,       # Must use web search at least once
@@ -58,10 +58,10 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param conversation_data [Hash] the conversation data with web_search_results
+      # @param data [Hash] the normalized data with web_search_results
       # @param config [Hash] configuration options
-      def initialize(conversation_data, config = {})
-        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.symbolize_keys))
       end
 
       # Calculate score based on web search usage

@@ -20,7 +20,7 @@ module PromptTracker
     #     expected_language: "python"
     #   })
     #
-    class CodeInterpreterEvaluator < Conversational::BaseConversationalEvaluator
+    class CodeInterpreterEvaluator < BaseNormalizedEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         require_code_execution: true,      # Must execute code at least once
@@ -60,10 +60,10 @@ module PromptTracker
 
       # Initialize the evaluator
       #
-      # @param conversation_data [Hash] the conversation data with code_interpreter_results
+      # @param data [Hash] the normalized data with code_interpreter_results
       # @param config [Hash] configuration options
-      def initialize(conversation_data, config = {})
-        super(conversation_data, DEFAULT_CONFIG.merge(config.symbolize_keys))
+      def initialize(data, config = {})
+        super(data, DEFAULT_CONFIG.merge(config.symbolize_keys))
       end
 
       # Calculate score based on code interpreter usage

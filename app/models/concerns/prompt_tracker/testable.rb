@@ -112,16 +112,12 @@ module PromptTracker
 
     # Returns the full partial path for test run rows
     #
+    # Uses the unified row partial that works for all testable types.
+    # The unified partial reads from output_data which has a consistent structure.
+    #
     # @return [String] the full partial path
-    #
-    # @example PromptVersion
-    #   testable.test_run_row_partial # => "prompt_tracker/testing/test_runs/prompt_versions/row"
-    #
-    # @example Assistant
-    #   testable.test_run_row_partial # => "prompt_tracker/testing/test_runs/openai_assistants/row"
-    #
     def test_run_row_partial
-      "prompt_tracker/testing/test_runs/#{partial_path_segment}/row"
+      "prompt_tracker/testing/test_runs/row"
     end
 
 

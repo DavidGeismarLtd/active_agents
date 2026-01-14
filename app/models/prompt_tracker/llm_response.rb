@@ -14,7 +14,6 @@
 #  error_message        :text
 #  error_type           :string
 #  id                   :bigint           not null, primary key
-#  is_test_run          :boolean          default(FALSE), not null
 #  model                :string           not null
 #  previous_response_id :string           # References the response_id of the previous turn
 #  prompt_version_id    :bigint           not null
@@ -35,6 +34,9 @@
 #  updated_at           :datetime         not null
 #  user_id              :string
 #  variables_used       :jsonb
+#
+# Note: LlmResponse is used ONLY for production call tracking via track_llm_call.
+# Test runs store their output in TestRun.output_data instead.
 #
 module PromptTracker
   # Represents a single LLM API call and its response.
@@ -98,7 +100,8 @@ module PromptTracker
              dependent: :destroy
 
     # Callbacks
-    after_create :trigger_auto_evaluation, unless: :is_test_run?
+    # Auto-evaluate all production tracked calls
+    after_create :trigger_auto_evaluation
     before_validation :set_turn_number, if: :conversation_id_changed?
 
     # Validations
@@ -175,15 +178,6 @@ module PromptTracker
     # @param hours [Integer] number of hours to look back
     # @return [ActiveRecord::Relation<LlmResponse>]
     scope :recent, ->(hours = 24) { where("created_at > ?", hours.hours.ago) }
-
-    # Returns only tracked calls from production/staging/dev (not test runs)
-    # These are calls made via track_llm_call in the host application
-    # @return [ActiveRecord::Relation<LlmResponse>]
-    scope :tracked_calls, -> { where(is_test_run: false) }
-
-    # Returns only test run calls
-    # @return [ActiveRecord::Relation<LlmResponse>]
-    scope :test_calls, -> { where(is_test_run: true) }
 
     # Response API Scopes
 

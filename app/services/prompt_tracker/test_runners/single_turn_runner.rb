@@ -48,16 +48,32 @@ module PromptTracker
           model_config: model_config
         )
 
-        # Create LlmResponse record and link to test run
-        llm_response_record = create_llm_response_record(
-          rendered_prompt: rendered_prompt,
-          llm_response: llm_response,
-          model: model,
-          provider: provider
-        )
+        # Calculate response time
+        response_time_ms = ((Time.current - start_time) * 1000).to_i
 
-        # Link LlmResponse to test run
-        test_run.update!(llm_response: llm_response_record)
+        # Calculate cost
+        prompt_tokens = llm_response.dig(:usage, :prompt_tokens)
+        completion_tokens = llm_response.dig(:usage, :completion_tokens)
+        cost = calculate_cost(model, prompt_tokens, completion_tokens)
+
+        # Store output in output_data (unified format)
+        output_data = {
+          "rendered_prompt" => rendered_prompt,
+          "model" => model,
+          "provider" => provider,
+          "messages" => [
+            { "role" => "assistant", "content" => llm_response[:text] }
+          ],
+          "tokens" => {
+            "prompt_tokens" => prompt_tokens,
+            "completion_tokens" => completion_tokens,
+            "total_tokens" => llm_response.dig(:usage, :total_tokens)
+          },
+          "response_time_ms" => response_time_ms,
+          "status" => "completed"
+        }
+
+        test_run.update!(output_data: output_data)
 
         # Run evaluators on response text
         evaluator_results = run_evaluators(llm_response[:text])
@@ -65,18 +81,13 @@ module PromptTracker
         # Calculate pass/fail
         passed = evaluator_results.empty? || evaluator_results.all? { |r| r[:passed] }
 
-        # Update test run
+        # Update test run with final results
         execution_time = ((Time.current - start_time) * 1000).to_i
         update_test_run_results(
           passed: passed,
           execution_time_ms: execution_time,
           evaluator_results: evaluator_results,
-          cost_usd: llm_response_record.cost_usd,
-          extra_metadata: {
-            provider: provider,
-            model: model,
-            rendered_prompt: rendered_prompt
-          }
+          cost_usd: cost
         )
       end
 
@@ -116,36 +127,6 @@ module PromptTracker
             raw: {}
           }
         end
-      end
-
-      # Create an LlmResponse record
-      #
-      # @param rendered_prompt [String] the rendered prompt
-      # @param llm_response [Hash] the LLM response
-      # @param model [String] the model name
-      # @param provider [String] the provider name
-      # @return [LlmResponse] the created record
-      def create_llm_response_record(rendered_prompt:, llm_response:, model:, provider:)
-        prompt_tokens = llm_response.dig(:usage, :prompt_tokens)
-        completion_tokens = llm_response.dig(:usage, :completion_tokens)
-        cost = calculate_cost(model, prompt_tokens, completion_tokens)
-
-        LlmResponse.create!(
-          prompt_version: testable,
-          rendered_prompt: rendered_prompt,
-          response_text: llm_response[:text],
-          tokens_prompt: prompt_tokens,
-          tokens_completion: completion_tokens,
-          cost_usd: cost,
-          response_time_ms: 0, # Will be updated by test run
-          model: model,
-          provider: provider,
-          status: "success",
-          is_test_run: true,
-          response_metadata: {
-            test_run_id: test_run.id
-          }
-        )
       end
 
       # Calculate cost using RubyLLM model registry

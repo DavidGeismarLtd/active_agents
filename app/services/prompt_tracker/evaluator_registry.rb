@@ -47,76 +47,13 @@ module PromptTracker
         registry
       end
 
-      # Returns evaluators compatible with a specific testable
-      # @deprecated Use for_test or for_mode instead
+      # Returns evaluators compatible with a specific testable's API type
       #
       # @param testable [Object] the testable to filter by (e.g., PromptVersion, Assistant)
       # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
       def for_testable(testable)
-        all.select { |_key, meta| meta[:evaluator_class].compatible_with?(testable) }
-      end
-
-      # Returns evaluators compatible with a specific test (by test_mode and testable)
-      #
-      # V2 Architecture: Filters by:
-      # 1. Test mode (single_turn -> single_response evaluators, conversational -> conversational)
-      # 2. API compatibility (based on testable's api_type)
-      #
-      # @param test [Test] the test to filter evaluators for
-      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
-      # @example
-      #   EvaluatorRegistry.for_test(single_turn_test)
-      #   # => { length: {...}, keyword: {...}, llm_judge: {...} }
-      #   EvaluatorRegistry.for_test(conversational_assistant_test)
-      #   # => { conversation_judge: {...}, file_search: {...}, function_call: {...} }
-      def for_test(test)
-        test_mode = test.test_mode || "single_turn"
-        testable = test.testable
-
-        # Use V2 API-based filtering if testable supports api_type
-        if testable.respond_to?(:api_type)
-          for_test_v2(test)
-        else
-          # Fall back to legacy mode-based filtering
-          for_mode(test_mode, testable: testable)
-        end
-      end
-
-      # V2 Architecture: Returns evaluators for a specific test
-      # Filters by test mode category AND API type compatibility
-      #
-      # @param test [Test] the test to filter evaluators for
-      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
-      def for_test_v2(test)
-        category = test.single_turn? ? :single_response : :conversational
-        api_type = test.testable.api_type
-
-        all.select do |_key, meta|
-          klass = meta[:evaluator_class]
-          klass.category == category && klass.compatible_with_api?(api_type)
-        end
-      end
-
-      # Returns evaluators by category
-      #
-      # @param category [Symbol] :single_response or :conversational
-      # @return [Hash] hash of evaluator_key => metadata
-      def by_category(category)
-        all.select { |_key, meta| meta[:evaluator_class].category == category }
-      end
-
-      # Returns single_response evaluators
-      #
-      # @return [Hash] hash of evaluator_key => metadata
-      def single_response_evaluators
-        by_category(:single_response)
-      end
-
-      # Returns conversational evaluators
-      #
-      # @return [Hash] hash of evaluator_key => metadata
-      def conversational_evaluators
-        by_category(:conversational)
+        api_type = testable.api_type
+        for_api(api_type)
       end
 
       # Returns evaluators compatible with a specific API type
@@ -125,33 +62,6 @@ module PromptTracker
       # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
       def for_api(api_type)
         all.select { |_key, meta| meta[:evaluator_class].compatible_with_api?(api_type) }
-      end
-
-      # Returns evaluators compatible with a specific mode and optional testable
-      # @deprecated Use for_test_v2 with api_type-based filtering instead
-      #
-      # @param test_mode [String, Symbol] the test mode (:single_turn or :conversational)
-      # @param testable [Object, nil] optional testable for additional filtering
-      # @return [Hash] hash of evaluator_key => metadata for compatible evaluators
-      def for_mode(test_mode, testable: nil)
-        all.select do |_key, meta|
-          klass = meta[:evaluator_class]
-
-          if test_mode.to_s == "single_turn"
-            # Only single-response evaluators
-            klass < Evaluators::SingleResponse::BaseSingleResponseEvaluator
-          elsif testable.is_a?(PromptTracker::Openai::Assistant)
-            # All conversational evaluators (including Assistants-specific)
-            klass < Evaluators::Conversational::BaseConversationalEvaluator
-          elsif testable.present?
-            # PromptVersion in conversational mode - exclude Assistants-specific
-            klass < Evaluators::Conversational::BaseConversationalEvaluator &&
-              !(klass < Evaluators::Conversational::BaseAssistantsApiEvaluator)
-          else
-            # No testable specified - show all conversational (conservative default)
-            klass < Evaluators::Conversational::BaseConversationalEvaluator
-          end
-        end
       end
 
       # Gets metadata for a specific evaluator
@@ -295,13 +205,9 @@ module PromptTracker
         evaluators_path = File.join(File.dirname(__FILE__), "evaluators", "*.rb")
 
         Dir.glob(evaluators_path).each do |file|
-          # Skip base evaluator classes (both old and new naming)
+          # Skip base evaluator classes
           next if file.end_with?("base_evaluator.rb")
-          next if file.end_with?("base_prompt_version_evaluator.rb")
-          next if file.end_with?("base_openai_assistant_evaluator.rb")
-          next if file.end_with?("base_chat_completion_evaluator.rb")
-          next if file.end_with?("base_conversational_evaluator.rb")
-          next if file.end_with?("base_assistants_api_evaluator.rb")
+          next if file.end_with?("base_normalized_evaluator.rb")
           # Skip backup files
           next if file.end_with?(".bak")
 
