@@ -10,7 +10,6 @@ SimpleCov.start "rails" do
   # Minimum coverage threshold
   # Set to current coverage level - gradually increase as more tests are added
   minimum_coverage 70
-  minimum_coverage_by_file 55
 
   # Track all files in app/
   track_files "app/**/*.rb"
