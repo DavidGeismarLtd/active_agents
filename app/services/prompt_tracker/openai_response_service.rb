@@ -103,7 +103,6 @@ module PromptTracker
     #
     # @return [Hash] normalized response
     def call
-      binding.pry
       response = client.responses.create(parameters: build_parameters)
       normalize_response(response)
     end

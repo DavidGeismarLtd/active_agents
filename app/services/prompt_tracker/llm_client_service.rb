@@ -71,8 +71,6 @@ module PromptTracker
       # Determine the API type using ApiTypes module
       api_type = ApiTypes.from_config(provider, api)
 
-      binding.pry
-
       # Route to OpenAI Responses API
       if api_type == :openai_responses
         return OpenaiResponseService.call(

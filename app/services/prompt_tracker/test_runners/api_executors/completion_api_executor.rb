@@ -140,7 +140,6 @@ module PromptTracker
 
             # Only include messages if there are previous messages
             call_params[:messages] = previous_messages if previous_messages.any?
-
             LlmClientService.call(**call_params)
           else
             turn = (conversation_history.count { |m| m[:role] == "user" })

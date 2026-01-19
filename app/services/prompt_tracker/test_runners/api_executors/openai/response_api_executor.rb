@@ -41,7 +41,6 @@ module PromptTracker
             messages = []
             @previous_response_id = nil
             start_time = Time.current
-
             messages = execute_conversation(params)
 
             response_time_ms = ((Time.current - start_time) * 1000).to_i
@@ -67,7 +66,6 @@ module PromptTracker
           def execute_conversation(params)
             messages = []
             max_turns = params[:max_turns] || 1
-
             (1..max_turns).each do |turn|
               # Generate user message
               user_message = if turn == 1
