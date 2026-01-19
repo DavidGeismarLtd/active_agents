@@ -37,7 +37,7 @@ code_review_v1 = code_review.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "chat_completion",
+    "api" => "chat_completions",
     "model" => "gpt-4o",
     "temperature" => 0.4,
     "max_tokens" => 500

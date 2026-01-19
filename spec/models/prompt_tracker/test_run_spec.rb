@@ -31,24 +31,9 @@ module PromptTracker
       )
     end
 
-    let(:llm_response) do
-      version.llm_responses.create!(
-        rendered_prompt: "Hello Alice",
-        response_text: "Hi Alice! How can I help you today?",
-        variables_used: { "name" => "Alice" },
-        provider: "openai",
-        model: "gpt-4",
-        status: "success",
-        response_time_ms: 1200,
-        tokens_total: 15,
-        cost_usd: 0.0003
-      )
-    end
-
     let(:valid_attributes) do
       {
         test: prompt_test,
-        llm_response: llm_response,
         status: "passed",
         passed: true,
         assertion_results: [],
@@ -57,7 +42,18 @@ module PromptTracker
         total_evaluators: 2,
         execution_time_ms: 1500,
         cost_usd: 0.0003,
-        metadata: { "test_run" => true }
+        metadata: { "test_run" => true },
+        output_data: {
+          "rendered_prompt" => "Hello Alice",
+          "model" => "gpt-4",
+          "provider" => "openai",
+          "messages" => [
+            { "role" => "assistant", "content" => "Hi Alice! How can I help you today?" }
+          ],
+          "tokens" => { "prompt_tokens" => 10, "completion_tokens" => 15, "total_tokens" => 25 },
+          "response_time_ms" => 1200,
+          "status" => "completed"
+        }
       }
     end
 
@@ -95,19 +91,19 @@ module PromptTracker
         expect(test_run.test).to eq(prompt_test)
       end
 
-      it "belongs to prompt_version" do
+      it "belongs to prompt_version (through test)" do
         test_run = TestRun.create!(valid_attributes)
         expect(test_run.prompt_version).to eq(version)
       end
 
-      it "belongs to llm_response (optional)" do
+      it "has many evaluations" do
         test_run = TestRun.create!(valid_attributes)
-        expect(test_run.llm_response).to eq(llm_response)
-      end
-
-      it "allows nil llm_response" do
-        test_run = TestRun.new(valid_attributes.merge(llm_response: nil))
-        expect(test_run).to be_valid
+        evaluation = test_run.evaluations.create!(
+          score: 85,
+          evaluator_type: "length_evaluator",
+          evaluation_context: "test_run"
+        )
+        expect(test_run.evaluations).to include(evaluation)
       end
 
       it "touches prompt_test on create" do
@@ -284,10 +280,10 @@ module PromptTracker
       it "returns only failed evaluations" do
         test_run = TestRun.create!(valid_attributes)
 
-        # Create evaluations
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "keyword", score: 2.0, passed: false)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "format", score: 1.5, passed: false)
+        # Create evaluations using the for_test_run trait
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "keyword", score: 2.0, passed: false)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "format", score: 1.5, passed: false)
 
         failed = test_run.failed_evaluations
         expect(failed.count).to eq(2)
@@ -296,7 +292,7 @@ module PromptTracker
 
       it "returns empty relation when all evaluators passed" do
         test_run = TestRun.create!(valid_attributes)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
 
         expect(test_run.failed_evaluations.count).to eq(0)
       end
@@ -311,10 +307,10 @@ module PromptTracker
       it "returns only passed evaluations" do
         test_run = TestRun.create!(valid_attributes)
 
-        # Create evaluations
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "keyword", score: 5.0, passed: true)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "format", score: 1.5, passed: false)
+        # Create evaluations using the for_test_run trait
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "length", score: 4.5, passed: true)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "keyword", score: 5.0, passed: true)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "format", score: 1.5, passed: false)
 
         passed = test_run.passed_evaluations
         expect(passed.count).to eq(2)
@@ -323,7 +319,7 @@ module PromptTracker
 
       it "returns empty relation when all evaluators failed" do
         test_run = TestRun.create!(valid_attributes)
-        create(:evaluation, llm_response: llm_response, test_run: test_run, evaluator_id: "length", score: 1.5, passed: false)
+        create(:evaluation, :for_test_run, test_run: test_run, evaluator_id: "length", score: 1.5, passed: false)
 
         expect(test_run.passed_evaluations.count).to eq(0)
       end

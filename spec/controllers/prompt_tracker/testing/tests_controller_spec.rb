@@ -95,13 +95,19 @@ module PromptTracker
         end
 
         it "includes associated evaluations and human evaluations" do
-          # Add llm_response and evaluation to run at index 5
-          llm_response = create(:llm_response, prompt_version: version)
-          test_runs[5].update!(llm_response: llm_response)
-          evaluation = create(:evaluation, llm_response: llm_response)
+          # Stub broadcasts to avoid missing partial errors in tests
+          allow_any_instance_of(HumanEvaluation).to receive(:broadcast_human_evaluation_created)
 
-          # Add human evaluation to the evaluation (not directly to llm_response)
-          create(:human_evaluation, evaluation: evaluation, llm_response: nil, score: 85, feedback: "Good response")
+          # Add evaluation directly to the test run
+          test_runs[5].evaluations.create!(
+            evaluator_type: "exact_match",
+            score: 1.0,
+            passed: true,
+            feedback: "Match found"
+          )
+
+          # Add human evaluation to the test run (no evaluation association - belongs only to test_run)
+          test_runs[5].human_evaluations.create!(score: 85, feedback: "Good response")
 
           request.headers["Accept"] = "text/vnd.turbo-stream.html"
           get :load_more_runs,
@@ -110,7 +116,7 @@ module PromptTracker
 
           # Verify includes are working (no N+1 queries)
           expect(assigns(:additional_runs).first.association(:human_evaluations).loaded?).to be true
-          expect(assigns(:additional_runs).first.association(:llm_response).loaded?).to be true
+          expect(assigns(:additional_runs).first.association(:evaluations).loaded?).to be true
         end
 
         it "assigns prompt and version for view" do

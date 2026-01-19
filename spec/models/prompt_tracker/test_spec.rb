@@ -50,6 +50,47 @@ module PromptTracker
       end
     end
 
+      describe "#single_turn? and #conversational?" do
+        context "when testable does not respond to api_type" do
+          before do
+            non_api_testable = double("NonApiTestable")
+            allow(non_api_testable).to receive(:respond_to?).with(:api_type).and_return(false)
+            allow(test).to receive(:testable).and_return(non_api_testable)
+          end
+
+          it "defaults to single-turn mode" do
+            expect(test.single_turn?).to be true
+            expect(test.conversational?).to be false
+          end
+        end
+
+        context "when testable api_type is openai_chat_completions" do
+          before do
+            chat_testable = double("ChatTestable", api_type: :openai_chat_completions)
+            allow(chat_testable).to receive(:respond_to?).with(:api_type).and_return(true)
+            allow(test).to receive(:testable).and_return(chat_testable)
+          end
+
+          it "is single-turn" do
+            expect(test.single_turn?).to be true
+            expect(test.conversational?).to be false
+          end
+        end
+
+        context "when testable api_type is conversational (e.g. Assistants API)" do
+          before do
+            assistant_testable = double("AssistantTestable", api_type: :openai_assistants)
+            allow(assistant_testable).to receive(:respond_to?).with(:api_type).and_return(true)
+            allow(test).to receive(:testable).and_return(assistant_testable)
+          end
+
+          it "is conversational" do
+            expect(test.single_turn?).to be false
+            expect(test.conversational?).to be true
+          end
+        end
+      end
+
     describe "#pass_rate" do
       let!(:passed_run) { create(:test_run, test: test, passed: true) }
       let!(:failed_run) { create(:test_run, test: test, passed: false) }

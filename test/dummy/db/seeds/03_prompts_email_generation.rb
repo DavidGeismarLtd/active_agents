@@ -22,7 +22,7 @@ email_summary_v1 = email_summary.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "chat_completion",
+    "api" => "chat_completions",
     "model" => "gpt-4o",
     "temperature" => 0.3,
     "max_tokens" => 200

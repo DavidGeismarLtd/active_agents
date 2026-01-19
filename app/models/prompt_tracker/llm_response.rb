@@ -142,6 +142,11 @@ module PromptTracker
 
     # Scopes
 
+    # Returns only tracked calls from production/staging/dev
+    # All LlmResponses are production tracked calls (test runs store output in TestRun.output_data)
+    # @return [ActiveRecord::Relation<LlmResponse>]
+    scope :tracked_calls, -> { all }
+
     # Returns only successful responses
     # @return [ActiveRecord::Relation<LlmResponse>]
     scope :successful, -> { where(status: "success") }

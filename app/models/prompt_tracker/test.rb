@@ -91,17 +91,17 @@ module PromptTracker
     scope :for_prompt_versions, -> { where(testable_type: "PromptTracker::PromptVersion") }
     scope :for_assistants, -> { where(testable_type: "PromptTracker::Openai::Assistant") }
 
-    # Check if test runs in single-turn mode (derived from testable's API type)
-    #
-    # Single-turn tests evaluate a single LLM response.
-    # This is the default for Chat Completion API testables.
-    #
-    # @return [Boolean] true if single-turn mode
-    def single_turn?
-      return true unless testable.respond_to?(:api_type)
+      # Check if test runs in single-turn mode (derived from testable's API type)
+      #
+      # Single-turn tests evaluate a single LLM response.
+      # This is the default for Chat Completion API testables.
+      #
+      # @return [Boolean] true if single-turn mode
+      def single_turn?
+        return true unless testable.respond_to?(:api_type)
 
-      testable.api_type == Evaluators::ApiTypes::OPENAI_CHAT_COMPLETION
-    end
+        testable.api_type == :openai_chat_completions
+      end
 
     # Check if test runs in conversational mode (derived from testable's API type)
     #
@@ -170,11 +170,7 @@ module PromptTracker
     #   test.test_run_row_partial # => "prompt_tracker/testing/test_runs/conversational_row"
     #
     def test_run_row_partial
-      if conversational?
-        "prompt_tracker/testing/test_runs/conversational_row"
-      else
-        testable.test_run_row_partial
-      end
+      testable.test_run_row_partial
     end
 
     # Returns the column headers for test runs based on test mode

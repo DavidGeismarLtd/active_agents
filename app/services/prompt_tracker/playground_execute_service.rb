@@ -80,12 +80,14 @@ module PromptTracker
     end
 
     def execute_api_call
-      provider = model_config[:provider] || "openai"
+      provider = model_config[:provider] || model_config["provider"]
+      api = model_config[:api] || model_config["api"]
 
-      case provider.to_s
-      when "openai_responses"
+      # Route based on API
+      case api.to_s
+      when "responses"
         execute_response_api
-      when "openai_assistants"
+      when "assistants"
         execute_assistant_api
       else
         execute_chat_completion

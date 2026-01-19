@@ -28,8 +28,6 @@ FactoryBot.define do
   # New polymorphic TestRun factory
   factory :test_run, class: "PromptTracker::TestRun" do
     association :test, factory: :test
-    llm_response { nil }
-    conversation_data { nil }
 
     status { "passed" }
     passed { true }
@@ -51,20 +49,29 @@ FactoryBot.define do
     execution_time_ms { 1500 }
     cost_usd { 0.002 }
     metadata { {} }
+    output_data do
+      {
+        "messages" => [
+          { "role" => "user", "content" => "Hello John, how can I help you today?" },
+          { "role" => "assistant", "content" => "Hi! I'm here to help. What can I do for you?" }
+        ],
+        "rendered_prompt" => "Hello John, how can I help you today?",
+        "response_text" => "Hi! I'm here to help. What can I do for you?",
+        "model" => "gpt-4",
+        "provider" => "openai",
+        "response_time_ms" => 1200
+      }
+    end
 
     # Trait for prompt version test runs
     trait :for_prompt_version do
       association :test, factory: :test, trait: :for_prompt_version
-      association :prompt_version, factory: :prompt_version
-      association :llm_response, factory: :llm_response
-      conversation_data { nil }
     end
 
     # Trait for assistant test runs
     trait :for_assistant do
       association :test, factory: :test, trait: :for_assistant
-      llm_response { nil }
-      conversation_data do
+      output_data do
         {
           messages: [
             {
@@ -95,56 +102,56 @@ FactoryBot.define do
 
     # Trait for multi-turn conversation
     trait :multi_turn_conversation do
-      conversation_data do
+      output_data do
         {
-          messages: [
+          "messages" => [
             {
-              role: "user",
-              content: "I have a severe headache",
-              turn: 1,
-              timestamp: 3.minutes.ago.iso8601
+              "role" => "user",
+              "content" => "I have a severe headache",
+              "turn" => 1,
+              "timestamp" => 3.minutes.ago.iso8601
             },
             {
-              role: "assistant",
-              content: "I'm sorry to hear that. Can you describe the pain?",
-              turn: 1,
-              timestamp: 3.minutes.ago.iso8601,
-              run_id: "run_1"
+              "role" => "assistant",
+              "content" => "I'm sorry to hear that. Can you describe the pain?",
+              "turn" => 1,
+              "timestamp" => 3.minutes.ago.iso8601,
+              "run_id" => "run_1"
             },
             {
-              role: "user",
-              content: "It's a throbbing pain on the left side",
-              turn: 2,
-              timestamp: 2.minutes.ago.iso8601
+              "role" => "user",
+              "content" => "It's a throbbing pain on the left side",
+              "turn" => 2,
+              "timestamp" => 2.minutes.ago.iso8601
             },
             {
-              role: "assistant",
-              content: "That sounds like it could be a migraine. Have you experienced this before?",
-              turn: 2,
-              timestamp: 2.minutes.ago.iso8601,
-              run_id: "run_2"
+              "role" => "assistant",
+              "content" => "That sounds like it could be a migraine. Have you experienced this before?",
+              "turn" => 2,
+              "timestamp" => 2.minutes.ago.iso8601,
+              "run_id" => "run_2"
             },
             {
-              role: "user",
-              content: "Yes, occasionally",
-              turn: 3,
-              timestamp: 1.minute.ago.iso8601
+              "role" => "user",
+              "content" => "Yes, occasionally",
+              "turn" => 3,
+              "timestamp" => 1.minutes.ago.iso8601
             },
             {
-              role: "assistant",
-              content: "I recommend resting in a dark room and taking your usual migraine medication.",
-              turn: 3,
-              timestamp: 1.minute.ago.iso8601,
-              run_id: "run_3"
+              "role" => "assistant",
+              "content" => "I recommend resting in a dark room and taking your usual migraine medication.",
+              "turn" => 3,
+              "timestamp" => 1.minute.ago.iso8601,
+              "run_id" => "run_3"
             }
           ],
-          thread_id: "thread_multi123",
-          total_turns: 3,
-          status: "completed",
-          metadata: {
-            assistant_id: "asst_test123",
-            max_turns: 5,
-            completed_at: Time.current.iso8601
+          "thread_id" => "thread_multi123",
+          "total_turns" => 3,
+          "status" => "completed",
+          "metadata" => {
+            "assistant_id" => "asst_test123",
+            "max_turns" => 5,
+            "completed_at" => Time.current.iso8601
           }
         }
       end

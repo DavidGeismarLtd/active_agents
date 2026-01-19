@@ -179,11 +179,11 @@ module PromptTracker
     #
     # @return [Symbol] the API type constant from PromptTracker::ApiTypes
     #
-    # @example PromptVersion (determined by model_config provider)
-    #   version.api_type # => :openai_chat_completion or :openai_response_api
+    # @example PromptVersion (determined by model_config provider and api)
+    #   version.api_type # => :openai_chat_completions or :openai_responses
     #
     # @example Assistant
-    #   assistant.api_type # => :openai_assistants_api
+    #   assistant.api_type # => :openai_assistants
     #
     def api_type
       raise NotImplementedError, "#{self.class.name} must implement #api_type"

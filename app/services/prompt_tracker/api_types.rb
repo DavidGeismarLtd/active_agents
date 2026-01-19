@@ -1,68 +1,29 @@
 # frozen_string_literal: true
 
 module PromptTracker
-  # Defines the API types supported by the evaluator system.
+  # Defines the API types supported by the system.
   #
-  # These constants represent the different AI provider APIs that can be used
-  # for generating responses. Evaluators declare which API types they are
-  # compatible with, allowing the system to filter evaluators based on the
-  # API being used.
-  #
-  # @example Check if evaluator is compatible with an API
-  #   evaluator_class.compatible_with_api?(ApiTypes::OPENAI_CHAT_COMPLETION)
-  #
-  # @example Get all API types
-  #   ApiTypes::ALL # => [:openai_chat_completion, :openai_response_api, ...]
+  # Maps (provider, api) pairs from configuration to unified API type constants.
+  # This allows the system to work with a consistent set of API types regardless
+  # of how they're configured.
   #
   # @example Convert from config format
-  #   ApiTypes.from_config(:openai, :chat_completion) # => :openai_chat_completion
+  #   ApiTypes.from_config(:openai, :chat_completions) # => :openai_chat_completions
+  #
+  # @example Convert to config format
+  #   ApiTypes.to_config(:openai_responses) # => { provider: :openai, api: :responses }
+  #
+  # @example Get all API types
+  #   ApiTypes.all # => [:openai_chat_completions, :openai_responses, ...]
   #
   module ApiTypes
-    # OpenAI Chat Completions API (single-turn or multi-turn with manual state management)
-    OPENAI_CHAT_COMPLETION = :openai_chat_completion
-
-    # OpenAI Responses API (stateful conversations with built-in memory)
-    OPENAI_RESPONSE_API = :openai_response_api
-
-    # OpenAI Assistants API (stateful with threads, runs, and tool execution)
-    OPENAI_ASSISTANTS_API = :openai_assistants_api
-
-    # Anthropic Messages API
-    ANTHROPIC_MESSAGES = :anthropic_messages
-
-    # Google Gemini API
-    GOOGLE_GEMINI = :google_gemini
-
-    # All supported API types
-    ALL = [
-      OPENAI_CHAT_COMPLETION,
-      OPENAI_RESPONSE_API,
-      OPENAI_ASSISTANTS_API,
-      ANTHROPIC_MESSAGES,
-      GOOGLE_GEMINI
-    ].freeze
-
-    # APIs that support single-response evaluation
-    SINGLE_RESPONSE_APIS = [
-      OPENAI_CHAT_COMPLETION,
-      OPENAI_RESPONSE_API,
-      ANTHROPIC_MESSAGES,
-      GOOGLE_GEMINI
-    ].freeze
-
-    # APIs that support conversational evaluation
-    CONVERSATIONAL_APIS = [
-      OPENAI_RESPONSE_API,
-      OPENAI_ASSISTANTS_API
-    ].freeze
-
     # Mapping from config format (provider, api) to ApiType constant
     CONFIG_TO_API_TYPE = {
-      %i[openai chat_completion] => OPENAI_CHAT_COMPLETION,
-      %i[openai response_api] => OPENAI_RESPONSE_API,
-      %i[openai assistants_api] => OPENAI_ASSISTANTS_API,
-      %i[anthropic messages] => ANTHROPIC_MESSAGES,
-      %i[google gemini] => GOOGLE_GEMINI
+      %i[openai chat_completions] => :openai_chat_completions,
+      %i[openai responses] => :openai_responses,
+      %i[openai assistants] => :openai_assistants,
+      %i[anthropic messages] => :anthropic_messages,
+      %i[google gemini] => :google_gemini
     }.freeze
 
     # Mapping from ApiType constant to config format (provider, api)
@@ -71,7 +32,7 @@ module PromptTracker
     # Convert from config format (provider + api) to ApiType constant.
     #
     # @param provider [Symbol, String] the provider key (e.g., :openai)
-    # @param api [Symbol, String] the API key (e.g., :chat_completion)
+    # @param api [Symbol, String] the API key (e.g., :chat_completions)
     # @return [Symbol, nil] the ApiType constant or nil if not found
     def self.from_config(provider, api)
       CONFIG_TO_API_TYPE[[ provider.to_sym, api.to_sym ]]
@@ -92,7 +53,7 @@ module PromptTracker
     #
     # @return [Array<Symbol>] all API type symbols
     def self.all
-      ALL
+      CONFIG_TO_API_TYPE.values
     end
 
     # Check if a value is a valid API type
@@ -102,21 +63,7 @@ module PromptTracker
     def self.valid?(value)
       return false if value.nil?
 
-      ALL.include?(value.to_sym)
-    end
-
-    # Returns APIs that support single-response evaluation
-    #
-    # @return [Array<Symbol>] API types for single-response
-    def self.single_response_apis
-      SINGLE_RESPONSE_APIS
-    end
-
-    # Returns APIs that support conversational evaluation
-    #
-    # @return [Array<Symbol>] API types for conversational
-    def self.conversational_apis
-      CONVERSATIONAL_APIS
+      all.include?(value.to_sym)
     end
 
     # Get human-readable name for an API type
@@ -125,15 +72,15 @@ module PromptTracker
     # @return [String] human-readable name
     def self.display_name(api_type)
       case api_type.to_sym
-      when OPENAI_CHAT_COMPLETION
-        "OpenAI Chat Completion"
-      when OPENAI_RESPONSE_API
-        "OpenAI Response API"
-      when OPENAI_ASSISTANTS_API
-        "OpenAI Assistants API"
-      when ANTHROPIC_MESSAGES
+      when :openai_chat_completions
+        "OpenAI Chat Completions"
+      when :openai_responses
+        "OpenAI Responses"
+      when :openai_assistants
+        "OpenAI Assistants"
+      when :anthropic_messages
         "Anthropic Messages"
-      when GOOGLE_GEMINI
+      when :google_gemini
         "Google Gemini"
       else
         api_type.to_s.titleize

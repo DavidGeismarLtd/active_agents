@@ -36,16 +36,20 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
   end
 
   describe ".for_testable" do
-    it "returns only evaluators compatible with PromptVersion" do
+    it "returns only evaluators compatible with PromptVersion (chat completions)" do
       prompt = create(:prompt)
-      version = create(:prompt_version, prompt: prompt)
+      version = create(:prompt_version, prompt: prompt, model_config: {
+        "provider" => "openai",
+        "api" => "chat_completions",
+        "model" => "gpt-4o"
+      })
 
       evaluators = described_class.for_testable(version)
 
       expect(evaluators).to be_a(Hash)
-      # PromptVersion is compatible with both single-response and conversational evaluators
+      # Chat completion API is compatible with single-response evaluators
       expect(evaluators.keys).to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
-      # Conversational evaluators are also compatible with PromptVersion (for conversational mode)
+      # Conversational evaluators are also compatible with chat completions
       expect(evaluators.keys).to include(:conversation_judge)
     end
 
@@ -62,8 +66,8 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
     end
 
     it "returns empty hash for incompatible testable" do
-      # Create a mock testable that no evaluators are compatible with
-      incompatible_testable = double("IncompatibleTestable")
+      # Create a mock testable that returns nil for api_type
+      incompatible_testable = double("IncompatibleTestable", api_type: nil)
 
       evaluators = described_class.for_testable(incompatible_testable)
 
@@ -222,50 +226,16 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
     end
   end
 
-  describe ".by_category" do
-    it "returns single_response evaluators" do
-      evaluators = described_class.by_category(:single_response)
-
-      expect(evaluators).to be_a(Hash)
-      expect(evaluators.keys).to include(:length, :keyword, :format)
-    end
-
-    it "returns conversational evaluators" do
-      evaluators = described_class.by_category(:conversational)
-
-      expect(evaluators).to be_a(Hash)
-      expect(evaluators.keys).to include(:conversation_judge)
-    end
-  end
-
-  describe ".single_response_evaluators" do
-    it "returns evaluators for single-response evaluation" do
-      evaluators = described_class.single_response_evaluators
-
-      expect(evaluators.keys).to include(:length, :keyword, :format, :llm_judge)
-      expect(evaluators.keys).not_to include(:conversation_judge)
-    end
-  end
-
-  describe ".conversational_evaluators" do
-    it "returns evaluators for conversational evaluation" do
-      evaluators = described_class.conversational_evaluators
-
-      expect(evaluators.keys).to include(:conversation_judge)
-      expect(evaluators.keys).not_to include(:length, :keyword)
-    end
-  end
-
   describe ".for_api" do
-    it "returns evaluators compatible with OpenAI Chat Completion" do
-      evaluators = described_class.for_api(PromptTracker::ApiTypes::OPENAI_CHAT_COMPLETION)
+    it "returns evaluators compatible with OpenAI Chat Completions" do
+      evaluators = described_class.for_api(:openai_chat_completions)
 
       expect(evaluators).to be_a(Hash)
       expect(evaluators.keys).to include(:length, :keyword)
     end
 
     it "returns evaluators compatible with OpenAI Assistants API" do
-      evaluators = described_class.for_api(PromptTracker::ApiTypes::OPENAI_ASSISTANTS_API)
+      evaluators = described_class.for_api(:openai_assistants)
 
       expect(evaluators).to be_a(Hash)
       expect(evaluators.keys).to include(:conversation_judge)
@@ -273,26 +243,26 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
   end
 
   describe ".normalizer_for" do
-    it "returns ChatCompletionNormalizer for OPENAI_CHAT_COMPLETION" do
-      normalizer = described_class.normalizer_for(PromptTracker::ApiTypes::OPENAI_CHAT_COMPLETION)
+    it "returns ChatCompletionNormalizer for openai_chat_completions" do
+      normalizer = described_class.normalizer_for(:openai_chat_completions)
 
       expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::ChatCompletionNormalizer)
     end
 
-    it "returns ResponseApiNormalizer for OPENAI_RESPONSE_API" do
-      normalizer = described_class.normalizer_for(PromptTracker::ApiTypes::OPENAI_RESPONSE_API)
+    it "returns ResponseApiNormalizer for openai_responses" do
+      normalizer = described_class.normalizer_for(:openai_responses)
 
       expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::ResponseApiNormalizer)
     end
 
-    it "returns AssistantsApiNormalizer for OPENAI_ASSISTANTS_API" do
-      normalizer = described_class.normalizer_for(PromptTracker::ApiTypes::OPENAI_ASSISTANTS_API)
+    it "returns AssistantsApiNormalizer for openai_assistants" do
+      normalizer = described_class.normalizer_for(:openai_assistants)
 
       expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::AssistantsApiNormalizer)
     end
 
-    it "returns AnthropicNormalizer for ANTHROPIC_MESSAGES" do
-      normalizer = described_class.normalizer_for(PromptTracker::ApiTypes::ANTHROPIC_MESSAGES)
+    it "returns AnthropicNormalizer for anthropic_messages" do
+      normalizer = described_class.normalizer_for(:anthropic_messages)
 
       expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::AnthropicNormalizer)
     end

@@ -25,6 +25,11 @@ module PromptTracker
         max_length: 2000     # Maximum acceptable length
       }.freeze
 
+      # Compatible API types
+      def self.compatible_with_apis
+        [ :openai_chat_completions, :anthropic_messages ]
+      end
+
       # Parameter schema for form processing
       def self.param_schema
         {

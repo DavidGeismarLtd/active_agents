@@ -86,18 +86,18 @@ module PromptTracker
       # @return [Evaluators::Normalizers::BaseNormalizer] the normalizer instance
       # @raise [ArgumentError] if API type is unknown
       #
-      # @example Get normalizer for Chat Completion
-      #   normalizer = EvaluatorRegistry.normalizer_for(ApiTypes::OPENAI_CHAT_COMPLETION)
+      # @example Get normalizer for Chat Completions
+      #   normalizer = EvaluatorRegistry.normalizer_for(:openai_chat_completions)
       #   normalized = normalizer.normalize_single_response(raw_response)
       def normalizer_for(api_type)
         case api_type
-        when ApiTypes::OPENAI_CHAT_COMPLETION
+        when :openai_chat_completions
           Evaluators::Normalizers::ChatCompletionNormalizer.new
-        when ApiTypes::OPENAI_RESPONSE_API
+        when :openai_responses
           Evaluators::Normalizers::ResponseApiNormalizer.new
-        when ApiTypes::OPENAI_ASSISTANTS_API
+        when :openai_assistants
           Evaluators::Normalizers::AssistantsApiNormalizer.new
-        when ApiTypes::ANTHROPIC_MESSAGES
+        when :anthropic_messages
           Evaluators::Normalizers::AnthropicNormalizer.new
         else
           raise ArgumentError, "Unknown API type: #{api_type}"

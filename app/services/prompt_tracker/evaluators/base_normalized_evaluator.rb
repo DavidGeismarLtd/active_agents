@@ -41,30 +41,18 @@ module PromptTracker
       attr_reader :data
       alias_method :conversation_data, :data
 
-      # Returns the evaluator category
-      # @return [Symbol] :normalized (unified category)
-      def self.category
-        :normalized
+      # Returns compatible API types
+      # Normalized evaluators work with all API types
+      # @return [Array<Symbol>] array of API type symbols
+      def self.compatible_with_apis
+        [ :all ]
       end
 
-      # Returns the API type (legacy compatibility)
-      # @return [Symbol] :normalized
-      def self.api_type
-        :normalized
-      end
-
-      # Returns compatible testable classes
+      # Returns compatible testable classes (legacy)
       # All normalized evaluators work with all testables
       # @return [Array<Class>] array of compatible testable classes
       def self.compatible_with
         [ PromptTracker::PromptVersion, PromptTracker::Openai::Assistant ]
-      end
-
-      # Returns compatible API types
-      # Override in subclasses to restrict to specific APIs
-      # @return [Array<Symbol>] array of compatible API types
-      def self.compatible_with_apis
-        [ :all ]
       end
 
       # Initialize the evaluator with normalized data

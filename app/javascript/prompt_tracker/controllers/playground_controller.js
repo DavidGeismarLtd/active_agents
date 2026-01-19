@@ -316,7 +316,7 @@ export default class extends Controller {
     }
 
     // Show/hide conversation panel via conversation outlet
-    const isConversationalApi = apiConfig?.key === 'response_api' || apiConfig?.key === 'assistants_api'
+    const isConversationalApi = apiConfig?.key === 'responses' || apiConfig?.key === 'assistants'
     if (this.hasConversationOutlet) {
       if (isConversationalApi) {
         this.conversationOutlet.show()

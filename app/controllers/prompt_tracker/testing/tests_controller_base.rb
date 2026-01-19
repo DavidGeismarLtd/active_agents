@@ -119,7 +119,7 @@ module PromptTracker
         limit = params[:limit].present? ? params[:limit].to_i : 5
 
         @additional_runs = @test.test_runs
-                                .includes(:evaluations, :human_evaluations, llm_response: :evaluations)
+                                .includes(:evaluations, :human_evaluations)
                                 .order(created_at: :desc)
                                 .offset(offset)
                                 .limit(limit)
@@ -217,18 +217,43 @@ module PromptTracker
         ENV["PROMPT_TRACKER_USE_REAL_LLM"] == "true"
       end
 
-      # Get required variable names for custom run validation
-      # For Assistants: uses Dataset::CONVERSATIONAL_FIELDS (interlocutor_simulation_prompt, etc.)
-      # For PromptVersions: uses the testable's variables_schema
-      def required_custom_run_variables
-        if @testable.is_a?(PromptTracker::Openai::Assistant)
-          # Assistants use conversational fields from Dataset
-          Dataset::CONVERSATIONAL_FIELDS.select { |v| v["required"] }.map { |v| v["name"] }
-        else
-          # PromptVersions use their own variables_schema
-          @testable.variables_schema.select { |v| v["required"] }.map { |v| v["name"] }
+        # Get required variable names for custom run validation.
+        #
+        # For Assistants:
+        #   - Always uses Dataset::CONVERSATIONAL_FIELDS (interlocutor_simulation_prompt, etc.)
+        #
+        # For PromptVersions:
+        #   - In "single" execution mode: uses the testable's variables_schema
+        #   - In "conversation" execution mode: requires both variables_schema and
+        #     conversational fields so custom runs and conversational datasets share
+        #     the same shape.
+        #
+        # @param execution_mode [String, Symbol] "single" or "conversation"
+        # @return [Array<String>] required variable names
+        def required_custom_run_variables(execution_mode: "single")
+          # Assistants always operate in conversational mode and re-use dataset
+          # conversational fields for both datasets and custom runs.
+          if @testable.is_a?(PromptTracker::Openai::Assistant)
+            return Dataset::CONVERSATIONAL_FIELDS
+              .select { |v| v["required"] }
+              .map { |v| v["name"] }
+          end
+
+          # PromptVersions: start from their own variables_schema
+          base_required = (@testable.variables_schema || [])
+            .select { |v| v["required"] }
+            .map { |v| v["name"] }
+
+          # In conversational execution mode, also require conversational fields
+          if execution_mode.to_s == "conversation"
+            conversational_required = Dataset::CONVERSATIONAL_FIELDS
+              .select { |v| v["required"] }
+              .map { |v| v["name"] }
+            (base_required + conversational_required).uniq
+          else
+            base_required
+          end
         end
-      end
 
       # Run a single test with a dataset
       def run_with_dataset(test)
@@ -240,17 +265,23 @@ module PromptTracker
           return
         end
 
-        dataset = @testable.datasets.find(dataset_id)
+          dataset = @testable.datasets.find(dataset_id)
+          execution_mode = dataset.conversational? ? "conversation" : "single"
 
-        # Create test runs for each dataset row
-        dataset.dataset_rows.each do |row|
-          test_run = TestRun.create!(
-            test: test,
-            dataset: dataset,
-            dataset_row: row,
-            status: "running",
-            metadata: { triggered_by: "manual", user: "web_ui", run_mode: "dataset" }
-          )
+          # Create test runs for each dataset row
+          dataset.dataset_rows.each do |row|
+            test_run = TestRun.create!(
+              test: test,
+              dataset: dataset,
+              dataset_row: row,
+              status: "running",
+              metadata: {
+                triggered_by: "manual",
+                user: "web_ui",
+                run_mode: "dataset",
+                execution_mode: execution_mode
+              }
+            )
 
           RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
         end
@@ -259,107 +290,117 @@ module PromptTracker
                     notice: "Test queued with #{dataset.dataset_rows.count} scenario(s)."
       end
 
-      # Run a single test with custom variables
-      def run_with_custom_variables(test)
-        custom_vars = params[:custom_variables] || {}
+        # Run a single test with custom variables
+        def run_with_custom_variables(test)
+          custom_vars = params[:custom_variables] || {}
+          execution_mode = (params[:execution_mode].presence || "single").to_s
 
-        # Validate required variables based on testable type
-        required_vars = required_custom_run_variables
-        missing_vars = required_vars.select { |var| custom_vars[var].blank? }
+          # Validate required variables based on testable type and execution mode
+          required_vars = required_custom_run_variables(execution_mode: execution_mode)
+          missing_vars = required_vars.select { |var| custom_vars[var].blank? }
 
-        if missing_vars.any?
-          redirect_to testable_path,
-                      alert: "Please provide: #{missing_vars.map(&:humanize).join(', ')}"
-          return
-        end
-
-        # Create a test run with custom variables
-        test_run = TestRun.create!(
-          test: test,
-          status: "running",
-          metadata: {
-            triggered_by: "manual",
-            user: "web_ui",
-            run_mode: "custom",
-            custom_variables: custom_vars
-          }
-        )
-
-        RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
-
-        redirect_to testable_path,
-                    notice: "Test queued with custom scenario."
-      end
-
-      # Run all tests with a dataset
-      def run_all_with_dataset(tests)
-        dataset_id = params[:dataset_id]
-
-        unless dataset_id.present?
-          redirect_to testable_path,
-                      alert: "Please select a dataset."
-          return
-        end
-
-        dataset = @testable.datasets.find(dataset_id)
-        total_runs = 0
-
-        # Create test runs for each test × each dataset row
-        tests.each do |test|
-          dataset.dataset_rows.each do |row|
-            test_run = TestRun.create!(
-              test: test,
-              dataset: dataset,
-              dataset_row: row,
-              status: "running",
-              metadata: { triggered_by: "run_all", user: "web_ui", run_mode: "dataset" }
-            )
-
-            RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
-            total_runs += 1
+          if missing_vars.any?
+            redirect_to testable_path,
+                        alert: "Please provide: #{missing_vars.map(&:humanize).join(', ')}"
+            return
           end
-        end
 
-        redirect_to testable_path,
-                    notice: "Queued #{total_runs} test run(s) across #{tests.count} test(s)."
-      end
-
-      # Run all tests with custom variables
-      def run_all_with_custom_variables(tests)
-        custom_vars = params[:custom_variables] || {}
-
-        # Validate required variables based on testable type
-        required_vars = required_custom_run_variables
-        missing_vars = required_vars.select { |var| custom_vars[var].blank? }
-
-        if missing_vars.any?
-          redirect_to testable_path,
-                      alert: "Please provide: #{missing_vars.map(&:humanize).join(', ')}"
-          return
-        end
-
-        total_runs = 0
-
-        # Create test runs for each test
-        tests.each do |test|
+          # Create a test run with custom variables
           test_run = TestRun.create!(
             test: test,
             status: "running",
             metadata: {
-              triggered_by: "run_all",
+              triggered_by: "manual",
               user: "web_ui",
               run_mode: "custom",
+              execution_mode: execution_mode,
               custom_variables: custom_vars
             }
           )
 
           RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
-          total_runs += 1
+
+          redirect_to testable_path,
+                      notice: "Test queued with custom scenario."
         end
 
-        redirect_to testable_path,
-                    notice: "Queued #{total_runs} test run(s) with custom scenario."
-      end
+        # Run all tests with a dataset
+        def run_all_with_dataset(tests)
+          dataset_id = params[:dataset_id]
+
+          unless dataset_id.present?
+            redirect_to testable_path,
+                        alert: "Please select a dataset."
+            return
+          end
+
+          dataset = @testable.datasets.find(dataset_id)
+          total_runs = 0
+          execution_mode = dataset.conversational? ? "conversation" : "single"
+
+          # Create test runs for each test × each dataset row
+          tests.each do |test|
+            dataset.dataset_rows.each do |row|
+              test_run = TestRun.create!(
+                test: test,
+                dataset: dataset,
+                dataset_row: row,
+                status: "running",
+                metadata: {
+                  triggered_by: "run_all",
+                  user: "web_ui",
+                  run_mode: "dataset",
+                  execution_mode: execution_mode
+                }
+              )
+
+              RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
+              total_runs += 1
+            end
+          end
+
+          redirect_to testable_path,
+                      notice: "Queued #{total_runs} test run(s) across #{tests.count} test(s)."
+        end
+
+        # Run all tests with custom variables
+        def run_all_with_custom_variables(tests)
+          custom_vars = params[:custom_variables] || {}
+          execution_mode = (params[:execution_mode].presence || "single").to_s
+
+          # Validate required variables based on testable type and execution mode
+          required_vars = required_custom_run_variables(execution_mode: execution_mode)
+          missing_vars = required_vars.select { |var| custom_vars[var].blank? }
+
+          if missing_vars.any?
+            redirect_to testable_path,
+                        alert: "Please provide: #{missing_vars.map(&:humanize).join(', ')}"
+            return
+          end
+
+          total_runs = 0
+
+          # Create test runs for each test
+          tests.each do |test|
+            test_run = TestRun.create!(
+              test: test,
+              status: "running",
+              metadata: {
+                triggered_by: "run_all",
+                user: "web_ui",
+                run_mode: "custom",
+                execution_mode: execution_mode,
+                custom_variables: custom_vars
+              }
+            )
+
+            RunTestJob.perform_later(test_run.id, use_real_llm: use_real_llm?)
+            total_runs += 1
+          end
+
+          redirect_to testable_path,
+                      notice: "Queued #{total_runs} test run(s) with custom scenario."
+        end
     end
   end
 end

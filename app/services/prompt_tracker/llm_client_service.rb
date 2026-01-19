@@ -16,18 +16,28 @@ module PromptTracker
   # - Ollama (local models)
   # - And many more...
   #
-  # Also supports OpenAI Assistants API:
-  # - When provider is "openai_assistants", routes to OpenaiAssistantService
-  # - Assistant IDs start with "asst_"
+  # Also supports specialized OpenAI APIs:
+  # - OpenAI Responses API: provider="openai", api="responses"
+  # - OpenAI Assistants API: provider="openai", api="assistants"
   #
-  # @example Call any LLM
+  # @example Call standard chat completion
   #   response = LlmClientService.call(
   #     provider: "openai",
+  #     api: "chat_completions",
   #     model: "gpt-4",
   #     prompt: "Hello, world!",
   #     temperature: 0.7
   #   )
   #   response[:text]  # => "Hello! How can I help you today?"
+  #
+  # @example Call OpenAI Responses API
+  #   response = LlmClientService.call(
+  #     provider: "openai",
+  #     api: "responses",
+  #     model: "gpt-4o",
+  #     prompt: "Search the web for latest news",
+  #     tools: [:web_search]
+  #   )
   #
   # @example Call with structured output
   #   schema = LlmJudgeSchema.for_criteria(criteria: ["clarity"], score_min: 0, score_max: 100)
@@ -47,7 +57,8 @@ module PromptTracker
 
     # Call an LLM API
     #
-    # @param provider [String] the LLM provider (used to detect OpenAI Assistants)
+    # @param provider [String] the LLM provider (e.g., "openai", "anthropic")
+    # @param api [String, nil] the API type (e.g., "chat_completions", "responses", "assistants")
     # @param model [String] the model name or assistant ID
     # @param prompt [String] the prompt text
     # @param temperature [Float] the temperature (0.0-2.0)
@@ -56,9 +67,14 @@ module PromptTracker
     # @param options [Hash] additional provider-specific options
     # @return [Hash] response with :text, :usage, :model, :raw keys
     # @raise [ApiError] if API call fails
-    def self.call(provider:, model:, prompt:, temperature: 0.7, max_tokens: nil, response_schema: nil, **options)
-      # Route to OpenAI Responses API if provider is openai_responses
-      if provider.to_s == "openai_responses"
+    def self.call(provider:, api:, model:, prompt:, temperature: 0.7, max_tokens: nil, response_schema: nil, **options)
+      # Determine the API type using ApiTypes module
+      api_type = ApiTypes.from_config(provider, api)
+
+      binding.pry
+
+      # Route to OpenAI Responses API
+      if api_type == :openai_responses
         return OpenaiResponseService.call(
           model: model,
           user_prompt: prompt,
@@ -70,8 +86,8 @@ module PromptTracker
         )
       end
 
-      # Route to OpenAI Assistants API if provider is openai_assistants
-      if provider.to_s == "openai_assistants" || model.to_s.start_with?("asst_")
+      # Route to OpenAI Assistants API
+      if api_type == :openai_assistants
         return OpenaiAssistantService.call(
           assistant_id: model,
           prompt: prompt,
@@ -99,6 +115,7 @@ module PromptTracker
     # Call an LLM API with structured output using RubyLLM::Schema
     #
     # @param provider [String] the LLM provider (ignored - RubyLLM auto-detects from model name)
+    # @param api [String, nil] the API type (optional, ignored for structured output)
     # @param model [String] the model name
     # @param prompt [String] the prompt text
     # @param schema [Class] a RubyLLM::Schema subclass
@@ -107,7 +124,7 @@ module PromptTracker
     # @param options [Hash] additional provider-specific options
     # @return [Hash] response with :text (JSON string), :usage, :model, :raw keys
     # @raise [ApiError] if API call fails
-    def self.call_with_schema(provider:, model:, prompt:, schema:, temperature: 0.7, max_tokens: nil, **options)
+    def self.call_with_schema(provider:, api: nil, model:, prompt:, schema:, temperature: 0.7, max_tokens: nil, **options)
       new(
         model: model,
         prompt: prompt,

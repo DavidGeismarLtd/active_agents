@@ -1,7 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modeRadio", "datasetSection", "customSection", "datasetSelect", "rowCount", "submitButton", "form"]
+	static targets = [
+		"modeRadio",
+		"datasetSection",
+		"customSection",
+		"datasetSelect",
+		"rowCount",
+		"submitButton",
+		"form",
+		"executionModeRadio",
+		"conversationSection"
+	]
 
   connect() {
     // Initialize the view based on the selected mode
@@ -20,6 +30,14 @@ export default class extends Controller {
       customInputs.forEach(input => {
         input.addEventListener('input', this.validateForm.bind(this))
       })
+
+			// Initialize execution mode state (single vs conversational) for custom runs
+			if (this.hasExecutionModeRadioTarget) {
+				this.executionModeRadioTargets.forEach(radio => {
+					radio.addEventListener('change', this.toggleExecutionMode.bind(this))
+				})
+				this.toggleExecutionMode()
+			}
     }
 
     // Initial validation
@@ -68,6 +86,7 @@ export default class extends Controller {
     // Disable dataset select validation, enable custom fields validation
     this.toggleDatasetSelectRequired(false)
     this.toggleCustomFieldsRequired(true)
+		this.toggleExecutionMode()
   }
 
   toggleDatasetSelectRequired(enabled) {
@@ -83,7 +102,10 @@ export default class extends Controller {
   toggleCustomFieldsRequired(enabled) {
     if (!this.hasCustomSectionTarget) return
 
-    const customInputs = this.customSectionTarget.querySelectorAll('input[data-required="true"], textarea[data-required="true"]')
+		// Standard custom inputs (template variables etc.), excluding
+		// conversation-specific fields which are managed separately.
+		const selector = 'input[data-required="true"]:not([data-conversation-field="true"]), textarea[data-required="true"]:not([data-conversation-field="true"])'
+		const customInputs = this.customSectionTarget.querySelectorAll(selector)
     customInputs.forEach(input => {
       if (enabled) {
         input.setAttribute('required', 'required')
@@ -92,6 +114,42 @@ export default class extends Controller {
       }
     })
   }
+
+	toggleConversationFieldsRequired(enabled) {
+		if (!this.hasCustomSectionTarget) return
+
+		const selector = 'input[data-conversation-field="true"][data-required="true"], textarea[data-conversation-field="true"][data-required="true"]'
+		const convoInputs = this.customSectionTarget.querySelectorAll(selector)
+		convoInputs.forEach(input => {
+			if (enabled) {
+				input.setAttribute('required', 'required')
+			} else {
+				input.removeAttribute('required')
+			}
+		})
+	}
+
+	toggleExecutionMode() {
+		// Only relevant when custom section is present/visible
+		if (!this.hasCustomSectionTarget) return
+
+		const selectedExecutionMode = this.hasExecutionModeRadioTarget
+			? this.executionModeRadioTargets.find(radio => radio.checked)?.value
+			: "single"
+
+		const isConversational = selectedExecutionMode === "conversation"
+
+		// Show/hide conversation settings section if present
+		if (this.hasConversationSectionTarget) {
+			this.conversationSectionTarget.style.display = isConversational ? "block" : "none"
+		}
+
+		// Manage requiredness of conversation-specific fields
+		this.toggleConversationFieldsRequired(isConversational)
+
+		// Re-run validation when execution mode changes
+		this.validateForm()
+	}
 
   updateRowCount() {
     if (!this.hasDatasetSelectTarget || !this.hasRowCountTarget) return

@@ -92,14 +92,19 @@ FactoryBot.define do
       ab_variant { "A" }
     end
 
-    # Response API traits
-    trait :response_api do
-      provider { "openai_responses" }
+    # Response API traits (OpenAI Responses API)
+    trait :responses do
+      provider { "openai" }
       response_id { "resp_#{SecureRandom.hex(12)}" }
     end
 
+    # Legacy alias for backward compatibility
+    trait :response_api do
+      responses
+    end
+
     trait :with_tools do
-      response_api
+      responses
       tools_used { %w[web_search] }
       tool_outputs do
         {
@@ -114,13 +119,13 @@ FactoryBot.define do
     end
 
     trait :in_conversation do
-      response_api
+      responses
       conversation_id { "conv_#{SecureRandom.hex(8)}" }
       turn_number { 1 }
     end
 
     trait :multi_turn do
-      response_api
+      responses
       transient do
         conversation_uuid { "conv_#{SecureRandom.hex(8)}" }
         turn { 1 }

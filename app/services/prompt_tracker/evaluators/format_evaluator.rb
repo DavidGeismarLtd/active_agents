@@ -35,6 +35,11 @@ module PromptTracker
         strict: false            # Strict mode: no extra keys allowed in JSON
       }.freeze
 
+      # Compatible API types
+      def self.compatible_with_apis
+        [ :openai_chat_completions, :anthropic_messages ]
+      end
+
       # Parameter schema for form processing
       def self.param_schema
         {

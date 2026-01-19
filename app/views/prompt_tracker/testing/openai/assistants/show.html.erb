@@ -251,19 +251,17 @@
            form_partial_path: "prompt_tracker/testing/tests/openai_assistants/form",
            form_locals: { assistant: @assistant, test: PromptTracker::Test.new(testable: @assistant, enabled: true), in_modal: true } %>
 
-<%# Assistants only have conversational tests %>
 <% if @tests.any? %>
   <%= render "prompt_tracker/testing/tests/run_test_modal",
       testable: @assistant,
       tests: @tests,
-      test_mode: "conversational",
       form_url: run_all_testing_openai_assistant_tests_path(@assistant),
-      modal_id: "runAllConversationalTestsModal",
-      modal_title: "Run All Conversational Tests",
+      modal_id: "runAllTestsModal",
+      modal_title: "Run All Tests",
       submit_button_text: "Run All Tests",
       datasets_path: testing_openai_assistant_datasets_path(@assistant),
-      intro_text: "Choose how to run all #{@tests.count} conversational test(s):",
-      dataset_mode_description: "Execute each test for all rows in a conversational dataset",
+      intro_text: "Choose how to run all #{@tests.count} test(s):",
+      dataset_mode_description: "Execute each test for all rows in a dataset",
       custom_mode_description: "Execute each test once with manually entered values",
       custom_variables_context: "Enter values for the test scenario (will be used for all tests):" %>
 <% end %>

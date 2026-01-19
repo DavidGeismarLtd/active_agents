@@ -55,7 +55,7 @@ module PromptTracker
       #
       # @return [Array<Symbol>] array containing only Assistants API
       def self.compatible_with_apis
-        [ ApiTypes::OPENAI_ASSISTANTS_API ]
+        [ :openai_assistants ]
       end
 
       # Calculate score based on file search matching

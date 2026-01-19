@@ -103,19 +103,7 @@
   </div>
   <% if @version.model_config.present? && @version.model_config.any? %>
     <div class="col-md-4">
-      <div class="card h-100">
-        <div class="card-header">
-          <h6 class="mb-0"><i class="bi bi-gear"></i> Model Config</h6>
-        </div>
-        <div class="card-body">
-          <% @version.model_config.each do |key, value| %>
-            <div class="mb-2">
-              <small class="text-muted d-block"><%= key.to_s.titleize %></small>
-              <strong><%= value %></strong>
-            </div>
-          <% end %>
-        </div>
-      </div>
+      <%= render "prompt_tracker/testing/prompt_versions/model_config_card", version: @version %>
     </div>
   <% end %>
 </div>
@@ -127,38 +115,18 @@
            form_partial_path: "prompt_tracker/testing/tests/prompt_versions/form",
            form_locals: { prompt: @prompt, version: @version, test: PromptTracker::Test.new(testable: @version, enabled: true), in_modal: true } %>
 
-<%# Run All Single-Turn Tests Modal %>
-<% single_turn_tests = @tests.select(&:single_turn?) %>
-<% if single_turn_tests.any? %>
+<%# Run All Tests Modal %>
+<% if @tests.any? %>
   <%= render "prompt_tracker/testing/tests/run_test_modal",
       testable: @version,
-      tests: single_turn_tests,
-      test_mode: "single_turn",
-      form_url: run_all_testing_prompt_version_tests_path(@version, test_mode: "single_turn"),
-      modal_id: "runAllSingleTurnTestsModal",
-      modal_title: "Run All Single-Turn Tests",
-      submit_button_text: "Run All Single-Turn Tests",
+      tests: @tests,
+      form_url: run_all_testing_prompt_version_tests_path(@version),
+      modal_id: "runAllTestsModal",
+      modal_title: "Run All Tests",
+      submit_button_text: "Run All Tests",
       datasets_path: testing_prompt_prompt_version_datasets_path(@prompt, @version),
-      intro_text: "Choose how to run all #{single_turn_tests.count} single-turn test(s):",
-      dataset_mode_description: "Execute each test for all rows in a single-turn dataset",
+      intro_text: "Choose how to run all #{@tests.count} test(s):",
+      dataset_mode_description: "Execute each test for all rows in a dataset",
       custom_mode_description: "Execute each test once with manually entered values",
       custom_variables_context: "Enter values for the prompt variables (will be used for all tests):" %>
-<% end %>
-
-<%# Run All Conversational Tests Modal %>
-<% conversational_tests = @tests.select(&:conversational?) %>
-<% if conversational_tests.any? %>
-  <%= render "prompt_tracker/testing/tests/run_test_modal",
-      testable: @version,
-      tests: conversational_tests,
-      test_mode: "conversational",
-      form_url: run_all_testing_prompt_version_tests_path(@version, test_mode: "conversational"),
-      modal_id: "runAllConversationalTestsModal",
-      modal_title: "Run All Conversational Tests",
-      submit_button_text: "Run All Conversational Tests",
-      datasets_path: testing_prompt_prompt_version_datasets_path(@prompt, @version),
-      intro_text: "Choose how to run all #{conversational_tests.count} conversational test(s):",
-      dataset_mode_description: "Execute each test for all rows in a conversational dataset",
-      custom_mode_description: "Execute each test once with manually entered values",
-      custom_variables_context: "Enter values for the test scenario (will be used for all tests):" %>
 <% end %>

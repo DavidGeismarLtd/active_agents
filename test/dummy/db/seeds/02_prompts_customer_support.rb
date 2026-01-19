@@ -24,7 +24,7 @@ support_greeting_v1 = support_greeting.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "chat_completion",
+    "api" => "chat_completions",
     "model" => "gpt-4o-mini",
     "temperature" => 0.7,
     "max_tokens" => 150
@@ -42,7 +42,7 @@ support_greeting_v2 = support_greeting.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "chat_completion",
+    "api" => "chat_completions",
     "model" => "gpt-4o-mini",
     "temperature" => 0.8,
     "max_tokens" => 100
@@ -61,7 +61,7 @@ support_greeting_v3 = support_greeting.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "chat_completion",
+    "api" => "chat_completions",
     "model" => "gpt-4o",
     "temperature" => 0.7,
     "max_tokens" => 120
@@ -70,7 +70,7 @@ support_greeting_v3 = support_greeting.prompt_versions.create!(
   created_by: "john@example.com"
 )
 
-# Version 4 - Draft: Testing with Response API
+# Version 4 - Draft: Testing with Responses API
 support_greeting_v4 = support_greeting.prompt_versions.create!(
   user_prompt: "Hey {{customer_name}}! What's up with {{issue_category}}?",
   status: "draft",
@@ -80,12 +80,12 @@ support_greeting_v4 = support_greeting.prompt_versions.create!(
   ],
   model_config: {
     "provider" => "openai",
-    "api" => "response_api",
+    "api" => "responses",
     "model" => "gpt-4o-mini",
     "temperature" => 0.9,
     "max_tokens" => 80
   },
-  notes: "Testing Response API - casual tone with web search capability",
+  notes: "Testing Responses API - casual tone with web search capability",
   created_by: "sarah@example.com"
 )
 

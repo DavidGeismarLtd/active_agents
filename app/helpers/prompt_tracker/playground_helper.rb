@@ -6,16 +6,16 @@ module PromptTracker
   module PlaygroundHelper
     # Check if the current API is a Response API
     #
-    # @return [Boolean] true if using response_api
+    # @return [Boolean] true if using responses API
     def response_api_provider?
-      current_api.to_s == "response_api"
+      current_api.to_s == "responses"
     end
 
     # Check if the current provider/API supports multi-turn conversations
     #
     # @return [Boolean] true if API supports conversations
     def supports_conversation?
-      response_api_provider?
+      %w[responses assistants].include?(current_api.to_s)
     end
 
     # Get available tools for the current provider and API.
@@ -47,7 +47,7 @@ module PromptTracker
       @version&.model_config&.dig("api") ||
         default_api_for(:playground)&.to_s ||
         default_api_for_provider(current_provider.to_sym)&.to_s ||
-        "chat_completion"
+        "chat_completions"
     end
 
     # Get the current model from version config or default

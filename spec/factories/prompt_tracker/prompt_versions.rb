@@ -46,6 +46,8 @@ FactoryBot.define do
     trait :with_model_config do
       model_config do
         {
+          "provider" => "openai",
+          "api" => "chat_completions",
           "model" => "gpt-4",
           "temperature" => 0.7,
           "max_tokens" => 150
@@ -53,7 +55,52 @@ FactoryBot.define do
       end
     end
 
+    trait :with_chat_completions do
+      model_config do
+        {
+          "provider" => "openai",
+          "api" => "chat_completions",
+          "model" => "gpt-4o",
+          "temperature" => 0.7
+        }
+      end
+    end
+
     trait :with_responses do
+      model_config do
+        {
+          "provider" => "openai",
+          "api" => "responses",
+          "model" => "gpt-4o",
+          "temperature" => 0.7,
+          "tools" => [ "web_search" ]
+        }
+      end
+    end
+
+    trait :with_assistants do
+      model_config do
+        {
+          "provider" => "openai",
+          "api" => "assistants",
+          "model" => "gpt-4o",
+          "temperature" => 0.7
+        }
+      end
+    end
+
+    trait :with_anthropic do
+      model_config do
+        {
+          "provider" => "anthropic",
+          "api" => "messages",
+          "model" => "claude-3-5-sonnet-20241022",
+          "temperature" => 0.7
+        }
+      end
+    end
+
+    trait :with_llm_responses do
       after(:create) do |version|
         create_list(:llm_response, 5, prompt_version: version)
       end

@@ -1,4 +1,4 @@
-<% latest_runs = test.test_runs.includes(:human_evaluations, :evaluations, llm_response: :evaluations).order(created_at: :desc).limit(5) %>
+<% latest_runs = test.test_runs.includes(:human_evaluations, :evaluations).order(created_at: :desc).limit(5) %>
 <% total_count = test.test_runs.count %>
 
 <% if latest_runs.any? %>

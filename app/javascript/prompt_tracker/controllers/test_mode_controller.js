@@ -2,7 +2,13 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Test Mode Stimulus Controller
- * Handles dynamic filtering of evaluators based on test mode selection
+ *
+ * NOTE: This controller is deprecated as of the evaluator refactoring.
+ * All evaluators are now unified and no longer need mode-based filtering.
+ * The test form no longer uses this controller, but it's kept for backward
+ * compatibility in case any legacy code references it.
+ *
+ * The controller now simply shows all evaluators without filtering.
  */
 export default class extends Controller {
   static targets = ["evaluatorCard", "evaluatorsContainer"]
@@ -11,89 +17,25 @@ export default class extends Controller {
   }
 
   connect() {
-    // Apply initial filtering based on current test mode
-    this.filterEvaluators()
+    // Show all evaluators - no filtering needed with unified evaluators
+    this.showAllEvaluators()
   }
 
   /**
-   * Called when test mode radio button changes
+   * Called when test mode radio button changes (legacy - no longer used)
    */
-  modeChanged(event) {
-    this.filterEvaluators()
+  modeChanged(_event) {
+    // No-op: All evaluators are now unified
+    this.showAllEvaluators()
   }
 
   /**
-   * Filter evaluators based on current test mode
+   * Show all evaluators without filtering
+   * All evaluators are now unified (normalized) and work with all test types
    */
-  filterEvaluators() {
-    const selectedMode = this.getSelectedMode()
-
+  showAllEvaluators() {
     this.evaluatorCardTargets.forEach(card => {
-      const apiType = card.dataset.apiType
-      const shouldShow = this.shouldShowEvaluator(apiType, selectedMode)
-
-      if (shouldShow) {
-        card.classList.remove("d-none")
-      } else {
-        card.classList.add("d-none")
-        // Uncheck the evaluator if it's hidden
-        const checkbox = card.querySelector('input[type="checkbox"]')
-        if (checkbox && checkbox.checked) {
-          checkbox.checked = false
-          // Trigger change event to update the hidden field
-          checkbox.dispatchEvent(new Event('change', { bubbles: true }))
-        }
-      }
+      card.classList.remove("d-none")
     })
-  }
-
-  /**
-   * Get the currently selected test mode
-   */
-  getSelectedMode() {
-    // First check radio buttons within this form
-    const form = this.element
-    const singleTurnRadio = form.querySelector('input[type="radio"][id="test_mode_single_turn"]')
-    const conversationalRadio = form.querySelector('input[type="radio"][id="test_mode_conversational"]')
-
-    // If radio buttons exist, use their value
-    if (singleTurnRadio || conversationalRadio) {
-      if (singleTurnRadio && singleTurnRadio.checked) {
-        return "single_turn"
-      }
-      if (conversationalRadio && conversationalRadio.checked) {
-        return "conversational"
-      }
-      // Default to single_turn if radios exist but none selected
-      return "single_turn"
-    }
-
-    // Check for hidden field (used when mode is forced, e.g., for assistants)
-    const hiddenField = form.querySelector('input[type="hidden"][name$="[test_mode]"]')
-    if (hiddenField) {
-      return hiddenField.value
-    }
-
-    // Default to single_turn
-    return "single_turn"
-  }
-
-  /**
-   * Determine if an evaluator should be shown based on its API type and the selected mode
-   */
-  shouldShowEvaluator(apiType, selectedMode) {
-    if (selectedMode === "single_turn") {
-      // Only show chat_completion evaluators
-      return apiType === "chat_completion"
-    } else {
-      // Conversational mode
-      if (this.testableTypeValue === "assistant") {
-        // Show all conversational evaluators (including assistants_api)
-        return apiType === "conversational" || apiType === "assistants_api"
-      } else {
-        // PromptVersion in conversational mode - exclude assistants_api
-        return apiType === "conversational"
-      }
-    }
   }
 }

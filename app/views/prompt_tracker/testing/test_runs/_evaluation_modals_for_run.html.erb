@@ -2,7 +2,7 @@
   # Local variables expected:
   # - run: a single test run record with evaluations
 %>
-<% evaluations = run.evaluations.presence || run.llm_response&.evaluations || [] %>
+<% evaluations = run.evaluations.presence || [] %>
 <% if evaluations.any? %>
   <div data-controller="modal-fix">
     <% evaluations.each do |evaluation| %>
@@ -49,4 +49,3 @@
     <% end %>
   </div>
 <% end %>
-

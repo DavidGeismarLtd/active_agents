@@ -131,28 +131,25 @@ module PromptTracker
         end
       end
 
-      # Class Methods for API Type (Legacy - transitioning to compatible_with_apis)
-
-      # Returns the API type this evaluator works with
-      # @deprecated Use compatible_with_apis instead
-      #
-      # @return [Symbol] :chat_completion, :conversational, or :assistants_api
-      def self.api_type
-        raise NotImplementedError, "Subclasses must implement .api_type"
-      end
-
-      # Class Methods for API Compatibility (New V2 Architecture)
+      # Class Methods for API Compatibility
 
       # Returns which APIs this evaluator is compatible with.
       #
-      # This is the new architecture for evaluator compatibility.
       # Subclasses should override this to specify which API types they support.
+      # API types are unified symbols representing (provider, api) pairs.
+      # See ApiTypes module for available types.
+      #
       # Use :all to indicate compatibility with all APIs.
       #
       # @return [Array<Symbol>] array of API type symbols from ApiTypes
-      # @example
+      # @example Single API
       #   def self.compatible_with_apis
-      #     [ApiTypes::OPENAI_CHAT_COMPLETION, ApiTypes::OPENAI_RESPONSE_API]
+      #     [:openai_chat_completions]
+      #   end
+      #
+      # @example Multiple APIs
+      #   def self.compatible_with_apis
+      #     [:openai_chat_completions, :anthropic_messages]
       #   end
       #
       # @example All APIs
@@ -160,17 +157,7 @@ module PromptTracker
       #     [:all]
       #   end
       def self.compatible_with_apis
-        # Default: derive from legacy api_type for backward compatibility
-        case api_type
-        when :chat_completion
-          [ ApiTypes::OPENAI_CHAT_COMPLETION, ApiTypes::ANTHROPIC_MESSAGES ]
-        when :conversational
-          [ ApiTypes::OPENAI_RESPONSE_API, ApiTypes::OPENAI_ASSISTANTS_API ]
-        when :assistants_api
-          [ ApiTypes::OPENAI_ASSISTANTS_API ]
-        else
-          [ :all ]
-        end
+        raise NotImplementedError, "Subclasses must implement .compatible_with_apis"
       end
 
       # Check if evaluator is compatible with a specific API type
@@ -178,24 +165,9 @@ module PromptTracker
       # @param api_type [Symbol] the API type to check
       # @return [Boolean] true if compatible
       def self.compatible_with_api?(api_type)
-        compatible_with_apis.include?(api_type) || compatible_with_apis.include?(:all)
-      end
+        return false if api_type.nil?
 
-      # Returns the evaluator category: :single_response or :conversational
-      #
-      # This determines whether the evaluator expects:
-      # - :single_response - a single normalized response hash
-      # - :conversational - a conversation with messages array
-      #
-      # @return [Symbol] :single_response or :conversational
-      def self.category
-        # Default: derive from legacy api_type for backward compatibility
-        case api_type
-        when :chat_completion
-          :single_response
-        else
-          :conversational
-        end
+        compatible_with_apis.include?(api_type) || compatible_with_apis.include?(:all)
       end
 
       # Class Methods for Compatibility (Legacy - will be removed)

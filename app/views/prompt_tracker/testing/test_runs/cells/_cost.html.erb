@@ -1,6 +1,6 @@
 <td data-column="run_cost">
-  <% if run.llm_response&.cost_usd %>
-    <small>$<%= number_with_precision(run.llm_response.cost_usd, precision: 4) %></small>
+  <% if run.cost_usd %>
+    <small>$<%= number_with_precision(run.cost_usd, precision: 4) %></small>
   <% else %>
     <span class="text-muted">-</span>
   <% end %>

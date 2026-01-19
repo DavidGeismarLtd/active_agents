@@ -35,7 +35,8 @@ research_prompt.prompt_versions.create!(
     { "name" => "query", "type" => "string", "required" => true }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.7,
     "max_tokens" => 2000,
@@ -77,7 +78,8 @@ competitor_prompt.prompt_versions.create!(
     { "name" => "industry", "type" => "string", "required" => true }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.5,
     "max_tokens" => 3000,
@@ -119,7 +121,8 @@ data_analysis_prompt.prompt_versions.create!(
     { "name" => "analysis_type", "type" => "string", "required" => false, "default" => "statistical summary and trends" }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.3,
     "max_tokens" => 4000,
@@ -161,7 +164,8 @@ finance_prompt.prompt_versions.create!(
     { "name" => "metrics", "type" => "string", "required" => false, "default" => "ROI, growth rate, and projections" }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.3,
     "max_tokens" => 4000,
@@ -202,7 +206,8 @@ travel_prompt.prompt_versions.create!(
     { "name" => "request", "type" => "string", "required" => true }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.7,
     "max_tokens" => 2000,
@@ -301,7 +306,8 @@ ecommerce_prompt.prompt_versions.create!(
     { "name" => "inquiry", "type" => "string", "required" => true }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.7,
     "max_tokens" => 1500,
@@ -396,7 +402,8 @@ news_prompt.prompt_versions.create!(
     { "name" => "focus_areas", "type" => "string", "required" => false, "default" => "recent developments and key stakeholders" }
   ],
   model_config: {
-    "provider" => "openai_responses",
+    "provider" => "openai",
+    "api" => "responses",
     "model" => "gpt-4o",
     "temperature" => 0.5,
     "max_tokens" => 3000,

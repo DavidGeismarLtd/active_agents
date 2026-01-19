@@ -100,15 +100,15 @@ module PromptTracker
       # Reload the run and force reload of human_evaluations association
       run = TestRun.find(test_run_id)
       run.human_evaluations.reload
-      test = run.test
       testable = run.test.testable
 
 
       # Update the test run row on the prompt version page
+      # Use the unified row partial via testable's test_run_row_partial method
       broadcast_replace_to(
         testable.testable_stream_name,
         target: "test_run_#{run.id}",
-        partial: "prompt_tracker/testing/test_runs/#{testable.partial_path_segment}/row",
+        partial: testable.test_run_row_partial,
         locals: { run: run }
       )
 

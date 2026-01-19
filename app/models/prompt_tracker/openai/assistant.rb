@@ -100,9 +100,9 @@ module PromptTracker
       #
       # Assistants always use the OpenAI Assistants API.
       #
-      # @return [Symbol] :openai_assistants_api
+      # @return [Symbol] :openai_assistants
       def api_type
-        ApiTypes::OPENAI_ASSISTANTS_API
+        :openai_assistants
       end
 
       # Fetch assistant details from OpenAI API

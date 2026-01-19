@@ -1,6 +1,8 @@
 <td data-column="response_time">
-  <% if run.llm_response&.response_time_ms %>
-    <small><%= number_with_precision(run.llm_response.response_time_ms, precision: 0) %> ms</small>
+  <% if run.llm_response_time_ms %>
+    <small><%= number_with_precision(run.llm_response_time_ms, precision: 0) %> ms</small>
+  <% elsif run.execution_time_ms %>
+    <small><%= number_with_precision(run.execution_time_ms, precision: 0) %> ms</small>
   <% else %>
     <span class="text-muted">-</span>
   <% end %>

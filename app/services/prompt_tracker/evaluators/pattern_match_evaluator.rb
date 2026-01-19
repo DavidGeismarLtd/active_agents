@@ -28,6 +28,11 @@ module PromptTracker
         match_all: true    # true = all must match, false = any must match
       }.freeze
 
+      # Compatible API types
+      def self.compatible_with_apis
+        [ :openai_chat_completions, :anthropic_messages ]
+      end
+
       # Parameter schema for form processing
       def self.param_schema
         {

@@ -15,14 +15,14 @@ module PromptTracker
     def show
       @tests = @version.tests.includes(:test_runs).order(created_at: :desc)
 
-      # Calculate metrics scoped to test calls only (not production tracked calls)
-      test_responses = @version.llm_responses.test_calls
-      @total_calls = test_responses.count
-      @avg_response_time = test_responses.average(:response_time_ms)
-      @total_cost = test_responses.sum(:cost_usd)
+      # Calculate metrics from test runs (not from llm_responses which are production tracked calls)
+      test_runs = TestRun.joins(:test).where(prompt_tracker_tests: { testable: @version })
+      @total_calls = test_runs.count
+      @avg_response_time = test_runs.average(:execution_time_ms)
+      @total_cost = test_runs.sum(:cost_usd)
 
-      # Calculate average score from evaluations on test calls
-      test_evaluations = @version.evaluations.joins(:llm_response).merge(LlmResponse.test_calls)
+      # Calculate average score from evaluations on test runs
+      test_evaluations = Evaluation.where(test_run: test_runs)
       @avg_score = test_evaluations.any? ? test_evaluations.average(:score) : nil
 
       # Calculate test pass/fail counts
@@ -86,14 +86,14 @@ module PromptTracker
     end
 
     def calculate_version_metrics(version)
-      # Scope to test calls only
-      test_responses = version.llm_responses.test_calls
-      test_evaluations = version.evaluations.joins(:llm_response).merge(LlmResponse.test_calls)
+      # Get metrics from test runs (not from llm_responses which are production tracked calls)
+      test_runs = TestRun.joins(:test).where(prompt_tracker_tests: { testable: version })
+      test_evaluations = Evaluation.where(test_run: test_runs)
 
       {
-        calls: test_responses.count,
-        avg_response_time: test_responses.average(:response_time_ms) || 0,
-        total_cost: test_responses.sum(:cost_usd) || 0,
+        calls: test_runs.count,
+        avg_response_time: test_runs.average(:execution_time_ms) || 0,
+        total_cost: test_runs.sum(:cost_usd) || 0,
         avg_score: test_evaluations.any? ? test_evaluations.average(:score) : 0
       }
     end

@@ -1,52 +1,97 @@
 <!-- Custom Variables Fields -->
-<!-- Renders dynamic form fields based on testable's variables_schema -->
+<!-- Renders dynamic form fields based on testable's variables_schema and execution mode -->
 <%
-  # Local variables expected:
-  # - testable: The testable object (Assistant or PromptVersion) with variables_schema method
-  # - test: (optional) The test object to check for conversational mode
-  # - test_mode: (optional) Explicit test mode ("single_turn" or "conversational") for run_all mode
-  # - context_description: Optional description text (e.g., "Enter values for the test scenario:")
-  #
-  # Determine if conversational: check explicit test_mode first, then test object
-  is_conversational = local_assigns[:test_mode]&.to_s == "conversational" || local_assigns[:test]&.conversational?
+	# Local variables expected:
+	# - testable: The testable object (Assistant or PromptVersion) with variables_schema method
+	# - test: (optional) The test object (for single-test modals)
+	# - execution_mode: (optional) Initial execution mode ("single" or "conversation")
+	# - context_description: Optional description text (e.g., "Enter values for the test scenario:")
+	execution_mode =  "single"
+	test_id_suffix = local_assigns[:test].present? ? local_assigns[:test].id : "all"
 %>
 
-<%# Show conversational-specific fields if test is conversational %>
-<% if is_conversational %>
-  <div class="mb-4 p-3 bg-light rounded border">
-    <h6 class="mb-3"><i class="bi bi-chat-dots"></i> Conversation Settings</h6>
+<div class="mb-4">
+	<label class="form-label">Execution mode</label>
 
-    <div class="mb-3">
-      <%= label_tag "custom_variables[interlocutor_simulation_prompt]", "Interlocutor Simulation Prompt", class: "form-label" %>
-      <span class="text-danger">*</span>
-      <%= text_area_tag "custom_variables[interlocutor_simulation_prompt]", nil,
-          class: "form-control",
-          rows: 6,
-          data: { required: "true" },
-          placeholder: "You are simulating a user who has a specific goal or problem. Describe their behavior, personality, and objectives..." %>
-      <small class="form-text text-muted">
-        Describe how the simulated user should behave in the conversation. This prompt guides the LLM that plays the user role.
-      </small>
-    </div>
+	<div class="form-check mb-2">
+		<%= radio_button_tag "execution_mode",
+		    "single",
+		    execution_mode == "single",
+		    id: "execution_mode_single_#{test_id_suffix}",
+		    class: "form-check-input",
+		    data: {
+		      action: "change->run-test-modal#toggleExecutionMode",
+		      "run-test-modal-target": "executionModeRadio"
+		    } %>
+		<%= label_tag "execution_mode_single_#{test_id_suffix}",
+		    "Single response",
+		    class: "form-check-label" %>
+		<small class="form-text text-muted d-block">
+			Evaluates a single response from the model using this test's evaluators.
+		</small>
+	</div>
 
-    <div class="mb-3">
-      <%= label_tag "custom_variables[max_turns]", "Max Turns", class: "form-label" %>
-      <%= number_field_tag "custom_variables[max_turns]", 5,
-          class: "form-control",
-          min: 1,
-          max: 20,
-          style: "max-width: 120px;" %>
-      <small class="form-text text-muted">Maximum number of conversation turns (1-20, default: 5)</small>
-    </div>
-  </div>
-<% end %>
 
-<% if testable.variables_schema.present? %>
-  <% if local_assigns[:context_description].present? %>
-    <p class="text-muted mb-3">
-      <%= context_description %>
-    </p>
-  <% end %>
+		<div class="form-check">
+			<%= radio_button_tag "execution_mode",
+			    "conversation",
+			    execution_mode == "conversation",
+			    id: "execution_mode_conversation_#{test_id_suffix}",
+			    class: "form-check-input",
+			    data: {
+		        action: "change->run-test-modal#toggleExecutionMode",
+		        "run-test-modal-target": "executionModeRadio"
+		      } %>
+			<%= label_tag "execution_mode_conversation_#{test_id_suffix}",
+			    "Simulated conversation",
+			    class: "form-check-label" %>
+			<small class="form-text text-muted d-block">
+				Runs a multi-turn conversation using your system prompt and the simulated user settings below.
+			</small>
+		</div>
+</div>
+
+<%# Conversation-specific settings (only relevant for APIs that support conversations) %>
+	<div class="mb-4 p-3 bg-light rounded border"
+	     data-run-test-modal-target="conversationSection"
+	     style="<%= execution_mode == "conversation" ? "" : "display: none;" %>">
+		<h6 class="mb-3"><i class="bi bi-chat-dots"></i> Conversation settings</h6>
+
+		<div class="mb-3">
+			<%= label_tag "custom_variables[interlocutor_simulation_prompt]", "Interlocutor Simulation Prompt", class: "form-label" %>
+			<span class="text-danger">*</span>
+			<%= text_area_tag "custom_variables[interlocutor_simulation_prompt]", nil,
+			    class: "form-control",
+			    rows: 6,
+			    data: { required: "true", "conversation-field": "true" },
+			    placeholder: "You are simulating a user who has a specific goal or problem. Describe their behavior, personality, and objectives..." %>
+			<small class="form-text text-muted">
+				This describes how the simulated user should behave in the conversation. It guides the LLM that plays the user role.
+			</small>
+		</div>
+
+		<div class="mb-3">
+			<%= label_tag "custom_variables[max_turns]", "Max Turns", class: "form-label" %>
+			<%= number_field_tag "custom_variables[max_turns]", 5,
+			    class: "form-control",
+			    min: 1,
+			    max: 20,
+			    style: "max-width: 120px;",
+			    data: { "conversation-field": "true" } %>
+			<small class="form-text text-muted">Maximum number of conversation turns (1–20, default: 5).</small>
+		</div>
+
+		<small class="form-text text-muted d-block">
+			In conversation mode, PromptTracker will use your system prompt as the assistant instructions and this simulation prompt to generate user messages.
+		</small>
+	</div>
+
+	<% if testable.variables_schema.present? %>
+    <% if local_assigns[:context_description].present? %>
+      <p class="text-muted mb-3">
+        <%= context_description %>
+      </p>
+    <% end %>
 
   <% testable.variables_schema.each do |var_config| %>
     <% var_name = var_config["name"] %>

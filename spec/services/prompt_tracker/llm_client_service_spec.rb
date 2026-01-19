@@ -37,7 +37,76 @@ module PromptTracker
         allow(chat_double).to receive(:ask).and_return(response_double)
       end
 
-      context "when provider is openai_assistants" do
+      context "when provider is openai and api is responses" do
+        let(:provider) { "openai" }
+        let(:api) { "responses" }
+        let(:response_service_response) do
+          {
+            text: "Search results show...",
+            response_id: "resp_123",
+            usage: { prompt_tokens: 15, completion_tokens: 25, total_tokens: 40 },
+            model: model,
+            tool_calls: [],
+            raw: {}
+          }
+        end
+
+        it "routes to OpenaiResponseService" do
+          allow(OpenaiResponseService).to receive(:call).and_return(response_service_response)
+
+          result = described_class.call(
+            provider: provider,
+            api: api,
+            model: model,
+            prompt: prompt,
+            tools: [ :web_search ]
+          )
+
+          expect(OpenaiResponseService).to have_received(:call).with(
+            model: model,
+            user_prompt: prompt,
+            system_prompt: nil,
+            tools: [ :web_search ],
+            temperature: 0.7,
+            max_tokens: nil
+          )
+          expect(result).to eq(response_service_response)
+        end
+      end
+
+      context "when provider is openai and api is assistants" do
+        let(:provider) { "openai" }
+        let(:api) { "assistants" }
+        let(:assistant_id) { "asst_abc123" }
+        let(:assistant_response) do
+          {
+            text: "The weather is sunny.",
+            usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+            model: assistant_id,
+            raw: { thread_id: "thread_123", run_id: "run_456" }
+          }
+        end
+
+        it "routes to OpenaiAssistantService" do
+          allow(OpenaiAssistantService).to receive(:call).and_return(assistant_response)
+
+          result = described_class.call(
+            provider: provider,
+            api: api,
+            model: assistant_id,
+            prompt: prompt
+          )
+
+          expect(OpenaiAssistantService).to have_received(:call).with(
+            assistant_id: assistant_id,
+            prompt: prompt,
+            timeout: 60
+          )
+          expect(result).to eq(assistant_response)
+        end
+      end
+
+      context "when provider is openai_assistants (backward compatibility)" do
         let(:provider) { "openai_assistants" }
         let(:assistant_id) { "asst_abc123" }
         let(:assistant_response) do

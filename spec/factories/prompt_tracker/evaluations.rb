@@ -76,5 +76,11 @@ FactoryBot.define do
       score_max { 5 }
       passed { false }
     end
+
+    # Use this trait when creating evaluations for test runs (no llm_response)
+    trait :for_test_run do
+      llm_response { nil }
+      evaluation_context { "test_run" }
+    end
   end
 end

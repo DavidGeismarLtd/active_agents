@@ -8,7 +8,7 @@ module PromptTracker
 
       # GET /testing/runs
       def index
-        @test_runs = TestRun.includes(:test, :prompt_version)
+        @test_runs = TestRun.includes(:test)
                             .order(created_at: :desc)
                             .page(params[:page])
                             .per(50)
@@ -27,8 +27,8 @@ module PromptTracker
       # GET /testing/runs/:id
       def show
         @test = @test_run.test
-        @version = @test_run.prompt_version
-        @llm_response = @test_run.llm_response
+        # TestRun now uses output_data for storing response information
+        # Access via run.response_text, run.output_messages, etc.
       end
 
       private
