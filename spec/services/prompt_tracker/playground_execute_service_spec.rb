@@ -7,7 +7,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
     let(:content) { "Hello, how are you?" }
     let(:system_prompt) { "You are a helpful assistant." }
     let(:user_prompt_template) { nil }
-    let(:model_config) { { provider: "openai_responses", model: "gpt-4o", temperature: 0.7 } }
+    let(:model_config) { { provider: "openai", api: "responses", model: "gpt-4o", temperature: 0.7 } }
     let(:conversation_state) { { messages: [], previous_response_id: nil, started_at: nil } }
     let(:variables) { {} }
 
@@ -70,7 +70,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           user_prompt: content,
           system_prompt: system_prompt,
           tools: [],
-          tool_config: {},
+          tool_config: nil,
           temperature: 0.7
         )
       end
@@ -96,7 +96,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           user_prompt: content,
           system_prompt: expected_instructions,
           tools: [],
-          tool_config: {},
+          tool_config: nil,
           temperature: 0.7
         )
       end
@@ -122,7 +122,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           user_prompt: content,
           system_prompt: "Analyze this: Ruby on Rails",
           tools: [],
-          tool_config: {},
+          tool_config: nil,
           temperature: 0.7
         )
       end
@@ -154,7 +154,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           user_prompt: content,
           previous_response_id: "resp_previous",
           tools: [],
-          tool_config: {},
+          tool_config: nil,
           temperature: 0.7
         )
       end
@@ -187,7 +187,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
 
     context "with tools enabled" do
       let(:model_config) do
-        { provider: "openai_responses", model: "gpt-4o", tools: %w[web_search code_interpreter] }
+        { provider: "openai", api: "responses", model: "gpt-4o", tools: %w[web_search code_interpreter] }
       end
 
       it "passes tools to the service" do
