@@ -19,7 +19,13 @@ module PromptTracker
              user_prompt: "Hello {{name}}",
              variables_schema: [
                { "name" => "name", "type" => "string", "required" => true }
-             ])
+             ],
+             model_config: {
+               "provider" => "openai",
+               "api" => "chat_completions",
+               "model" => "gpt-4-0613",
+               "temperature" => 0.7
+             })
     end
     let(:dataset) do
       create(:dataset,
@@ -41,7 +47,8 @@ module PromptTracker
       create(:test_run,
              test: test,
              dataset_row: dataset_row,
-             status: "running")
+             status: "running",
+             cost_usd: nil)
     end
 
     let(:mock_response) do
@@ -76,27 +83,17 @@ module PromptTracker
         model: mock_response.model_id,
         raw: mock_response
       })
-
-      # Mock RubyLLM.models.find to return pricing for any model_id
-      allow(RubyLLM.models).to receive(:find).and_return(mock_model_info)
     end
 
     describe "#perform" do
       context "with mock LLM" do
-        it "creates an LlmResponse with response_time_ms" do
+        it "stores output_data in test run" do
           described_class.new.perform(test_run.id, use_real_llm: false)
 
-          llm_response = LlmResponse.last
-          expect(llm_response.response_time_ms).to be_present
-          expect(llm_response.response_time_ms).to be >= 0
-        end
-
-        it "creates an LlmResponse with cost calculated from RubyLLM model registry" do
-          described_class.new.perform(test_run.id, use_real_llm: false)
-
-          llm_response = LlmResponse.last
-          # Cost should be nil for mock responses since they don't return RubyLLM::Message
-          expect(llm_response.cost_usd).to be_nil
+          test_run.reload
+          expect(test_run.output_data).to be_present
+          expect(test_run.output_data["messages"]).to be_an(Array)
+          expect(test_run.output_data["messages"].length).to eq(2) # user + assistant
         end
 
         it "updates test run with execution time" do
@@ -106,30 +103,45 @@ module PromptTracker
           expect(test_run.execution_time_ms).to be_present
           expect(test_run.execution_time_ms).to be >= 0
         end
+
+        it "does not calculate cost when use_real_llm is false" do
+          described_class.new.perform(test_run.id, use_real_llm: false)
+
+          test_run.reload
+          # Cost calculation is skipped when use_real_llm is false
+          expect(test_run.cost_usd).to be_nil
+        end
+
+        it "updates test run status to passed when no evaluators" do
+          described_class.new.perform(test_run.id, use_real_llm: false)
+
+          test_run.reload
+          expect(test_run.status).to eq("passed")
+          expect(test_run.passed).to be true
+        end
       end
 
       context "with real LLM" do
-        it "creates an LlmResponse with response_time_ms" do
-          described_class.new.perform(test_run.id, use_real_llm: true)
+        it "stores output_data in test run" do
+          allow(RubyLLM.models).to receive(:find).and_return(mock_model_info)
 
-          llm_response = LlmResponse.last
-          expect(llm_response.response_time_ms).to be_present
-          expect(llm_response.response_time_ms).to be >= 0
-        end
-
-        it "calculates cost using RubyLLM model registry" do
-          described_class.new.perform(test_run.id, use_real_llm: true)
-
-          llm_response = LlmResponse.last
-          # Expected cost: (10 * 30.0 / 1_000_000) + (20 * 60.0 / 1_000_000)
-          # = 0.0003 + 0.0012 = 0.0015
-          expect(llm_response.cost_usd).to be_within(0.000001).of(0.0015)
-        end
-
-        it "updates test run with cost from llm_response" do
           described_class.new.perform(test_run.id, use_real_llm: true)
 
           test_run.reload
+          expect(test_run.output_data).to be_present
+          expect(test_run.output_data["messages"]).to be_an(Array)
+          expect(test_run.output_data["tokens"]).to be_present
+        end
+
+        it "calculates cost using RubyLLM model registry" do
+          allow(RubyLLM.models).to receive(:find).and_return(mock_model_info)
+
+          described_class.new.perform(test_run.id, use_real_llm: true)
+
+          test_run.reload
+          # Mock returns 10 prompt tokens and 20 completion tokens
+          # Expected cost: (10 * 30.0 / 1_000_000) + (20 * 60.0 / 1_000_000)
+          # = 0.0003 + 0.0012 = 0.0015
           expect(test_run.cost_usd).to be_within(0.000001).of(0.0015)
         end
 
@@ -138,8 +150,8 @@ module PromptTracker
 
           described_class.new.perform(test_run.id, use_real_llm: true)
 
-          llm_response = LlmResponse.last
-          expect(llm_response.cost_usd).to be_nil
+          test_run.reload
+          expect(test_run.cost_usd).to be_nil
         end
 
         it "handles model info without pricing" do
@@ -148,8 +160,8 @@ module PromptTracker
 
           described_class.new.perform(test_run.id, use_real_llm: true)
 
-          llm_response = LlmResponse.last
-          expect(llm_response.cost_usd).to be_nil
+          test_run.reload
+          expect(test_run.cost_usd).to be_nil
         end
       end
 
@@ -158,18 +170,18 @@ module PromptTracker
           create(:evaluator_config,
                  configurable: test,
                  evaluator_key: "keyword",
-                 config: { required_keywords: [ "Hello", "help" ] })
+                 config: { required_keywords: [ "Mock", "testing" ] })
         end
 
         it "runs evaluators and updates test run" do
-          described_class.new.perform(test_run.id, use_real_llm: true)
+          described_class.new.perform(test_run.id, use_real_llm: false)
 
           test_run.reload
           expect(test_run.status).to eq("passed")
           expect(test_run.passed).to be true
-          expect(test_run.total_evaluators).to eq(1)
-          expect(test_run.passed_evaluators).to eq(1)
-          expect(test_run.failed_evaluators).to eq(0)
+          expect(test_run.metadata["evaluator_results"]).to be_an(Array)
+          expect(test_run.metadata["evaluator_results"].length).to eq(1)
+          expect(test_run.metadata["evaluator_results"].first["passed"]).to be true
         end
       end
     end

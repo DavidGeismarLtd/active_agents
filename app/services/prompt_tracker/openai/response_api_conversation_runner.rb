@@ -151,6 +151,7 @@ module PromptTracker
 
         response = LlmClientService.call(
           provider: "openai",
+          api: "chat_completions",
           model: "gpt-4o-mini",
           prompt: prompt,
           temperature: 0.8
@@ -168,6 +169,7 @@ module PromptTracker
 
         response = LlmClientService.call(
           provider: "openai",
+          api: "chat_completions",
           model: "gpt-4o-mini",
           prompt: prompt,
           temperature: 0.8

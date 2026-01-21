@@ -24,8 +24,8 @@ module PromptTracker
   # - For PromptVersions: uses the prompt_version's model_config for LLM calls
   # - For Assistants: runs multi-turn conversations with LLM-simulated users
   #
-  # The test mode (single_turn vs conversational) is derived from the testable's
-  # API type rather than stored as a column.
+  # Tests can run in single-turn or multi-turn (conversational) mode based on
+  # whether an interlocutor_simulation_prompt is provided in the test data.
   #
   # @example Create a test for a PromptVersion
   #   test = Test.create!(
@@ -90,28 +90,6 @@ module PromptTracker
     scope :recent, -> { order(created_at: :desc) }
     scope :for_prompt_versions, -> { where(testable_type: "PromptTracker::PromptVersion") }
     scope :for_assistants, -> { where(testable_type: "PromptTracker::Openai::Assistant") }
-
-      # Check if test runs in single-turn mode (derived from testable's API type)
-      #
-      # Single-turn tests evaluate a single LLM response.
-      # This is the default for Chat Completion API testables.
-      #
-      # @return [Boolean] true if single-turn mode
-      def single_turn?
-        return true unless testable.respond_to?(:api_type)
-
-        testable.api_type == :openai_chat_completions
-      end
-
-    # Check if test runs in conversational mode (derived from testable's API type)
-    #
-    # Conversational tests evaluate multi-turn conversations.
-    # This applies to Response API, Assistants API, and Anthropic Messages.
-    #
-    # @return [Boolean] true if conversational mode
-    def conversational?
-      !single_turn?
-    end
 
     # Get recent test runs
     def recent_runs(limit = 10)

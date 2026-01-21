@@ -7,7 +7,7 @@ module PromptTracker
     module ApiExecutors
       RSpec.describe CompletionApiExecutor, type: :service do
         let(:model_config) do
-          { "provider" => "openai", "model" => "gpt-4o", "temperature" => 0.7 }
+          { "provider" => "openai", "api" => "chat", "model" => "gpt-4o", "temperature" => 0.7 }
         end
 
         let(:executor) do
@@ -25,10 +25,9 @@ module PromptTracker
         end
 
         describe "#execute" do
-          context "single-turn mode" do
+          context "single-turn mode (max_turns=1)" do
             let(:params) do
               {
-                mode: :single_turn,
                 system_prompt: "You are helpful.",
                 max_turns: 1,
                 first_user_message: "Hello, how are you?"
@@ -79,10 +78,9 @@ module PromptTracker
             end
           end
 
-          context "conversational mode" do
+          context "multi-turn mode (max_turns>1)" do
             let(:params) do
               {
-                mode: :conversational,
                 system_prompt: "You are a helpful doctor.",
                 max_turns: 3,
                 interlocutor_prompt: "You are a patient with a headache.",
@@ -147,13 +145,14 @@ module PromptTracker
 
             it "calls LlmClientService with correct parameters" do
               params = {
-                mode: :single_turn,
                 system_prompt: "You are helpful.",
+                max_turns: 1,
                 first_user_message: "Hello"
               }
 
               expect(LlmClientService).to receive(:call).with(
                 provider: "openai",
+                api: "chat",
                 model: "gpt-4o",
                 prompt: "Hello",
                 system_prompt: "You are helpful.",

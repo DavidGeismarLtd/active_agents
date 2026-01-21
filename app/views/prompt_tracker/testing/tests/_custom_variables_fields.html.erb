@@ -128,7 +128,7 @@
       <% end %>
     </div>
   <% end %>
-<% elsif !is_conversational %>
+<% else %>
   <div class="alert alert-info">
     <i class="bi bi-info-circle"></i>
     This <%= testable.class.name.demodulize.underscore.humanize.downcase %> has no variables defined.

@@ -4,20 +4,20 @@ module PromptTracker
   module TestRunners
     # Unified test runner for PromptVersion testables.
     #
-    # This runner handles both single-turn and conversational tests by:
-    # 1. Determining execution mode from test.conversational?
+    # This runner handles both single-turn and multi-turn (conversational) tests by:
+    # 1. Determining execution mode from presence of interlocutor_simulation_prompt
     # 2. Building execution parameters based on mode
     # 3. Routing to appropriate API executor based on provider
     # 4. Running evaluators on the output
     # 5. Updating test run with results
     #
-    # Single-turn mode:
+    # Single-turn mode (max_turns=1):
     # - Renders prompt template with variables
     # - Makes one LLM call
     # - Evaluates the response
     #
-    # Conversational mode:
-    # - Uses interlocutor simulation prompt
+    # Multi-turn mode (max_turns>1):
+    # - Uses interlocutor simulation prompt to generate user messages
     # - Runs multi-turn conversation
     # - Evaluates the full conversation
     #
@@ -31,27 +31,33 @@ module PromptTracker
     #   runner.run
     #
     class PromptVersionRunner < Base
-        # Execute the test
-        #
-        # @return [void]
-        def run
-          start_time = Time.current
+      # Execute the test
+      #
+      # @return [void]
+      def run
+        start_time = Time.current
 
-          # Build execution parameters based on execution mode
-          execution_params = build_execution_params
+        # Build execution parameters based on execution mode
+        execution_params = build_execution_params
 
-          # Get appropriate executor for this provider
-          executor = build_api_executor
+        # Get appropriate executor for this provider
+        executor = build_api_executor
 
-          # Execute and get output_data
-          output_data = executor.execute(execution_params)
+        # Execute and get output_data
+        output_data = executor.execute(execution_params)
 
-          # Store output
-          test_run.update!(output_data: output_data)
+        # Store output
+        test_run.update!(output_data: output_data)
 
-          # Run evaluators
-          evaluated_data = conversational_mode? ? output_data : output_data.dig("messages", 0, "content")
-          evaluator_results = run_evaluators(evaluated_data)
+        # Run evaluators
+        evaluated_data = if conversational_mode?
+          output_data
+        else
+          # For single-turn, extract the assistant's response
+          assistant_message = output_data["messages"]&.find { |m| m["role"] == "assistant" }
+          assistant_message&.dig("content")
+        end
+        evaluator_results = run_evaluators(evaluated_data)
 
         # Calculate pass/fail
         passed = evaluator_results.empty? || evaluator_results.all? { |r| r[:passed] }
@@ -71,27 +77,25 @@ module PromptTracker
 
       private
 
-        # Build execution parameters based on execution mode.
-        #
-        # Execution mode is primarily driven by the TestRun metadata
-        # ("execution_mode" key). If not present, it falls back to the
-        # Test model's conversational? predicate for backward compatibility.
-        #
-        # @return [Hash] execution parameters for the executor
-        def build_execution_params
-          if conversational_mode?
-            build_conversational_params
-          else
-            build_single_turn_params
-          end
+      # Build execution parameters based on execution mode.
+      #
+      # Execution mode is determined by the presence of interlocutor_simulation_prompt
+      # in the test variables (from dataset row or custom variables).
+      #
+      # @return [Hash] execution parameters for the executor
+      def build_execution_params
+        if conversational_mode?
+          build_conversational_params
+        else
+          build_single_turn_params
         end
+      end
 
       # Build parameters for single-turn execution
       #
       # @return [Hash] single-turn execution params
       def build_single_turn_params
         {
-          mode: :single_turn,
           system_prompt: testable.system_prompt,
           max_turns: 1,
           interlocutor_prompt: nil,
@@ -99,40 +103,36 @@ module PromptTracker
         }
       end
 
-        # Build parameters for conversational execution
-        #
-        # @return [Hash] conversational execution params
-        def build_conversational_params
-          vars = variables
-          interlocutor_prompt = vars[:interlocutor_simulation_prompt]
-          max_turns = vars[:max_turns] || 5
+      # Build parameters for multi-turn (conversational) execution
+      #
+      # @return [Hash] conversational execution params
+      def build_conversational_params
+        vars = variables
+        interlocutor_prompt = vars[:interlocutor_simulation_prompt]
+        max_turns = vars[:max_turns] || 5
 
-          if interlocutor_prompt.blank?
-            raise ArgumentError, "interlocutor_simulation_prompt is required for conversational tests"
-          end
-
-          {
-            mode: :conversational,
-            system_prompt: render_system_prompt,
-            max_turns: max_turns.to_i,
-            interlocutor_prompt: interlocutor_prompt,
-            first_user_message: render_prompt
-          }
+        if interlocutor_prompt.blank?
+          raise ArgumentError, "interlocutor_simulation_prompt is required for conversational tests"
         end
 
-        # Determine if this run should use conversational mode.
-        #
-        # Priority:
-        # 1. TestRun.metadata["execution_mode"] when present ("conversation" / "single")
-        # 2. Fallback to Test#conversational? for legacy callers
-        #
-        # @return [Boolean]
-        def conversational_mode?
-          mode = test_run.metadata && test_run.metadata["execution_mode"]
-          return test.conversational? if mode.blank?
+        {
+          system_prompt: render_system_prompt,
+          max_turns: max_turns.to_i,
+          interlocutor_prompt: interlocutor_prompt,
+          first_user_message: render_prompt
+        }
+      end
 
-          mode.to_s == "conversation" || mode.to_s == "conversational"
-        end
+      # Determine if this run should use conversational mode.
+      #
+      # A test is conversational if it has an interlocutor_simulation_prompt configured,
+      # either in dataset row data or custom variables. This works for all API types.
+      #
+      # @return [Boolean]
+      def conversational_mode?
+        vars = variables
+        vars[:interlocutor_simulation_prompt].present?
+      end
 
       # Build the appropriate API executor based on provider
       #

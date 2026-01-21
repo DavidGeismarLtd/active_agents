@@ -37,10 +37,9 @@ module PromptTracker
         # Execute the test with given parameters
         #
         # @param params [Hash] execution parameters including:
-        #   - :mode [Symbol] :single_turn or :conversational
         #   - :system_prompt [String] the system prompt
-        #   - :max_turns [Integer] maximum conversation turns
-        #   - :interlocutor_prompt [String, nil] prompt for user simulation
+        #   - :max_turns [Integer] maximum conversation turns (1 for single-turn, >1 for multi-turn)
+        #   - :interlocutor_prompt [String, nil] prompt for user simulation (required for multi-turn)
         #   - :first_user_message [String, nil] initial user message
         # @return [Hash] output_data with standardized format
         def execute(params)
