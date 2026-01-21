@@ -184,14 +184,14 @@ module PromptTracker
           end
 
           it "includes mock_mode flag in metadata" do
-            evaluator.evaluate
+            evaluator_with_response.evaluate
 
             evaluation = Evaluation.last
             expect(evaluation.metadata["mock_mode"]).to eq(true)
           end
 
           it "generates scores within 0-100 range" do
-            evaluation = evaluator.evaluate
+            evaluation = evaluator_with_response.evaluate
 
             # The mock should generate scores within 0-100 range
             expect(evaluation.score).to be_between(0, 100).inclusive
