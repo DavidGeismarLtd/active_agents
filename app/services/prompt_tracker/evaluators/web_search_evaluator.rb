@@ -216,9 +216,14 @@ module PromptTracker
       # These are the URLs the model actually referenced in its response.
       # Always available in the response annotations.
       #
-      # @return [Array<Hash>] all sources cited
+      # Deduplicates by URL to prevent counting the same citation multiple times
+      # when multiple web_search_call items share the same citation pool.
+      #
+      # @return [Array<Hash>] all sources cited (deduplicated by URL)
       def all_sources_cited
-        @all_sources_cited ||= web_search_results.flat_map { |ws| ws[:citations] || [] }
+        @all_sources_cited ||= web_search_results
+          .flat_map { |ws| ws[:citations] || [] }
+          .uniq { |citation| citation[:url] }
       end
 
       # Get count of sources consulted (from action.sources)

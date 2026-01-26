@@ -272,6 +272,100 @@ module PromptTracker
         end
       end
 
+      describe "multiple web searches with shared citations" do
+        # This tests the fix for the citation duplication bug where
+        # extract_web_search_results assigns the full citations array to every web_search_call
+        let(:web_search_results) do
+          [
+            {
+              id: "ws-1",
+              status: "completed",
+              query: "Ruby programming",
+              sources: [
+                { title: "Ruby Lang", url: "https://ruby-lang.org", snippet: "Ruby is..." }
+              ],
+              citations: [
+                { title: "Ruby Lang", url: "https://ruby-lang.org", start_index: 0, end_index: 20 },
+                { title: "GitHub", url: "https://github.com", start_index: 21, end_index: 40 },
+                { title: "Stack Overflow", url: "https://stackoverflow.com", start_index: 41, end_index: 60 }
+              ]
+            },
+            {
+              id: "ws-2",
+              status: "completed",
+              query: "Python programming",
+              sources: [
+                { title: "Python Org", url: "https://python.org", snippet: "Python is..." }
+              ],
+              citations: [
+                { title: "Ruby Lang", url: "https://ruby-lang.org", start_index: 0, end_index: 20 },
+                { title: "GitHub", url: "https://github.com", start_index: 21, end_index: 40 },
+                { title: "Stack Overflow", url: "https://stackoverflow.com", start_index: 41, end_index: 60 }
+              ]
+            }
+          ]
+        end
+
+        let(:conversation_data) do
+          {
+            messages: [
+              { role: "user", content: "Compare Ruby and Python", turn: 1 },
+              { role: "assistant", content: "Based on my research...", turn: 1 }
+            ],
+            web_search_results: web_search_results
+          }
+        end
+
+        let(:config) { { require_web_search: true } }
+
+        it "deduplicates citations by URL to prevent multiplication" do
+          # Should count 3 unique citations, not 6 (3 citations × 2 web searches)
+          expect(evaluator.send(:all_sources_cited).length).to eq(3)
+        end
+
+        it "returns unique citation objects" do
+          cited = evaluator.send(:all_sources_cited)
+          urls = cited.map { |c| c[:url] }
+          expect(urls).to contain_exactly(
+            "https://ruby-lang.org",
+            "https://github.com",
+            "https://stackoverflow.com"
+          )
+        end
+
+        it "reports correct sources_cited_count in metadata" do
+          metadata = evaluator.metadata
+          expect(metadata["sources_cited"]).to eq(3)
+        end
+
+        it "includes deduplicated sources_cited_list in metadata" do
+          metadata = evaluator.metadata
+          expect(metadata["sources_cited_list"].length).to eq(3)
+        end
+
+        it "generates correct feedback with deduplicated count" do
+          feedback = evaluator.generate_feedback
+          expect(feedback).to include("Sources cited: 3")
+        end
+
+        context "with min_sources_cited requirement" do
+          let(:config) { { require_web_search: true, min_sources_cited: 3 } }
+
+          it "passes when deduplicated count meets requirement" do
+            expect(evaluator.passed?).to be true
+          end
+        end
+
+        context "with min_sources_cited requirement not met" do
+          let(:config) { { require_web_search: true, min_sources_cited: 5 } }
+
+          it "fails when deduplicated count does not meet requirement" do
+            score = evaluator.evaluate_score
+            expect(score).to be < 100
+          end
+        end
+      end
+
       describe "#evaluate" do
         let(:assistant) { create(:openai_assistant) }
         let(:test) { create(:test, testable: assistant) }
