@@ -206,9 +206,14 @@ module PromptTracker
       # These are the comprehensive list of URLs the model researched.
       # Only available when API is called with include: ["web_search_call.action.sources"]
       #
-      # @return [Array<Hash>] all sources consulted
+      # Deduplicates by URL to prevent counting the same source multiple times
+      # when multiple web_search_call items share the same source pool.
+      #
+      # @return [Array<Hash>] all sources consulted (deduplicated by URL)
       def all_sources_consulted
-        @all_sources_consulted ||= web_search_results.flat_map { |ws| ws[:sources] || [] }
+        @all_sources_consulted ||= web_search_results
+          .flat_map { |ws| ws[:sources] || [] }
+          .uniq { |source| source[:url] }
       end
 
       # Get all sources cited (from annotations)

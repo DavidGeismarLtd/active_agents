@@ -282,7 +282,8 @@ module PromptTracker
               status: "completed",
               query: "Ruby programming",
               sources: [
-                { title: "Ruby Lang", url: "https://ruby-lang.org", snippet: "Ruby is..." }
+                { title: "Ruby Lang", url: "https://ruby-lang.org", snippet: "Ruby is..." },
+                { title: "GitHub", url: "https://github.com", snippet: "GitHub is..." }
               ],
               citations: [
                 { title: "Ruby Lang", url: "https://ruby-lang.org", start_index: 0, end_index: 20 },
@@ -295,6 +296,7 @@ module PromptTracker
               status: "completed",
               query: "Python programming",
               sources: [
+                { title: "Ruby Lang", url: "https://ruby-lang.org", snippet: "Ruby is..." },
                 { title: "Python Org", url: "https://python.org", snippet: "Python is..." }
               ],
               citations: [
@@ -358,6 +360,53 @@ module PromptTracker
 
         context "with min_sources_cited requirement not met" do
           let(:config) { { require_web_search: true, min_sources_cited: 5 } }
+
+          it "fails when deduplicated count does not meet requirement" do
+            score = evaluator.evaluate_score
+            expect(score).to be < 100
+          end
+        end
+
+        it "deduplicates sources consulted by URL to prevent multiplication" do
+          # Should count 3 unique sources, not 4 (2 sources in ws-1 + 2 sources in ws-2, with 1 duplicate)
+          expect(evaluator.send(:all_sources_consulted).length).to eq(3)
+        end
+
+        it "returns unique sources consulted objects" do
+          consulted = evaluator.send(:all_sources_consulted)
+          urls = consulted.map { |s| s[:url] }
+          expect(urls).to contain_exactly(
+            "https://ruby-lang.org",
+            "https://github.com",
+            "https://python.org"
+          )
+        end
+
+        it "reports correct sources_consulted_count in metadata" do
+          metadata = evaluator.metadata
+          expect(metadata["sources_consulted"]).to eq(3)
+        end
+
+        it "includes deduplicated sources_consulted_list in metadata" do
+          metadata = evaluator.metadata
+          expect(metadata["sources_consulted_list"].length).to eq(3)
+        end
+
+        it "generates correct feedback with deduplicated sources consulted count" do
+          feedback = evaluator.generate_feedback
+          expect(feedback).to include("Sources consulted: 3")
+        end
+
+        context "with min_sources_consulted requirement" do
+          let(:config) { { require_web_search: true, min_sources_consulted: 3 } }
+
+          it "passes when deduplicated count meets requirement" do
+            expect(evaluator.passed?).to be true
+          end
+        end
+
+        context "with min_sources_consulted requirement not met" do
+          let(:config) { { require_web_search: true, min_sources_consulted: 5 } }
 
           it "fails when deduplicated count does not meet requirement" do
             score = evaluator.evaluate_score
