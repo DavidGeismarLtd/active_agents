@@ -84,11 +84,17 @@ module PromptTracker
 
               messages << { "role" => "user", "content" => user_message, "turn" => turn }
 
-              # Call Response API (uses previous_response_id for context)
-              response = call_response_api(
+              # Call Response API and handle function calls
+              # The API may return function calls that need to be executed and sent back
+              # before we get the final text response
+              result = call_response_api_with_function_handling(
                 user_prompt: user_message,
-                system_prompt: turn == 1 ? params[:system_prompt] : nil
+                system_prompt: turn == 1 ? params[:system_prompt] : nil,
+                turn: turn
               )
+
+              response = result[:final_response]
+              all_tool_calls = result[:all_tool_calls]
 
               @previous_response_id = response[:response_id]
               @all_responses << response  # Track for tool result extraction
@@ -99,11 +105,58 @@ module PromptTracker
                 "turn" => turn,
                 "response_id" => response[:response_id],
                 "usage" => response[:usage],
-                "tool_calls" => response[:tool_calls]
+                "tool_calls" => all_tool_calls  # Include ALL tool calls from this turn
               }
             end
 
             messages
+          end
+
+          # Call the OpenAI Response API and handle function calls
+          #
+          # The Response API may return function calls that need to be executed.
+          # This method handles the function call loop:
+          # 1. Send user message
+          # 2. If response contains function calls, execute them and send results back
+          # 3. Repeat until we get a text response
+          #
+          # @param user_prompt [String] the user message
+          # @param system_prompt [String, nil] the system prompt (only for first turn)
+          # @param turn [Integer] current turn number
+          # @return [Hash] result with:
+          #   - :final_response [Hash] the final API response (with text, not function calls)
+          #   - :all_tool_calls [Array<Hash>] all tool calls that were made during this turn
+          def call_response_api_with_function_handling(user_prompt:, system_prompt: nil, turn:)
+            all_tool_calls = []
+
+            # First call with user message
+            response = call_response_api(user_prompt: user_prompt, system_prompt: system_prompt)
+
+            # Handle function calls in a loop
+            while response[:tool_calls].present?
+              # Collect all tool calls for this turn
+              all_tool_calls.concat(response[:tool_calls])
+
+              # Update previous_response_id so the next call can continue the conversation
+              @previous_response_id = response[:response_id]
+
+              # Execute all function calls and collect outputs
+              function_outputs = response[:tool_calls].map do |tool_call|
+                {
+                  type: "function_call_output",
+                  call_id: tool_call[:id],  # The normalizer returns :id (from call_id)
+                  output: execute_function_call(tool_call)
+                }
+              end
+
+              # Send function outputs back to the API
+              response = call_response_api_with_function_outputs(function_outputs)
+            end
+
+            {
+              final_response: response,
+              all_tool_calls: all_tool_calls
+            }
           end
 
           # Call the OpenAI Response API
@@ -119,14 +172,55 @@ module PromptTracker
             end
           end
 
+          # Call the Response API with function call outputs
+          #
+          # @param function_outputs [Array<Hash>] array of function call outputs
+          # @return [Hash] API response
+          def call_response_api_with_function_outputs(function_outputs)
+            if use_real_llm
+              OpenaiResponseService.call_with_context(
+                model: model,
+                user_prompt: function_outputs,  # Send function outputs as input
+                previous_response_id: @previous_response_id,
+                tools: tools.map(&:to_sym),
+                tool_config: tool_config
+              )
+            else
+              mock_response_api_response
+            end
+          end
+
+          # Execute a function call (mock implementation for testing)
+          #
+          # @param tool_call [Hash] the function call details (normalized format)
+          #   - :id [String] the call_id
+          #   - :function_name [String] the function name
+          #   - :arguments [Hash] parsed arguments
+          # @return [String] function execution result (JSON string)
+          def execute_function_call(tool_call)
+            # For testing purposes, return a mock result
+            # In a real implementation, this would call the actual function
+            function_name = tool_call[:function_name]
+            arguments = tool_call[:arguments]
+
+            # Return a JSON string as the function output
+            # The Response API expects function outputs to be strings
+            {
+              success: true,
+              message: "Mock result for #{function_name}",
+              data: arguments
+            }.to_json
+          end
+
           # Call the real OpenAI Response API
           def call_real_response_api(user_prompt:, system_prompt: nil)
             if @previous_response_id
-              OpenaiResponseService.call_with_context(
+            OpenaiResponseService.call_with_context(
                 model: model,
                 user_prompt: user_prompt,
                 previous_response_id: @previous_response_id,
-                tools: tools.map(&:to_sym)
+                tools: tools.map(&:to_sym),
+                tool_config: tool_config
               )
             else
               OpenaiResponseService.call(
@@ -134,6 +228,7 @@ module PromptTracker
                 user_prompt: user_prompt,
                 system_prompt: system_prompt,
                 tools: tools.map(&:to_sym),
+                tool_config: tool_config,
                 temperature: temperature
               )
             end

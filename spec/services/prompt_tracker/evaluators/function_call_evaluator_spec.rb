@@ -38,6 +38,28 @@ module PromptTracker
         }
       end
 
+      # Response API format (flat structure)
+      let(:conversation_data_flat_structure) do
+        {
+          "messages" => [
+            { "role" => "user", "content" => "Check my order ORD-12345", "turn" => 1 },
+            {
+              "role" => "assistant",
+              "content" => "Your order is being processed.",
+              "tool_calls" => [
+                {
+                  "id" => "call_xyz789",
+                  "type" => "function",
+                  "function_name" => "get_order_status",
+                  "arguments" => { "order_id" => "ORD-12345" }
+                }
+              ],
+              "turn" => 1
+            }
+          ]
+        }
+      end
+
       let(:conversation_data_multiple_tool_calls) do
         {
           "messages" => [
@@ -352,6 +374,44 @@ module PromptTracker
           expect(feedback).to include("search_flights")
           expect(feedback).to include("search_hotels")
           expect(feedback).to include("book_flight")
+        end
+      end
+
+      describe "flat structure support (Response API format)" do
+        it "correctly extracts function calls from flat structure" do
+          evaluator = described_class.new(conversation_data_flat_structure, {
+            expected_functions: [ "get_order_status" ],
+            require_all: true
+          })
+
+          expect(evaluator.evaluate_score).to eq(100)
+          expect(evaluator.generate_feedback).to include("get_order_status")
+        end
+
+        it "correctly extracts arguments from flat structure" do
+          evaluator = described_class.new(conversation_data_flat_structure, {
+            expected_functions: [ "get_order_status" ],
+            require_all: true,
+            check_arguments: true,
+            expected_arguments: {
+              "get_order_status" => { "order_id" => "ORD-12345" }
+            }
+          })
+
+          expect(evaluator.evaluate_score).to eq(100)
+        end
+
+        it "detects argument mismatch in flat structure" do
+          evaluator = described_class.new(conversation_data_flat_structure, {
+            expected_functions: [ "get_order_status" ],
+            require_all: true,
+            check_arguments: true,
+            expected_arguments: {
+              "get_order_status" => { "order_id" => "WRONG-ID" }
+            }
+          })
+
+          expect(evaluator.evaluate_score).to be < 100
         end
       end
     end

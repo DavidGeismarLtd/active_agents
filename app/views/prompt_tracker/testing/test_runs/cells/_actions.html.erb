@@ -1,4 +1,12 @@
 <td data-column="actions">
+  <%= button_to PromptTracker::Engine.routes.url_helpers.rerun_testing_run_path(run),
+                method: :post,
+                class: "btn btn-sm btn-outline-secondary me-1",
+                title: "Re-run test with same configuration",
+                form: { style: "display: inline;" } do %>
+    <i class="bi bi-arrow-clockwise"></i>
+  <% end %>
+
   <button type="button"
           class="btn btn-sm btn-primary"
           data-bs-toggle="modal"

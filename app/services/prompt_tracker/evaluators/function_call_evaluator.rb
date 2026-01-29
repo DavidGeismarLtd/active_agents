@@ -255,6 +255,10 @@ module PromptTracker
 
       # Extract all tool calls from the conversation
       #
+      # Handles two different data structures:
+      # 1. Nested structure (Chat Completions API): {id:, type:, function: {name:, arguments:}}
+      # 2. Flat structure (Response API): {id:, type:, function_name:, arguments:}
+      #
       # @return [Array<Hash>] array of tool call details
       def extract_all_tool_calls
         @all_tool_calls ||= messages.flat_map do |msg|
@@ -263,8 +267,14 @@ module PromptTracker
             {
               id: tc["id"] || tc[:id],
               type: tc["type"] || tc[:type],
-              function_name: tc.dig("function", "name") || tc.dig(:function, :name),
-              arguments: parse_arguments(tc.dig("function", "arguments") || tc.dig(:function, :arguments))
+              # Try flat structure first (Response API), then nested structure (Chat Completions)
+              function_name: tc["function_name"] || tc[:function_name] ||
+                             tc.dig("function", "name") || tc.dig(:function, :name),
+              # Try flat structure first (Response API), then nested structure (Chat Completions)
+              arguments: parse_arguments(
+                tc["arguments"] || tc[:arguments] ||
+                tc.dig("function", "arguments") || tc.dig(:function, :arguments)
+              )
             }
           end
         end

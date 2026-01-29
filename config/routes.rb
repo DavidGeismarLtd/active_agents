@@ -76,6 +76,11 @@ PromptTracker::Engine.routes.draw do
     resources :runs, controller: "test_runs" do
       # Human evaluations nested under test runs
       resources :human_evaluations, only: [ :create ]
+
+      # Re-run action
+      member do
+        post :rerun
+      end
     end
 
     # OpenAI Assistants

@@ -262,6 +262,25 @@ module PromptTracker
         expect(response[:text]).to eq("Your name is Alice.")
         expect(response[:response_id]).to eq("resp_followup456")
       end
+
+      it "does not pass tools or temperature when previous_response_id is present" do
+        # Tools and temperature are inherited from the first call, so they should NOT be passed again
+        expect(mock_responses).to receive(:create) do |params|
+          expect(params[:parameters]).to include(previous_response_id: previous_response_id)
+          expect(params[:parameters]).not_to have_key(:tools)
+          expect(params[:parameters]).not_to have_key(:temperature)
+          api_response
+        end
+
+        described_class.call_with_context(
+          model: model,
+          user_prompt: "What's my name?",
+          previous_response_id: previous_response_id,
+          tools: [ :web_search, :functions ],  # These should be ignored
+          tool_config: { "functions" => [] },   # This should also be ignored
+          temperature: 0.7  # This should also be ignored
+        )
+      end
     end
 
     describe "tool formatting" do

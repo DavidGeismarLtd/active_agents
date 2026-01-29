@@ -106,6 +106,12 @@ module PromptTracker
       response = client.responses.create(parameters: build_parameters)
 
       normalize_response(response)
+    rescue Faraday::BadRequestError => e
+      # Extract error details from the response body
+      error_body = JSON.parse(e.response[:body]) rescue {}
+      error_message = error_body.dig("error", "message") || e.message
+
+      raise ResponseApiError, "OpenAI Responses API error: #{error_message}\nRequest parameters: #{build_parameters.inspect}"
     end
 
     private
@@ -132,15 +138,25 @@ module PromptTracker
         input: user_prompt
       }
 
-      params[:instructions] = system_prompt if system_prompt.present?
-      params[:previous_response_id] = previous_response_id if previous_response_id.present?
-      params[:temperature] = temperature if temperature
-      params[:max_output_tokens] = max_tokens if max_tokens
-      params[:tools] = format_tools(tools) if tools.any?
+      # When using previous_response_id for multi-turn conversations:
+      # - Tools are inherited from the first call (don't pass again)
+      # - Temperature and other sampling parameters are inherited (don't pass again)
+      # - Instructions can be passed to override the previous instructions
+      if previous_response_id.present?
+        params[:previous_response_id] = previous_response_id
+        # Only add instructions if explicitly provided (to override previous instructions)
+        params[:instructions] = system_prompt if system_prompt.present?
+      else
+        # First call: include all parameters
+        params[:instructions] = system_prompt if system_prompt.present?
+        params[:temperature] = temperature if temperature
+        params[:max_output_tokens] = max_tokens if max_tokens
+        params[:tools] = format_tools(tools) if tools.any?
+      end
 
       # Include web search sources if web search tool is enabled
       # This adds action.sources to web_search_call items in the response
-      if has_web_search_tool?
+      if has_web_search_tool? && previous_response_id.nil?
         params[:include] = [ "web_search_call.action.sources" ]
       end
 

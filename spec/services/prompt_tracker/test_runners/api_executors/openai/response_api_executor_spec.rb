@@ -150,10 +150,89 @@ module PromptTracker
                   user_prompt: "Hello",
                   system_prompt: "You are helpful.",
                   tools: [],
+                  tool_config: {},
                   temperature: 0.7
                 ).and_return(mock_response)
 
                 executor.execute(params)
+              end
+
+              context "with function calls" do
+                let(:function_call_response) do
+                  {
+                    text: "",
+                    response_id: "resp_func123",
+                    usage: { prompt_tokens: 15, completion_tokens: 10, total_tokens: 25 },
+                    model: "gpt-4o",
+                    tool_calls: [
+                      {
+                        id: "call_abc123",
+                        type: "function",
+                        function_name: "get_weather",
+                        arguments: { "city" => "London" }
+                      }
+                    ],
+                    raw: {}
+                  }
+                end
+
+                let(:final_response) do
+                  {
+                    text: "The weather in London is sunny.",
+                    response_id: "resp_final456",
+                    usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+                    model: "gpt-4o",
+                    tool_calls: [],
+                    raw: {}
+                  }
+                end
+
+                it "handles function calls by executing them and sending results back" do
+                  # Reset the before block's stubs
+                  RSpec::Mocks.space.proxy_for(OpenaiResponseService).reset
+
+                  params = {
+                    mode: :single_turn,
+                    system_prompt: "You are helpful.",
+                    first_user_message: "What's the weather in London?"
+                  }
+
+                  # First call returns a function call
+                  expect(OpenaiResponseService).to receive(:call).with(
+                    model: "gpt-4o",
+                    user_prompt: "What's the weather in London?",
+                    system_prompt: "You are helpful.",
+                    tools: [],
+                    tool_config: {},
+                    temperature: 0.7
+                  ).and_return(function_call_response)
+
+                  # Second call sends function output and gets final response
+                  expect(OpenaiResponseService).to receive(:call_with_context).with(
+                    model: "gpt-4o",
+                    user_prompt: array_including(
+                      hash_including(
+                        type: "function_call_output",
+                        call_id: "call_abc123"
+                      )
+                    ),
+                    previous_response_id: "resp_func123",
+                    tools: [],
+                    tool_config: {}
+                  ).and_return(final_response)
+
+                  result = executor.execute(params)
+
+                  # Should have final text response
+                  assistant_msg = result["messages"].find { |m| m["role"] == "assistant" }
+                  expect(assistant_msg["content"]).to eq("The weather in London is sunny.")
+
+                  # Should include the function call that was made
+                  expect(assistant_msg["tool_calls"]).to be_an(Array)
+                  expect(assistant_msg["tool_calls"].length).to eq(1)
+                  expect(assistant_msg["tool_calls"].first[:function_name]).to eq("get_weather")
+                  expect(assistant_msg["tool_calls"].first[:id]).to eq("call_abc123")
+                end
               end
             end
           end

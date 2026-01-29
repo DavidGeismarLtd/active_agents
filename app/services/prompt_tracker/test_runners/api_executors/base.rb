@@ -69,6 +69,13 @@ module PromptTracker
           model_config[:tools] || []
         end
 
+        # Get the tool_config from config
+        #
+        # @return [Hash] tool configuration
+        def tool_config
+          model_config[:tool_config] || {}
+        end
+
         # Get the provider from config
         #
         # @return [String] the provider name
