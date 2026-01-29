@@ -33,6 +33,11 @@ module PromptTracker
         #   )
         #
         class ResponseApiExecutor < Base
+          # Maximum number of function call iterations per turn to prevent infinite loops.
+          # This safeguard ensures that if a model keeps returning function calls,
+          # the execution will eventually stop to prevent runaway costs and hanging jobs.
+          MAX_FUNCTION_CALL_ITERATIONS = 10
+
           # Execute the test
           #
           # @param params [Hash] execution parameters
@@ -95,16 +100,19 @@ module PromptTracker
 
               response = result[:final_response]
               all_tool_calls = result[:all_tool_calls]
+              aggregated_usage = result[:aggregated_usage]
+              all_responses = result[:all_responses]
 
               @previous_response_id = response[:response_id]
-              @all_responses << response  # Track for tool result extraction
+              # Track ALL responses from this turn (including intermediate function call responses)
+              @all_responses.concat(all_responses)
 
               messages << {
                 "role" => "assistant",
                 "content" => response[:text],
                 "turn" => turn,
                 "response_id" => response[:response_id],
-                "usage" => response[:usage],
+                "usage" => aggregated_usage,  # Use aggregated usage from ALL API calls in this turn
                 "tool_calls" => all_tool_calls  # Include ALL tool calls from this turn
               }
             end
@@ -120,20 +128,52 @@ module PromptTracker
           # 2. If response contains function calls, execute them and send results back
           # 3. Repeat until we get a text response
           #
+          # The loop is protected by MAX_FUNCTION_CALL_ITERATIONS to prevent infinite loops
+          # if the model keeps returning function calls.
+          #
           # @param user_prompt [String] the user message
           # @param system_prompt [String, nil] the system prompt (only for first turn)
           # @param turn [Integer] current turn number
           # @return [Hash] result with:
           #   - :final_response [Hash] the final API response (with text, not function calls)
           #   - :all_tool_calls [Array<Hash>] all tool calls that were made during this turn
+          #   - :aggregated_usage [Hash] aggregated token usage from ALL API calls in this turn
+          #   - :all_responses [Array<Hash>] all API responses from this turn (including intermediate ones)
           def call_response_api_with_function_handling(user_prompt:, system_prompt: nil, turn:)
             all_tool_calls = []
+            all_responses = []
 
             # First call with user message
             response = call_response_api(user_prompt: user_prompt, system_prompt: system_prompt)
+            all_responses << response
 
-            # Handle function calls in a loop
-            while response[:tool_calls].present?
+            # Handle function calls in a loop with max iterations safeguard
+            response = process_function_call_loop(response, all_tool_calls, all_responses, turn)
+
+            # Aggregate usage from all API calls in this turn
+            aggregated_usage = aggregate_usage_from_responses(all_responses)
+
+            {
+              final_response: response,
+              all_tool_calls: all_tool_calls,
+              aggregated_usage: aggregated_usage,
+              all_responses: all_responses
+            }
+          end
+
+          # Process the function call loop until we get a final text response
+          #
+          # @param response [Hash] the initial API response
+          # @param all_tool_calls [Array<Hash>] accumulator for all tool calls
+          # @param all_responses [Array<Hash>] accumulator for all API responses
+          # @param turn [Integer] current turn number
+          # @return [Hash] the final API response (with text, not function calls)
+          def process_function_call_loop(response, all_tool_calls, all_responses, turn)
+            iteration_count = 0
+
+            while response[:tool_calls].present? && iteration_count < MAX_FUNCTION_CALL_ITERATIONS
+              iteration_count += 1
+
               # Collect all tool calls for this turn
               all_tool_calls.concat(response[:tool_calls])
 
@@ -141,22 +181,57 @@ module PromptTracker
               @previous_response_id = response[:response_id]
 
               # Execute all function calls and collect outputs
-              function_outputs = response[:tool_calls].map do |tool_call|
-                {
-                  type: "function_call_output",
-                  call_id: tool_call[:id],  # The normalizer returns :id (from call_id)
-                  output: execute_function_call(tool_call)
-                }
-              end
+              function_outputs = build_function_outputs(response[:tool_calls])
 
               # Send function outputs back to the API
               response = call_response_api_with_function_outputs(function_outputs)
+              all_responses << response
             end
 
+            # Log warning if we hit the iteration limit
+            log_iteration_limit_warning(iteration_count, response, turn)
+
+            response
+          end
+
+          # Build function call outputs from tool calls
+          #
+          # @param tool_calls [Array<Hash>] the tool calls to execute
+          # @return [Array<Hash>] function call outputs
+          def build_function_outputs(tool_calls)
+            tool_calls.map do |tool_call|
+              {
+                type: "function_call_output",
+                call_id: tool_call[:id],  # The normalizer returns :id (from call_id)
+                output: execute_function_call(tool_call)
+              }
+            end
+          end
+
+          # Aggregate token usage from multiple API responses
+          #
+          # @param responses [Array<Hash>] array of API responses with usage data
+          # @return [Hash] aggregated usage with prompt_tokens, completion_tokens, total_tokens
+          def aggregate_usage_from_responses(responses)
             {
-              final_response: response,
-              all_tool_calls: all_tool_calls
+              prompt_tokens: responses.sum { |r| r.dig(:usage, :prompt_tokens) || 0 },
+              completion_tokens: responses.sum { |r| r.dig(:usage, :completion_tokens) || 0 },
+              total_tokens: responses.sum { |r| r.dig(:usage, :total_tokens) || 0 }
             }
+          end
+
+          # Log a warning if the function call iteration limit was reached
+          #
+          # @param iteration_count [Integer] number of iterations performed
+          # @param response [Hash] the final response
+          # @param turn [Integer] current turn number
+          def log_iteration_limit_warning(iteration_count, response, turn)
+            return unless iteration_count >= MAX_FUNCTION_CALL_ITERATIONS && response[:tool_calls].present?
+
+            Rails.logger.warn(
+              "Function call iteration limit (#{MAX_FUNCTION_CALL_ITERATIONS}) reached for turn #{turn}. " \
+              "Model may be stuck in a function calling loop."
+            )
           end
 
           # Call the OpenAI Response API

@@ -233,6 +233,125 @@ module PromptTracker
                   expect(assistant_msg["tool_calls"].first[:function_name]).to eq("get_weather")
                   expect(assistant_msg["tool_calls"].first[:id]).to eq("call_abc123")
                 end
+
+                it "aggregates token usage from all API calls in the function call loop" do
+                  # Reset the before block's stubs
+                  RSpec::Mocks.space.proxy_for(OpenaiResponseService).reset
+
+                  params = {
+                    mode: :single_turn,
+                    system_prompt: "You are helpful.",
+                    first_user_message: "What's the weather in London?"
+                  }
+
+                  # First call returns a function call with usage: 15 + 10 = 25 tokens
+                  expect(OpenaiResponseService).to receive(:call).and_return(function_call_response)
+
+                  # Second call returns final response with usage: 20 + 8 = 28 tokens
+                  expect(OpenaiResponseService).to receive(:call_with_context).and_return(final_response)
+
+                  result = executor.execute(params)
+
+                  # Usage should be aggregated from both API calls
+                  assistant_msg = result["messages"].find { |m| m["role"] == "assistant" }
+                  expect(assistant_msg["usage"]).to eq({
+                    prompt_tokens: 35,      # 15 + 20
+                    completion_tokens: 18,  # 10 + 8
+                    total_tokens: 53        # 25 + 28
+                  })
+
+                  # Total tokens in result should also reflect aggregated usage
+                  expect(result["tokens"]).to eq({
+                    "prompt_tokens" => 35,
+                    "completion_tokens" => 18,
+                    "total_tokens" => 53
+                  })
+                end
+
+                it "tracks all responses including intermediate function call responses" do
+                  # Reset the before block's stubs
+                  RSpec::Mocks.space.proxy_for(OpenaiResponseService).reset
+
+                  # Add web_search_results to intermediate response to verify they're captured
+                  function_call_response_with_tools = function_call_response.merge(
+                    web_search_results: [ { id: "search_1", query: "weather London" } ],
+                    code_interpreter_results: [],
+                    file_search_results: []
+                  )
+
+                  final_response_with_tools = final_response.merge(
+                    web_search_results: [ { id: "search_2", query: "London forecast" } ],
+                    code_interpreter_results: [],
+                    file_search_results: []
+                  )
+
+                  params = {
+                    mode: :single_turn,
+                    system_prompt: "You are helpful.",
+                    first_user_message: "What's the weather in London?"
+                  }
+
+                  expect(OpenaiResponseService).to receive(:call).and_return(function_call_response_with_tools)
+                  expect(OpenaiResponseService).to receive(:call_with_context).and_return(final_response_with_tools)
+
+                  result = executor.execute(params)
+
+                  # Should include web search results from BOTH responses
+                  expect(result["web_search_results"]).to be_an(Array)
+                  expect(result["web_search_results"].length).to eq(2)
+                  expect(result["web_search_results"].map { |r| r[:id] }).to contain_exactly("search_1", "search_2")
+                end
+
+                it "stops after MAX_FUNCTION_CALL_ITERATIONS to prevent infinite loops" do
+                  # Reset the before block's stubs
+                  RSpec::Mocks.space.proxy_for(OpenaiResponseService).reset
+
+                  params = {
+                    mode: :single_turn,
+                    system_prompt: "You are helpful.",
+                    first_user_message: "Start function calling loop"
+                  }
+
+                  # Create a response that always returns function calls (simulating infinite loop)
+                  infinite_function_call_response = {
+                    text: "",
+                    response_id: "resp_loop",
+                    usage: { prompt_tokens: 15, completion_tokens: 10, total_tokens: 25 },
+                    model: "gpt-4o",
+                    tool_calls: [
+                      {
+                        id: "call_loop",
+                        type: "function",
+                        function_name: "infinite_function",
+                        arguments: {}
+                      }
+                    ],
+                    raw: {}
+                  }
+
+                  # First call returns a function call
+                  expect(OpenaiResponseService).to receive(:call).once.and_return(infinite_function_call_response)
+
+                  # Subsequent calls also return function calls (simulating infinite loop)
+                  # Should be called MAX_FUNCTION_CALL_ITERATIONS times
+                  expect(OpenaiResponseService).to receive(:call_with_context)
+                    .exactly(described_class::MAX_FUNCTION_CALL_ITERATIONS).times
+                    .and_return(infinite_function_call_response)
+
+                  # Expect a warning to be logged
+                  expect(Rails.logger).to receive(:warn).with(
+                    /Function call iteration limit \(#{described_class::MAX_FUNCTION_CALL_ITERATIONS}\) reached/
+                  )
+
+                  result = executor.execute(params)
+
+                  # Should still return a result (with the last response)
+                  expect(result).to be_a(Hash)
+                  assistant_msg = result["messages"].find { |m| m["role"] == "assistant" }
+
+                  # Should have collected all tool calls up to the limit
+                  expect(assistant_msg["tool_calls"].length).to eq(described_class::MAX_FUNCTION_CALL_ITERATIONS)
+                end
               end
             end
           end

@@ -93,6 +93,56 @@ module PromptTracker
           described_class.call(model: model, user_prompt: user_prompt)
         }.to raise_error(OpenaiResponseService::ResponseApiError, /OpenAI API key not configured/)
       end
+
+      it "redacts sensitive data in error messages when API call fails" do
+        # Create a long prompt and system instructions to test truncation
+        long_user_prompt = "A" * 200
+        long_system_prompt = "B" * 150
+        function_tool = {
+          type: "function",
+          name: "get_weather",
+          function: {
+            name: "get_weather",
+            description: "Get weather for a location",
+            parameters: { type: "object", properties: { location: { type: "string" } } }
+          }
+        }
+
+        # Mock a BadRequestError from Faraday
+        error_response = {
+          body: { error: { message: "Invalid request" } }.to_json
+        }
+        bad_request_error = Faraday::BadRequestError.new("Bad Request", error_response)
+
+        allow(mock_responses).to receive(:create).and_raise(bad_request_error)
+
+        expect {
+          described_class.call(
+            model: model,
+            user_prompt: long_user_prompt,
+            system_prompt: long_system_prompt,
+            tools: [ :web_search, function_tool ]
+          )
+        }.to raise_error(OpenaiResponseService::ResponseApiError) do |error|
+          # Error message should contain the API error
+          expect(error.message).to include("Invalid request")
+
+          # User prompt should be truncated
+          expect(error.message).to include("truncated, total length: 200")
+          expect(error.message).not_to include("A" * 200)
+
+          # System prompt should be truncated
+          expect(error.message).to include("truncated, total length: 150")
+          expect(error.message).not_to include("B" * 150)
+
+          # Function definitions should be redacted
+          expect(error.message).to include("[REDACTED]")
+          expect(error.message).not_to include("Get weather for a location")
+
+          # Simple tools like web_search should still be visible
+          expect(error.message).to include("web_search")
+        end
+      end
     end
 
     describe ".call with tools" do

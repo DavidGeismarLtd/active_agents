@@ -111,7 +111,7 @@ module PromptTracker
       error_body = JSON.parse(e.response[:body]) rescue {}
       error_message = error_body.dig("error", "message") || e.message
 
-      raise ResponseApiError, "OpenAI Responses API error: #{error_message}\nRequest parameters: #{build_parameters.inspect}"
+      raise ResponseApiError, "OpenAI Responses API error: #{error_message}\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
     end
 
     private
@@ -325,6 +325,54 @@ module PromptTracker
     def extract_file_search_results(response)
       normalizer = Evaluators::Normalizers::ResponseApiNormalizer.new
       normalizer.send(:extract_file_search_results, response["output"] || [])
+    end
+
+    # Redact sensitive fields from parameters before logging
+    #
+    # This prevents leaking full prompts, tool definitions, and other sensitive
+    # data into logs and error tracking systems.
+    #
+    # @param params [Hash] the request parameters
+    # @return [Hash] redacted parameters safe for logging
+    def redact_sensitive_params(params)
+      redacted = params.dup
+
+      # Truncate long text fields to prevent log bloat
+      if redacted[:input].present?
+        redacted[:input] = truncate_text(redacted[:input], max_length: 100)
+      end
+
+      if redacted[:instructions].present?
+        redacted[:instructions] = truncate_text(redacted[:instructions], max_length: 100)
+      end
+
+      # Redact tool definitions (can be very large and contain sensitive logic)
+      if redacted[:tools].present?
+        redacted[:tools] = redacted[:tools].map do |tool|
+          if tool.is_a?(Hash)
+            # Keep tool type but redact function definitions
+            if tool[:type] == "function" || tool["type"] == "function"
+              { type: "function", name: tool[:name] || tool["name"], definition: "[REDACTED]" }
+            else
+              { type: tool[:type] || tool["type"] }
+            end
+          else
+            tool # Keep simple symbols like :web_search
+          end
+        end
+      end
+
+      redacted
+    end
+
+    # Truncate text to a maximum length with ellipsis
+    #
+    # @param text [String] the text to truncate
+    # @param max_length [Integer] maximum length before truncation
+    # @return [String] truncated text
+    def truncate_text(text, max_length: 100)
+      return text if text.length <= max_length
+      "#{text[0...max_length]}... [truncated, total length: #{text.length}]"
     end
   end
 end
