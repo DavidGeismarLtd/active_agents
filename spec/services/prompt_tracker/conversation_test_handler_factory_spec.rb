@@ -3,7 +3,7 @@
 require "rails_helper"
 
 module PromptTracker
-  RSpec.describe ApiExecutorFactory, type: :service do
+  RSpec.describe ConversationTestHandlerFactory, type: :service do
     describe ".build" do
       context "with OpenAI Response API" do
         let(:model_config) do
@@ -14,33 +14,33 @@ module PromptTracker
           }
         end
 
-        it "returns ResponseApiExecutor" do
-          executor = described_class.build(
+        it "returns ResponseApiHandler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor).to be_a(TestRunners::ApiExecutors::Openai::ResponseApiExecutor)
+          expect(handler).to be_a(TestRunners::Openai::ResponseApiHandler)
         end
 
-        it "passes model_config to executor" do
-          executor = described_class.build(
+        it "passes model_config to handler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor.model_config[:provider]).to eq("openai")
-          expect(executor.model_config[:api]).to eq("responses")
-          expect(executor.model_config[:model]).to eq("gpt-4o")
+          expect(handler.model_config[:provider]).to eq("openai")
+          expect(handler.model_config[:api]).to eq("responses")
+          expect(handler.model_config[:model]).to eq("gpt-4o")
         end
 
-        it "passes use_real_llm flag to executor" do
-          executor = described_class.build(
+        it "passes use_real_llm flag to handler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: true
           )
 
-          expect(executor.use_real_llm).to be true
+          expect(handler.use_real_llm).to be true
         end
       end
 
@@ -53,13 +53,13 @@ module PromptTracker
           }
         end
 
-        it "returns CompletionApiExecutor" do
-          executor = described_class.build(
+        it "returns ChatCompletionHandler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor).to be_a(TestRunners::ApiExecutors::Openai::CompletionApiExecutor)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
         end
       end
 
@@ -72,13 +72,13 @@ module PromptTracker
           }
         end
 
-        it "returns CompletionApiExecutor" do
-          executor = described_class.build(
+        it "returns ChatCompletionHandler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor).to be_a(TestRunners::ApiExecutors::Openai::CompletionApiExecutor)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
         end
       end
 
@@ -91,13 +91,13 @@ module PromptTracker
           }
         end
 
-        it "returns CompletionApiExecutor" do
-          executor = described_class.build(
+        it "returns ChatCompletionHandler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor).to be_a(TestRunners::ApiExecutors::Openai::CompletionApiExecutor)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
         end
       end
 
@@ -110,13 +110,13 @@ module PromptTracker
           }
         end
 
-        it "returns CompletionApiExecutor as fallback" do
-          executor = described_class.build(
+        it "returns ChatCompletionHandler as fallback" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(executor).to be_a(TestRunners::ApiExecutors::Openai::CompletionApiExecutor)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
         end
       end
 
@@ -131,14 +131,14 @@ module PromptTracker
 
         let(:testable) { double("PromptVersion") }
 
-        it "passes testable to executor" do
-          executor = described_class.build(
+        it "passes testable to handler" do
+          handler = described_class.build(
             model_config: model_config,
             use_real_llm: false,
             testable: testable
           )
 
-          expect(executor.testable).to eq(testable)
+          expect(handler.testable).to eq(testable)
         end
       end
 

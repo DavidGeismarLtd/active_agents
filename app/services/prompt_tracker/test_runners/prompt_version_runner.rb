@@ -134,13 +134,13 @@ module PromptTracker
         vars[:interlocutor_simulation_prompt].present?
       end
 
-      # Build the appropriate API executor based on provider
+      # Build the appropriate conversation test handler based on provider
       #
-      # Uses ApiExecutorFactory to encapsulate executor selection logic.
+      # Uses ConversationTestHandlerFactory to encapsulate handler selection logic.
       #
-      # @return [ApiExecutors::Base] the executor instance
+      # @return [ConversationTestHandler] the handler instance
       def build_api_executor
-        ApiExecutorFactory.build(
+        ConversationTestHandlerFactory.build(
           model_config: model_config,
           use_real_llm: use_real_llm,
           testable: testable

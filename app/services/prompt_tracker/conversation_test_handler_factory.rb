@@ -1,37 +1,37 @@
 # frozen_string_literal: true
 
 module PromptTracker
-  # Factory for building API executors based on model configuration.
+  # Factory for building conversation test handlers based on model configuration.
   #
   # This service encapsulates the logic for selecting the appropriate
-  # executor class based on the API type (provider + api combination).
+  # handler class based on the API type (provider + api combination).
   #
-  # All executors are namespaced under their provider to maintain clear
+  # All handlers are namespaced under their provider to maintain clear
   # separation of concerns and make it easy to add provider-specific logic.
   #
-  # @example Build an executor for OpenAI Chat Completions
-  #   executor = ApiExecutorFactory.build(
+  # @example Build a handler for OpenAI Chat Completions
+  #   handler = ConversationTestHandlerFactory.build(
   #     model_config: { provider: "openai", api: "chat_completions", model: "gpt-4o" },
   #     use_real_llm: true,
   #     testable: prompt_version
   #   )
-  #   # Returns: TestRunners::ApiExecutors::Openai::CompletionApiExecutor
+  #   # Returns: TestRunners::Openai::ChatCompletionHandler
   #
-  # @example Build an executor for OpenAI Response API
-  #   executor = ApiExecutorFactory.build(
+  # @example Build a handler for OpenAI Response API
+  #   handler = ConversationTestHandlerFactory.build(
   #     model_config: { provider: "openai", api: "responses", model: "gpt-4o" },
   #     use_real_llm: true
   #   )
-  #   # Returns: TestRunners::ApiExecutors::Openai::ResponseApiExecutor
+  #   # Returns: TestRunners::Openai::ResponseApiHandler
   #
-  class ApiExecutorFactory
+  class ConversationTestHandlerFactory
     class << self
-      # Build an API executor instance
+      # Build a conversation test handler instance
       #
       # @param model_config [Hash] model configuration with provider, api, model
       # @param use_real_llm [Boolean] whether to use real LLM API or mock
       # @param testable [Object, nil] optional testable object (for test runners)
-      # @return [TestRunners::ApiExecutors::Base] executor instance
+      # @return [TestRunners::ConversationTestHandler] handler instance
       # @raise [ArgumentError] if model_config is missing required keys
       def build(model_config:, use_real_llm: false, testable: nil)
         validate_model_config!(model_config)
@@ -63,13 +63,13 @@ module PromptTracker
         end
       end
 
-      # Determine executor class based on model config
+      # Determine handler class based on model config
       #
-      # Routes to provider-specific executors based on the API type.
-      # All executors are namespaced under TestRunners::ApiExecutors::{Provider}::
+      # Routes to provider-specific handlers based on the API type.
+      # All handlers are namespaced under TestRunners::{Provider}::
       #
       # @param model_config [Hash] model configuration
-      # @return [Class] executor class
+      # @return [Class] handler class
       def executor_class_for(model_config)
         config = model_config.with_indifferent_access
         api_type = ApiTypes.from_config(config[:provider], config[:api])
@@ -77,21 +77,21 @@ module PromptTracker
         case api_type
         when :openai_responses
           # OpenAI Response API has special stateful conversation handling
-          TestRunners::ApiExecutors::Openai::ResponseApiExecutor
+          TestRunners::Openai::ResponseApiHandler
         when :openai_chat_completions
           # OpenAI Chat Completions API
-          TestRunners::ApiExecutors::Openai::CompletionApiExecutor
+          TestRunners::Openai::ChatCompletionHandler
         when :anthropic_messages
           # Anthropic uses the same completion pattern as OpenAI
-          # For now, use the OpenAI executor (could be split later if needed)
-          TestRunners::ApiExecutors::Openai::CompletionApiExecutor
+          # For now, use the ChatCompletionHandler (could be split later if needed)
+          TestRunners::Openai::ChatCompletionHandler
         when :google_gemini
           # Google Gemini uses the same completion pattern
-          TestRunners::ApiExecutors::Openai::CompletionApiExecutor
+          TestRunners::Openai::ChatCompletionHandler
         else
-          # Fallback to OpenAI completion executor for unknown API types
+          # Fallback to ChatCompletionHandler for unknown API types
           # This handles any custom or future API types that follow the chat completion pattern
-          TestRunners::ApiExecutors::Openai::CompletionApiExecutor
+          TestRunners::Openai::ChatCompletionHandler
         end
       end
     end
