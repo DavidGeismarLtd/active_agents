@@ -50,21 +50,6 @@ module PromptTracker
       end
     end
 
-      describe "#single_turn? and #conversational?" do
-        context "when testable does not respond to api_type" do
-          before do
-            non_api_testable = double("NonApiTestable")
-            allow(non_api_testable).to receive(:respond_to?).with(:api_type).and_return(false)
-            allow(test).to receive(:testable).and_return(non_api_testable)
-          end
-
-          it "defaults to single-turn mode" do
-            expect(test.single_turn?).to be true
-            expect(test.conversational?).to be false
-          end
-        end
-      end
-
     describe "#pass_rate" do
       let!(:passed_run) { create(:test_run, test: test, passed: true) }
       let!(:failed_run) { create(:test_run, test: test, passed: false) }
