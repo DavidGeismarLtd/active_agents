@@ -40,6 +40,7 @@ module PromptTracker
           messages = []
           @previous_response_id = nil
           @all_responses = []  # Track all raw responses for tool result extraction
+          @tool_result_extractor = nil  # Clear memoized extractor when resetting responses
           start_time = Time.current
           messages = execute_conversation(params)
 
