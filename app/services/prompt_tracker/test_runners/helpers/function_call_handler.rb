@@ -67,6 +67,12 @@ module PromptTracker
             all_responses << response
           end
 
+          # If we hit the iteration limit and there are still pending tool calls,
+          # add them to all_tool_calls so callers can see what was pending
+          if iteration_count >= MAX_ITERATIONS && response[:tool_calls].present?
+            all_tool_calls.concat(response[:tool_calls])
+          end
+
           # Log warning if we hit the iteration limit
           log_iteration_limit_warning(iteration_count, response, turn)
 
