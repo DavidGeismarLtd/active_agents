@@ -130,6 +130,21 @@ module PromptTracker
                 /Function call iteration limit.*reached/
               )
             end
+
+            it "includes pending tool calls in all_tool_calls when limit is hit" do
+              result = handler.process_with_function_handling(
+                initial_response: response_with_calls,
+                previous_response_id: "resp_000",
+                turn: 1
+              )
+
+              # Should have MAX_ITERATIONS tool calls from inside the loop
+              # PLUS 1 final pending tool call from the response that triggered the exit
+              expect(result[:all_tool_calls].length).to eq(described_class::MAX_ITERATIONS + 1)
+
+              # The final response should still have tool_calls present
+              expect(result[:final_response][:tool_calls]).to be_present
+            end
           end
 
           context "when use_real_llm is true" do
