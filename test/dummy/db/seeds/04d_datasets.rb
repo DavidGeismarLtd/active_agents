@@ -518,4 +518,334 @@ news_dataset.dataset_rows.create!([
 
 puts "  ✓ Created news analyst dataset (3 rows)"
 
-puts "\n  ✅ Created 10 datasets for prompt versions (39 total rows)"
+# ============================================================================
+# CONVERSATIONAL DATASETS
+# ============================================================================
+
+puts "\n  Creating conversational datasets for multi-turn testing..."
+
+# ============================================================================
+# 11. Customer Support Greeting Conversational Dataset
+# ============================================================================
+
+support_conversational_dataset = PromptTracker::Dataset.create!(
+  testable: support_greeting_v3,
+  name: "Customer Support Conversations",
+  description: "Multi-turn customer support conversation scenarios",
+  dataset_type: :conversational
+)
+
+support_conversational_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "customer_name" => "Jennifer Williams",
+      "issue_category" => "billing",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are Jennifer Williams, a frustrated customer who was charged twice for the same subscription.
+        You noticed the duplicate charge on your credit card statement this morning.
+        Start by explaining the issue, then ask for a refund.
+        If asked for details, provide: Order IDs #78901 and #78902, both charged on January 15th for $49.99 each.
+        You want both charges refunded immediately and are considering canceling your subscription.
+        Be firm but professional. Accept a solution if they offer immediate refund and a discount on next month.
+      PROMPT
+      "max_turns" => 8
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "customer_name" => "Robert Chen",
+      "issue_category" => "technical",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are Robert Chen, a customer experiencing login issues with the mobile app.
+        You've been trying to log in for the past hour but keep getting "Invalid credentials" error.
+        You're certain your password is correct because it works on the website.
+        Start by describing the problem. If asked, mention you're using an iPhone 15 with iOS 17.
+        You've already tried restarting the app and your phone.
+        Be patient and cooperative, willing to try troubleshooting steps.
+        The issue should be resolved if they suggest clearing the app cache or reinstalling.
+      PROMPT
+      "max_turns" => 6
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "customer_name" => "Maria Garcia",
+      "issue_category" => "account",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are Maria Garcia, trying to update your email address but the system won't let you.
+        You recently got married and changed your email from maria.rodriguez@email.com to maria.garcia@email.com.
+        When you try to update it in account settings, you get an error: "Email already in use."
+        Start by explaining this issue. You're confused because the new email is YOUR email.
+        If they ask, you created a second account by mistake with the new email last week but never used it.
+        Be understanding and cooperative. Accept a solution to merge accounts or delete the unused one.
+      PROMPT
+      "max_turns" => 7
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "customer_name" => "David Thompson",
+      "issue_category" => "refund",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are David Thompson, requesting a refund for a premium feature you purchased but never used.
+        You bought the "Pro Analytics" add-on 3 months ago for $99/month but realized you don't need it.
+        You haven't used any of the pro features and want a refund for all 3 months ($297 total).
+        Start by politely requesting the refund. If they mention a refund policy, you didn't see it during purchase.
+        Be reasonable - you'll accept a partial refund if full refund isn't possible.
+        Also want to make sure the subscription is canceled so you're not charged again.
+      PROMPT
+      "max_turns" => 6
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created customer support conversational dataset (4 rows)"
+
+# ============================================================================
+# 12. Research Assistant Conversational Dataset
+# ============================================================================
+
+research_conversational_dataset = PromptTracker::Dataset.create!(
+  testable: research_v1,
+  name: "Research Conversations",
+  description: "Multi-turn research conversations with follow-up questions",
+  dataset_type: :conversational
+)
+
+research_conversational_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "query" => "What are the health benefits of intermittent fasting?",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a curious person researching intermittent fasting for personal health.
+        Start with the initial query about health benefits.
+        After receiving the answer, ask 2-3 follow-up questions based on the response, such as:
+        - Which specific fasting schedule is most effective?
+        - Are there any risks or side effects I should know about?
+        - How long before I might see results?
+        - Is it safe for someone with diabetes?
+        Be genuinely curious and ask for clarification on scientific terms if they're used.
+        Thank the assistant when you have enough information.
+      PROMPT
+      "max_turns" => 7
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "query" => "Explain the current state of fusion energy research",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a science enthusiast researching fusion energy for a blog post.
+        Start with the initial query about fusion energy.
+        After the initial response, dig deeper with follow-up questions:
+        - What was the recent breakthrough at the National Ignition Facility?
+        - How does this compare to ITER's approach?
+        - When might we realistically see commercial fusion power?
+        - What are the main technical challenges still to overcome?
+        Show knowledge of basic physics but ask for clarification on complex concepts.
+        End by asking for the most reliable sources to cite.
+      PROMPT
+      "max_turns" => 8
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "query" => "What are the environmental impacts of cryptocurrency mining?",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are an environmental journalist researching cryptocurrency's carbon footprint.
+        Start with the broad query about environmental impacts.
+        Follow up with specific questions based on the response:
+        - How does Bitcoin's energy consumption compare to Ethereum after the merge?
+        - What percentage of mining uses renewable energy?
+        - Are there any eco-friendly alternatives to proof-of-work?
+        - What regulations are being proposed to address this?
+        Be critical but fair, seeking balanced information.
+        Ask for recent statistics and credible sources.
+      PROMPT
+      "max_turns" => 7
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created research assistant conversational dataset (3 rows)"
+
+# ============================================================================
+# 13. Travel Booking Assistant Conversational Dataset
+# ============================================================================
+
+travel_conversational_dataset = PromptTracker::Dataset.create!(
+  testable: travel_v1,
+  name: "Travel Booking Conversations",
+  description: "Multi-turn travel booking scenarios with progressive detail gathering",
+  dataset_type: :conversational
+)
+
+travel_conversational_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "request" => "I need to plan a trip to Japan",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are planning a 2-week vacation to Japan in April for you and your spouse.
+        Start with a vague request: "I need to plan a trip to Japan"
+        Provide details progressively as the assistant asks:
+        - Dates: April 10-24, 2026 (flexible by a few days)
+        - Travelers: 2 adults
+        - Departure city: Los Angeles (LAX)
+        - Interests: Culture, food, temples, some nature
+        - Budget: Moderate (not luxury, not budget)
+        - Cities: Thinking Tokyo, Kyoto, maybe Osaka
+        Ask questions about:
+        - Best time to see cherry blossoms
+        - Whether to get a JR Pass
+        - Hotel recommendations in each city
+        Be enthusiastic and open to suggestions.
+      PROMPT
+      "max_turns" => 10
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "request" => "I need a last-minute flight to Chicago",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are booking an urgent business trip to Chicago.
+        Start with: "I need a last-minute flight to Chicago"
+        Provide details when asked:
+        - Need to fly out tomorrow morning (earliest possible)
+        - Return in 3 days
+        - Departing from: Boston (BOS)
+        - Just yourself (1 passenger)
+        - Prefer direct flights
+        - Need to arrive before 2 PM for a meeting
+        - Company is paying, so price is less important than timing
+        Also ask about:
+        - Airport hotel recommendations near O'Hare
+        - Ground transportation options
+        Be time-conscious and focused on logistics.
+      PROMPT
+      "max_turns" => 8
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "request" => "Family vacation to Orlando",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are planning a family vacation to Orlando with two kids (ages 7 and 10).
+        Start with: "We want to take the kids to Orlando"
+        Provide details progressively:
+        - Dates: Summer break, late June or early July, 5-7 days
+        - Travelers: 2 adults, 2 children
+        - From: Denver
+        - Main goal: Disney World, maybe Universal
+        - Budget: Mid-range, want good value
+        - Never been before, need advice
+        Ask questions about:
+        - Which parks to prioritize with kids these ages
+        - Whether to stay on Disney property
+        - How many days needed for parks
+        - Weather concerns in summer
+        Be excited but slightly overwhelmed by planning.
+      PROMPT
+      "max_turns" => 10
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created travel booking conversational dataset (3 rows)"
+
+# ============================================================================
+# 14. E-commerce Assistant Conversational Dataset
+# ============================================================================
+
+ecommerce_conversational_dataset = PromptTracker::Dataset.create!(
+  testable: ecommerce_v1,
+  name: "E-commerce Support Conversations",
+  description: "Multi-turn customer service conversations for e-commerce",
+  dataset_type: :conversational
+)
+
+ecommerce_conversational_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "inquiry" => "I'm looking for a laptop for college",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a college student shopping for a laptop for engineering classes.
+        Start with: "I'm looking for a laptop for college"
+        Provide details when asked:
+        - Major: Mechanical Engineering (will need CAD software)
+        - Budget: Around $1000-1500
+        - Preferences: Good battery life, portable (will carry to classes)
+        - Operating system: No strong preference, but familiar with Windows
+        - Screen size: 14-15 inches preferred
+        Ask questions about:
+        - Which models can handle AutoCAD and SolidWorks
+        - Student discounts available
+        - Warranty options
+        - Return policy if it doesn't work out
+        Be price-conscious but willing to invest in quality.
+      PROMPT
+      "max_turns" => 9
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "inquiry" => "My order hasn't arrived and tracking shows it's lost",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a customer whose package appears to be lost in transit.
+        Start with: "My order hasn't arrived and tracking shows it's lost"
+        Details to provide:
+        - Order #: 45678
+        - Ordered: 10 days ago
+        - Expected delivery: 3 days ago
+        - Tracking: Shows "Exception - Unable to locate package"
+        - Item: Birthday gift for your daughter (her birthday is in 2 days)
+        - Value: $150 wireless earbuds
+        Be concerned and slightly frustrated, but polite.
+        Want either:
+        1. Immediate replacement with expedited shipping, OR
+        2. Full refund so you can buy locally
+        Ask about compensation for the inconvenience.
+      PROMPT
+      "max_turns" => 7
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "inquiry" => "I received the wrong item in my order",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a customer who received the wrong product.
+        Start with: "I received the wrong item in my order"
+        Details when asked:
+        - Order #: 89012
+        - Ordered: Blue running shoes, size 10
+        - Received: Red running shoes, size 8
+        - Need the correct item for a marathon next month
+        - Don't want to pay return shipping since it's their mistake
+        - Package and shoes are in perfect condition
+        Be reasonable but firm about not paying for their error.
+        Ask about:
+        - How quickly can they send the correct item
+        - Do you need to return the wrong item first or can they cross-ship
+        - Any compensation for the hassle
+        Accept a solution that gets you the right shoes quickly.
+      PROMPT
+      "max_turns" => 8
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created e-commerce conversational dataset (3 rows)"
+
+puts "\n  ✅ Created 10 single-turn datasets (39 rows) and 4 conversational datasets (13 rows)"
+puts "  📊 Total: 14 datasets with 52 rows"
