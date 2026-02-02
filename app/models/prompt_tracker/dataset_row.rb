@@ -119,6 +119,9 @@ module PromptTracker
     # Broadcast replace to dataset rows table
     # Skip modal rendering to avoid duplicates (modal stays in DOM, only row content updates)
     def broadcast_replace_to_dataset
+      # Reload to get fresh data from database (self may have stale data in after_update_commit)
+      reload
+
       partial_path, locals = row_partial_and_locals
 
       broadcast_replace_to(

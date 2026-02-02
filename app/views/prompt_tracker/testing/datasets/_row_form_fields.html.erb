@@ -1,0 +1,85 @@
+<%
+  # Shared partial for dataset row form fields
+  # Used by both "Add Row" modal and "Edit Row" modal
+  #
+  # Required locals:
+  #   - dataset: The Dataset object
+  #   - row: The DatasetRow object (can be nil for new rows)
+  #
+  # This partial renders:
+  #   - Schema variable fields (text_area_tag for 'text' type, text_field_tag for others)
+  #   - Required field indicators (red asterisk)
+  #   - Field descriptions
+  #   - Function calling mock outputs section (when testable has functions configured)
+%>
+
+<% if dataset.schema.present? %>
+  <%# Schema variable fields %>
+  <% dataset.schema.each do |var_schema| %>
+    <div class="mb-3">
+      <%= label_tag "dataset_row[row_data][#{var_schema['name']}]", var_schema['name'], class: "form-label" %>
+      <% if var_schema['required'] %>
+        <span class="text-danger">*</span>
+      <% end %>
+
+      <% case var_schema['type'] %>
+      <% when 'text' %>
+        <%= text_area_tag "dataset_row[row_data][#{var_schema['name']}]",
+                          row&.get_variable(var_schema['name']),
+                          class: "form-control",
+                          rows: 3,
+                          required: var_schema['required'],
+                          placeholder: row.nil? ? var_schema['description'] : nil %>
+      <% else %>
+        <%= text_field_tag "dataset_row[row_data][#{var_schema['name']}]",
+                           row&.get_variable(var_schema['name']),
+                           class: "form-control",
+                           required: var_schema['required'],
+                           placeholder: row.nil? ? var_schema['description'] : nil %>
+      <% end %>
+
+      <% if var_schema['description'].present? %>
+        <div class="form-text"><%= var_schema['description'] %></div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# Function calling mock outputs (only shown when functions are configured) %>
+  <% testable = dataset.testable %>
+  <% if testable.respond_to?(:model_config) && testable.model_config&.dig("tool_config", "functions").present? %>
+    <div class="mb-3 p-3 bg-light rounded border">
+      <h6 class="mb-3"><i class="bi bi-gear"></i> Function Calling Mock Outputs (Optional)</h6>
+
+      <p class="text-muted small mb-3">
+        This testable has function calling enabled. You can optionally provide custom mock responses for function calls.
+      </p>
+
+      <% functions = testable.model_config.dig("tool_config", "functions") %>
+      <% current_mock_outputs = row&.row_data&.dig("mock_function_outputs") || {} %>
+      <% current_mock_outputs = {} unless current_mock_outputs.is_a?(Hash) %>
+      <% functions.each do |func| %>
+        <% function_name = func["name"] %>
+        <% function_desc = func["description"] %>
+        <div class="mb-3">
+          <%= label_tag "dataset_row[row_data][mock_function_outputs][#{function_name}]",
+                        "Mock Output for #{function_name}",
+                        class: "form-label" %>
+          <%= text_area_tag "dataset_row[row_data][mock_function_outputs][#{function_name}]",
+              current_mock_outputs[function_name],
+              class: "form-control font-monospace",
+              rows: 3,
+              placeholder: "Mock response data for #{function_name}..." %>
+          <% if function_desc.present? %>
+            <small class="form-text text-muted"><%= function_desc %></small>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    This dataset has no schema defined. Cannot add rows.
+  </div>
+<% end %>
+

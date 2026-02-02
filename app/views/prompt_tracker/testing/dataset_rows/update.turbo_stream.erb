@@ -1,3 +1,12 @@
+<%# Update the modal form body with fresh data before closing %>
+<%# This ensures the form fields reflect the updated values if the modal is reopened %>
+<%= turbo_stream.update "edit-row-form-body-#{@row.id}" do %>
+  <%= hidden_field_tag "dataset_row[source]", @row.source %>
+
+  <%# Render shared form fields partial with updated row data %>
+  <%= render "prompt_tracker/testing/datasets/row_form_fields", dataset: @dataset, row: @row %>
+<% end %>
+
 <%# Close the edit modal using custom Turbo Stream action %>
 <%# This properly handles Bootstrap modal cleanup (backdrop, scroll lock, etc.) %>
 <%= turbo_stream.action(:close_modal, "editRowModal-#{@row.id}") %>
