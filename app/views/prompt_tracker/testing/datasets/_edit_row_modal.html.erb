@@ -22,6 +22,7 @@
       <%= form_with(model: row,
                     url: update_path,
                     method: :patch,
+                    authenticity_token: true,
                     html: { id: "edit-row-form-#{row.id}" }) do |f| %>
         <div class="modal-body" id="edit-row-form-body-<%= row.id %>">
           <%= f.hidden_field :source, value: row.source %>
@@ -38,4 +39,3 @@
     </div>
   </div>
 </div>
-
