@@ -86,5 +86,17 @@ FactoryBot.define do
         }
       end
     end
+
+    trait :function_call do
+      evaluator_type { "PromptTracker::Evaluators::FunctionCallEvaluator" }
+      config do
+        {
+          "expected_functions" => [ "get_weather" ],
+          "require_all" => true,
+          "check_arguments" => false,
+          "threshold_score" => 80
+        }
+      end
+    end
   end
 end

@@ -50,14 +50,9 @@ module PromptTracker
         test_run.update!(output_data: output_data)
 
         # Run evaluators
-        evaluated_data = if conversational_mode?
-          output_data
-        else
-          # For single-turn, extract the assistant's response
-          assistant_message = output_data["messages"]&.find { |m| m["role"] == "assistant" }
-          assistant_message&.dig("content")
-        end
-        evaluator_results = run_evaluators(evaluated_data)
+        # Pass full output_data to evaluators for both single-turn and conversational mode
+        # BaseNormalizedEvaluator handles both formats and extracts what each evaluator needs
+        evaluator_results = run_evaluators(output_data)
 
         # Calculate pass/fail
         passed = evaluator_results.empty? || evaluator_results.all? { |r| r[:passed] }

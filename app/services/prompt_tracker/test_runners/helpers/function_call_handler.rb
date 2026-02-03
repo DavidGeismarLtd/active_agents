@@ -113,8 +113,9 @@ module PromptTracker
           custom_mock = @mock_function_outputs&.dig(function_name)
 
           if custom_mock
-            # Use custom mock response (already a JSON string)
-            custom_mock
+            # Use custom mock response
+            # Convert to JSON string if it's a Hash, otherwise use as-is (already a string)
+            custom_mock.is_a?(Hash) ? custom_mock.to_json : custom_mock
           else
             # Fall back to generic mock
             {
