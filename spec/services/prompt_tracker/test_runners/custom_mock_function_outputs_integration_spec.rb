@@ -45,12 +45,7 @@ module PromptTracker
                  row_data: {
                    "user_query" => "What's the weather in San Francisco?",
                    "mock_function_outputs" => {
-                     "get_weather" => {
-                       "location" => "San Francisco, CA",
-                       "temperature" => 68,
-                       "condition" => "Foggy",
-                       "humidity" => 75
-                     }
+                     "get_weather" => '{"location":"San Francisco, CA","temperature":68,"condition":"Foggy","humidity":75}'
                    }
                  })
         end

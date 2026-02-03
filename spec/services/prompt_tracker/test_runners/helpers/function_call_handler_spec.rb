@@ -187,18 +187,8 @@ module PromptTracker
           context "when custom mock_function_outputs is provided" do
             let(:mock_function_outputs) do
               {
-                "get_weather" => {
-                  "location" => "New York, NY",
-                  "temperature" => 72,
-                  "condition" => "Sunny",
-                  "humidity" => 45
-                },
-                "search_flights" => {
-                  "flights" => [
-                    { "airline" => "AA", "price" => 299 },
-                    { "airline" => "UA", "price" => 315 }
-                  ]
-                }
+                "get_weather" => '{"location":"New York, NY","temperature":72,"condition":"Sunny","humidity":45}',
+                "search_flights" => '{"flights":[{"airline":"AA","price":299},{"airline":"UA","price":315}]}'
               }
             end
 
