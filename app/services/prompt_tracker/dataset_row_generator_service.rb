@@ -128,7 +128,7 @@ module PromptTracker
               hash[var_schema["name"]] = "<value for #{var_schema['name']}>"
             end.merge({
               "mock_function_outputs" => function_names.each_with_object({}) do |func_name, hash|
-                hash[func_name] = { "result" => "<realistic mock response for #{func_name}>" }
+                hash[func_name] = "<realistic mock response for #{func_name}>"
               end
             })
           ]
