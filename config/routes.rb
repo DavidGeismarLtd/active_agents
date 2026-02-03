@@ -51,6 +51,9 @@ PromptTracker::Engine.routes.draw do
 
           # Dataset rows nested under datasets
           resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            member do
+              get :edit_modal  # Lazy-load edit modal HTML
+            end
             collection do
               delete :batch_destroy
             end
@@ -134,6 +137,9 @@ PromptTracker::Engine.routes.draw do
 
           # Dataset rows nested under datasets
           resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
+            member do
+              get :edit_modal  # Lazy-load edit modal HTML
+            end
             collection do
               delete :batch_destroy
             end

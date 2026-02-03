@@ -17,7 +17,27 @@ module PromptTracker
       include DatasetsHelper
 
       before_action :set_dataset
-      before_action :set_row, only: [ :update, :destroy ]
+      before_action :set_row, only: [ :update, :destroy, :edit_modal ]
+
+      # GET /datasets/:dataset_id/rows/:id/edit_modal
+      # Returns just the edit modal HTML for lazy-loading
+      def edit_modal
+        index = @dataset.dataset_rows.where("id <= ?", @row.id).count
+
+        # Determine update path based on testable type
+        if @dataset.testable.is_a?(PromptTracker::PromptVersion)
+          prompt_version = @dataset.testable
+          prompt = prompt_version.prompt
+          update_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, @dataset, @row)
+        elsif @dataset.testable.is_a?(PromptTracker::Openai::Assistant)
+          assistant = @dataset.testable
+          update_path = PromptTracker::Engine.routes.url_helpers.testing_openai_assistant_dataset_dataset_row_path(assistant, @dataset, @row)
+        end
+
+        render partial: "prompt_tracker/testing/datasets/edit_row_modal",
+               locals: { row: @row, index: index, dataset: @dataset, update_path: update_path },
+               layout: false
+      end
 
       # POST /datasets/:dataset_id/rows
       def create

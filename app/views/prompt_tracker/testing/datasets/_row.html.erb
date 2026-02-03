@@ -67,7 +67,14 @@
   </td>
   <td>
     <div class="btn-group btn-group-sm">
-      <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editRowModal-<%= row.id %>" title="Edit">
+      <button type="button"
+              class="btn btn-outline-secondary"
+              data-controller="lazy-edit-modal"
+              data-lazy-edit-modal-row-id-value="<%= row.id %>"
+              data-lazy-edit-modal-index-value="<%= index %>"
+              data-lazy-edit-modal-update-path-value="<%= update_path %>"
+              data-action="click->lazy-edit-modal#openOrLoad"
+              title="Edit">
         <i class="bi bi-pencil"></i>
       </button>
       <% if delete_path.present? %>
