@@ -149,13 +149,40 @@
       <div id="selected-vector-stores"
            class="d-flex flex-wrap gap-2 mb-2"
            data-tools-config-target="selectedVectorStores">
-        <% (file_search_config['vector_store_ids'] || []).each do |vs_id| %>
-          <span class="badge bg-primary d-flex align-items-center gap-1" data-vector-store-id="<%= vs_id %>">
+        <%
+          # Support both old format (array of IDs) and new format (array of {id, name} hashes)
+          vector_stores = file_search_config['vector_stores'] || []
+          vector_store_ids = file_search_config['vector_store_ids'] || []
+
+          # If we have the new format with names, use it
+          if vector_stores.present?
+            vector_stores.each do |vs|
+              vs_id = vs['id']
+              vs_name = vs['name'] || vs_id
+        %>
+          <span class="badge bg-primary d-flex align-items-center gap-1"
+                data-vector-store-id="<%= vs_id %>"
+                data-vector-store-name="<%= vs_name %>">
+            <span class="vector-store-name"><%= vs_name %></span>
+            <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
+                    data-action="click->tools-config#removeVectorStore"></button>
+          </span>
+        <%
+            end
+          # Otherwise fall back to old format (IDs only)
+          else
+            vector_store_ids.each do |vs_id|
+        %>
+          <span class="badge bg-primary d-flex align-items-center gap-1"
+                data-vector-store-id="<%= vs_id %>">
             <%= vs_id.truncate(20) %>
             <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
                     data-action="click->tools-config#removeVectorStore"></button>
           </span>
-        <% end %>
+        <%
+            end
+          end
+        %>
       </div>
       <div class="form-text">
         Select existing vector stores or create a new one with uploaded files.

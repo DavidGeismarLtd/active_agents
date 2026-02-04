@@ -416,12 +416,18 @@ export default class extends Controller {
 
     // Collect file_search config
     if (this.hasSelectedVectorStoresTarget) {
-      const vectorStoreIds = []
+      const vectorStores = []
       this.selectedVectorStoresTarget.querySelectorAll("[data-vector-store-id]").forEach(badge => {
-        vectorStoreIds.push(badge.dataset.vectorStoreId)
+        vectorStores.push({
+          id: badge.dataset.vectorStoreId,
+          name: badge.dataset.vectorStoreName || badge.dataset.vectorStoreId
+        })
       })
-      if (vectorStoreIds.length > 0) {
-        config.tool_config.file_search = { vector_store_ids: vectorStoreIds }
+      if (vectorStores.length > 0) {
+        config.tool_config.file_search = {
+          vector_store_ids: vectorStores.map(vs => vs.id),
+          vector_stores: vectorStores
+        }
       }
     }
 

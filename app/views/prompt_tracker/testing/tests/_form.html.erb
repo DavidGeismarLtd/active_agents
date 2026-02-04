@@ -57,10 +57,18 @@
         all_evaluators = PromptTracker::EvaluatorRegistry.all
         current_evaluators = test.evaluator_configs.to_a
 
-        # Check if testable is an Assistant with vector stores attached (for file_search evaluator)
+        # Check if testable has vector stores attached (for file_search evaluator)
         testable = test.testable
-        is_assistant = testable.is_a?(PromptTracker::Openai::Assistant)
-        vector_store_ids = is_assistant ? (testable.metadata&.dig("tool_resources", "file_search", "vector_store_ids") || []) : []
+        vector_store_ids = []
+
+        if testable.is_a?(PromptTracker::Openai::Assistant)
+          # Assistants store vector stores in metadata.tool_resources
+          vector_store_ids = testable.metadata&.dig("tool_resources", "file_search", "vector_store_ids") || []
+        elsif testable.is_a?(PromptTracker::PromptVersion)
+          # PromptVersions store vector stores in model_config.tool_config (for Responses API)
+          vector_store_ids = testable.model_config&.dig("tool_config", "file_search", "vector_store_ids") || []
+        end
+
         has_vector_store = vector_store_ids.present?
       %>
 
