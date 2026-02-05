@@ -3,35 +3,36 @@
 module PromptTracker
   module TestRunners
     module Openai
-      # Handler for OpenAI Response API.
-      #
-      # This handler executes both single-turn and conversational tests using
-      # the OpenAI Response API, which supports stateful conversations via
-      # previous_response_id.
-      #
-      # Response API provides:
-      # - Stateful multi-turn conversations
-      # - Built-in tools (web_search, file_search, code_interpreter)
-      # - Function calling
-      #
-      # @example Single-turn execution
-      #   handler = ResponseApiHandler.new(model_config: config, use_real_llm: true)
-      #   output_data = handler.execute(
-      #     mode: :single_turn,
-      #     system_prompt: "You are helpful.",
-      #     first_user_message: "Hello"
-      #   )
-      #
-      # @example Conversational execution
-      #   handler = ResponseApiHandler.new(model_config: config, use_real_llm: true)
-      #   output_data = handler.execute(
-      #     mode: :conversational,
-      #     system_prompt: "You are a doctor.",
-      #     interlocutor_prompt: "You are a patient with headache.",
-      #     max_turns: 5
-      #   )
-      #
-      class ResponseApiHandler < ConversationTestHandler
+      module Responses
+        # Simulated conversation runner for OpenAI Response API.
+        #
+        # This runner executes both single-turn and conversational tests using
+        # the OpenAI Response API, which supports stateful conversations via
+        # previous_response_id.
+        #
+        # Response API provides:
+        # - Stateful multi-turn conversations
+        # - Built-in tools (web_search, file_search, code_interpreter)
+        # - Function calling
+        #
+        # @example Single-turn execution
+        #   runner = SimulatedConversationRunner.new(model_config: config, use_real_llm: true)
+        #   output_data = runner.execute(
+        #     mode: :single_turn,
+        #     system_prompt: "You are helpful.",
+        #     first_user_message: "Hello"
+        #   )
+        #
+        # @example Conversational execution
+        #   runner = SimulatedConversationRunner.new(model_config: config, use_real_llm: true)
+        #   output_data = runner.execute(
+        #     mode: :conversational,
+        #     system_prompt: "You are a doctor.",
+        #     interlocutor_prompt: "You are a patient with headache.",
+        #     max_turns: 5
+        #   )
+        #
+        class SimulatedConversationRunner < TestRunners::SimulatedConversationRunner
         # Execute the test
         #
         # @param params [Hash] execution parameters
@@ -247,6 +248,7 @@ module PromptTracker
         # @return [Helpers::ToolResultExtractor]
         def tool_result_extractor
           @tool_result_extractor ||= Helpers::ToolResultExtractor.new(@all_responses)
+        end
         end
       end
     end

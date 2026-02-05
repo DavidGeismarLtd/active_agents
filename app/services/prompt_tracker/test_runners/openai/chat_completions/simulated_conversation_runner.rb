@@ -3,36 +3,37 @@
 module PromptTracker
   module TestRunners
     module Openai
-      # Handler for OpenAI Chat Completion API and compatible APIs.
-      #
-      # This handler executes both single-turn and conversational tests using
-      # the chat completions interface via LlmClientService.
-      #
-      # While namespaced under Openai, this handler works with any provider
-      # that follows the chat completion pattern (OpenAI, Anthropic, Google, etc.)
-      # because it delegates to LlmClientService which handles provider-specific details.
-      #
-      # For conversational mode, it simulates multi-turn conversations by
-      # generating user messages via an interlocutor LLM.
-      #
-      # @example Single-turn execution
-      #   handler = ChatCompletionHandler.new(model_config: config, use_real_llm: true)
-      #   output_data = handler.execute(
-      #     system_prompt: "You are helpful.",
-      #     max_turns: 1,
-      #     first_user_message: "Hello"
-      #   )
-      #
-      # @example Conversational execution
-      #   handler = ChatCompletionHandler.new(model_config: config, use_real_llm: true)
-      #   output_data = handler.execute(
-      #     system_prompt: "You are a doctor.",
-      #     max_turns: 5,
-      #     interlocutor_prompt: "You are a patient with headache.",
-      #     first_user_message: "Hello doctor"
-      #   )
-      #
-      class ChatCompletionHandler < ConversationTestHandler
+      module ChatCompletions
+        # Simulated conversation runner for OpenAI Chat Completion API and compatible APIs.
+        #
+        # This runner executes both single-turn and conversational tests using
+        # the chat completions interface via LlmClientService.
+        #
+        # While namespaced under Openai, this runner works with any provider
+        # that follows the chat completion pattern (OpenAI, Anthropic, Google, etc.)
+        # because it delegates to LlmClientService which handles provider-specific details.
+        #
+        # For conversational mode, it simulates multi-turn conversations by
+        # generating user messages via an interlocutor LLM.
+        #
+        # @example Single-turn execution
+        #   runner = SimulatedConversationRunner.new(model_config: config, use_real_llm: true)
+        #   output_data = runner.execute(
+        #     system_prompt: "You are helpful.",
+        #     max_turns: 1,
+        #     first_user_message: "Hello"
+        #   )
+        #
+        # @example Conversational execution
+        #   runner = SimulatedConversationRunner.new(model_config: config, use_real_llm: true)
+        #   output_data = runner.execute(
+        #     system_prompt: "You are a doctor.",
+        #     max_turns: 5,
+        #     interlocutor_prompt: "You are a patient with headache.",
+        #     first_user_message: "Hello doctor"
+        #   )
+        #
+        class SimulatedConversationRunner < TestRunners::SimulatedConversationRunner
         # Execute the test
         #
         # @param params [Hash] execution parameters
@@ -146,6 +147,7 @@ module PromptTracker
         # @return [Helpers::TokenAggregator]
         def token_aggregator
           @token_aggregator ||= Helpers::TokenAggregator.new
+        end
         end
       end
     end
