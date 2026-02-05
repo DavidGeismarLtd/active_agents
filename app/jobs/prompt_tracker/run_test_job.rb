@@ -1,27 +1,20 @@
 # frozen_string_literal: true
 
 module PromptTracker
-  # Background job to run a single test (prompt version or assistant).
+  # Background job to run a single test for a PromptVersion.
   #
   # This job:
   # 1. Loads an existing TestRun (created by controller with "running" status)
-  # 2. Detects testable type and routes to appropriate runner
-  # 3. Executes the test via the runner service
-  # 4. Updates the test run with results
-  # 5. Broadcasts completion via Turbo Streams
+  # 2. Executes the test via PromptVersionRunner
+  # 3. Updates the test run with results
+  # 4. Broadcasts completion via Turbo Streams
   #
-  # Runner routing:
-  # - PromptTracker::PromptVersion → PromptTracker::TestRunners::PromptVersionRunner
-  #   (handles both single-turn and conversational via API executors)
-  # - PromptTracker::Openai::Assistant → PromptTracker::TestRunners::Openai::AssistantRunner
+  # All testables (prompts and assistants) are now represented as PromptVersions,
+  # so this job always uses TestRunners::PromptVersionRunner.
   #
-  # @example Enqueue a prompt version test run
+  # @example Enqueue a test run
   #   test_run = TestRun.create!(test: test, prompt_version: version, status: "running")
   #   RunTestJob.perform_later(test_run.id, use_real_llm: true)
-  #
-  # @example Enqueue an assistant test run
-  #   test_run = TestRun.create!(test: test, status: "running")
-  #   RunTestJob.perform_later(test_run.id)
   #
   class RunTestJob < ApplicationJob
     queue_as :prompt_tracker_tests
@@ -32,7 +25,7 @@ module PromptTracker
     # Execute the test run
     #
     # @param test_run_id [Integer] ID of the TestRun to execute
-    # @param use_real_llm [Boolean] whether to use real LLM API or mock (for prompt tests)
+    # @param use_real_llm [Boolean] whether to use real LLM API or mock
     def perform(test_run_id, use_real_llm: false)
       Rails.logger.info "🚀 RunTestJob started for test_run #{test_run_id}"
 
@@ -40,10 +33,8 @@ module PromptTracker
       test = test_run.test
       testable = test.testable
 
-      # Route to appropriate runner based on testable type
-      runner_class = resolve_runner_class(testable)
-
-      runner = runner_class.new(
+      # Always use PromptVersionRunner (unified for all testables)
+      runner = TestRunners::PromptVersionRunner.new(
         test_run: test_run,
         test: test,
         testable: testable,
@@ -52,28 +43,6 @@ module PromptTracker
       runner.run
 
       Rails.logger.info "✅ RunTestJob completed for test_run #{test_run_id}"
-    end
-
-    private
-
-    # Resolve the runner class based on testable type
-    #
-    # Runner selection:
-    # - PromptVersion → PromptVersionRunner (unified for single-turn and conversational)
-    # - Openai::Assistant → AssistantRunner
-    #
-    # @param testable [Object] the testable object
-    # @return [Class] the runner class
-    # @raise [ArgumentError] if no runner found for testable type
-    def resolve_runner_class(testable)
-      case testable
-      when PromptVersion
-        TestRunners::PromptVersionRunner
-      when Openai::Assistant
-        TestRunners::Openai::AssistantRunner
-      else
-        raise ArgumentError, "No runner found for testable type: #{testable.class.name}"
-      end
     end
   end
 end
