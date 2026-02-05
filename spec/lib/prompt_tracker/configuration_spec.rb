@@ -274,5 +274,113 @@ module PromptTracker
         expect(config.default_provider_for(:unknown)).to be_nil
       end
     end
+
+    describe "#tools_for_api" do
+      context "with OpenAI provider" do
+        it "returns enriched tool metadata for chat_completions API" do
+          tools = config.tools_for_api(:openai, :chat_completions)
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+
+          functions_tool = tools.first
+          expect(functions_tool[:id]).to eq("functions")
+          expect(functions_tool[:name]).to eq("Functions")
+          expect(functions_tool[:description]).to eq("Define custom function schemas")
+          expect(functions_tool[:icon]).to eq("bi-braces-asterisk")
+          expect(functions_tool[:configurable]).to be true
+        end
+
+        it "returns enriched tool metadata for responses API" do
+          tools = config.tools_for_api(:openai, :responses)
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(4)
+
+          tool_ids = tools.map { |t| t[:id] }
+          expect(tool_ids).to contain_exactly("web_search", "file_search", "code_interpreter", "functions")
+
+          # Verify metadata structure
+          tools.each do |tool|
+            expect(tool).to have_key(:id)
+            expect(tool).to have_key(:name)
+            expect(tool).to have_key(:description)
+            expect(tool).to have_key(:icon)
+            expect(tool).to have_key(:configurable)
+          end
+
+          # Verify configurable flags
+          file_search = tools.find { |t| t[:id] == "file_search" }
+          expect(file_search[:configurable]).to be true
+
+          web_search = tools.find { |t| t[:id] == "web_search" }
+          expect(web_search[:configurable]).to be false
+        end
+
+        it "returns enriched tool metadata for assistants API" do
+          tools = config.tools_for_api(:openai, :assistants)
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(3)
+
+          tool_ids = tools.map { |t| t[:id] }
+          expect(tool_ids).to contain_exactly("code_interpreter", "file_search", "functions")
+        end
+      end
+
+      context "with Anthropic provider" do
+        it "returns enriched tool metadata for messages API" do
+          tools = config.tools_for_api(:anthropic, :messages)
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+
+          functions_tool = tools.first
+          expect(functions_tool[:id]).to eq("functions")
+          expect(functions_tool[:name]).to eq("Functions")
+        end
+      end
+
+      context "with unknown provider" do
+        it "returns empty array" do
+          tools = config.tools_for_api(:unknown_provider, :chat_completions)
+          expect(tools).to eq([])
+        end
+      end
+
+      context "with unknown API" do
+        it "returns empty array for known provider but unknown API" do
+          tools = config.tools_for_api(:openai, :unknown_api)
+          expect(tools).to eq([])
+        end
+      end
+
+      context "with nil arguments" do
+        it "returns empty array when provider is nil" do
+          tools = config.tools_for_api(nil, :chat_completions)
+          expect(tools).to eq([])
+        end
+
+        it "returns empty array when API is nil" do
+          tools = config.tools_for_api(:openai, nil)
+          expect(tools).to eq([])
+        end
+
+        it "returns empty array when both are nil" do
+          tools = config.tools_for_api(nil, nil)
+          expect(tools).to eq([])
+        end
+      end
+
+      context "with string arguments" do
+        it "converts strings to symbols" do
+          tools = config.tools_for_api("openai", "chat_completions")
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
+        end
+      end
+    end
   end
 end

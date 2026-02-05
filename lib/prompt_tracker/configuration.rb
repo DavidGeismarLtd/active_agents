@@ -357,22 +357,23 @@ module PromptTracker
     end
 
     # Get available tools for a specific provider and API combination.
-    # Returns tool metadata for capabilities defined in the API config.
+    # Returns tool metadata for a provider/API combination.
+    # Delegates to ApiCapabilities for capability detection, then enriches with metadata.
     #
     # @param provider [Symbol] the provider key
     # @param api [Symbol] the API key
     # @return [Array<Hash>] array of tool hashes with :id, :name, :description, :icon, :configurable
     def tools_for_api(provider, api)
-      api_config = providers.dig(provider.to_sym, :apis, api.to_sym)
-      return [] unless api_config
+      # Get tools from ApiCapabilities (single source of truth)
+      tool_symbols = ApiCapabilities.tools_for(provider, api)
 
-      capabilities = api_config[:capabilities] || []
-      capabilities.map do |capability|
-        tool_metadata = builtin_tools[capability.to_sym]
+      # Enrich with metadata from builtin_tools
+      tool_symbols.map do |tool_symbol|
+        tool_metadata = builtin_tools[tool_symbol]
         next unless tool_metadata
 
         {
-          id: capability.to_s,
+          id: tool_symbol.to_s,
           name: tool_metadata[:name],
           description: tool_metadata[:description],
           icon: tool_metadata[:icon],
