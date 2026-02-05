@@ -85,68 +85,6 @@ PromptTracker::Engine.routes.draw do
         post :rerun
       end
     end
-
-    # OpenAI Assistants
-    namespace :openai do
-      # Standalone playground route for creating new assistants
-      get "assistants/playground/new", to: "assistant_playground#new", as: "new_assistant_playground"
-      # Generate instructions for new assistants (before assistant is created)
-      post "assistants/playground/generate_instructions", to: "assistant_playground#generate_instructions", as: "generate_assistant_instructions"
-
-      resources :assistants, only: [ :index, :show, :destroy ] do
-        member do
-          post :sync # Sync assistant from OpenAI API
-        end
-
-        # Playground for editing existing assistants
-        resource :playground, only: [ :show ], controller: "assistant_playground" do
-          post :create_assistant    # Create new assistant via API
-          post :update_assistant    # Update existing assistant via API
-          post :send_message        # Send message in thread
-          post :create_thread       # Create new thread
-          get  :load_messages       # Load thread messages
-
-          # File management for file_search
-          post :upload_file              # Upload file to OpenAI
-          get  :list_files               # List uploaded files
-          delete :delete_file            # Delete a file
-          post :create_vector_store      # Create a vector store
-          get  :list_vector_stores       # List vector stores
-          post :add_file_to_vector_store # Add file to vector store
-          post :attach_vector_store      # Attach vector store to assistant
-          post :submit_tool_outputs # Submit mock function responses
-          post :generate_instructions # Generate instructions with AI
-        end
-
-        # Tests nested under assistants
-        resources :tests, controller: "assistant_tests", only: [ :create, :show, :update, :destroy ] do
-          collection do
-            post :run_all
-          end
-          member do
-            post :run
-            get :load_more_runs
-          end
-        end
-
-        # Datasets nested under assistants
-        resources :datasets, controller: "assistant_datasets", only: [ :index, :new, :create, :show, :edit, :update, :destroy ] do
-          member do
-            post :generate_rows # LLM-powered row generation
-          end
-
-          # Dataset rows nested under datasets
-          resources :dataset_rows, only: [ :create, :update, :destroy ], path: "rows" do
-            member do
-              get :edit_modal  # Lazy-load edit modal HTML
-            end
-            collection do
-              delete :batch_destroy
-            end
-          end
-        end
-      end
-    end
   end
 
   # ========================================
@@ -220,6 +158,10 @@ PromptTracker::Engine.routes.draw do
   # API SECTION - Internal API endpoints
   # ========================================
   namespace :api do
-    resources :vector_stores, only: [ :index, :create ]
+    resources :vector_stores, only: [ :index, :create ] do
+      member do
+        get :files  # GET /api/vector_stores/:id/files
+      end
+    end
   end
 end
