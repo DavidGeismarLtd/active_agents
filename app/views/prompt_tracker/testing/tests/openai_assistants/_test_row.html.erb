@@ -1,9 +1,0 @@
-<% assistant ||= test.testable %>
-<tr id="test_row_<%= test.id %>">
-  <%= render "prompt_tracker/testing/tests/cells/name", test: test %>
-  <%= render "prompt_tracker/testing/tests/cells/evaluator_configs", test: test %>
-  <%= render "prompt_tracker/testing/tests/cells/status", test: test %>
-  <%= render "prompt_tracker/testing/tests/cells/last_run", test: test %>
-  <%= render "prompt_tracker/testing/tests/cells/total_runs", test: test %>
-  <%= render "prompt_tracker/testing/tests/cells/actions", test: test %>
-</tr>

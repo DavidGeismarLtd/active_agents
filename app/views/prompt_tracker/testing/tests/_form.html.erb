@@ -61,11 +61,8 @@
         testable = test.testable
         vector_store_ids = []
 
-        if testable.is_a?(PromptTracker::Openai::Assistant)
-          # Assistants store vector stores in metadata.tool_resources
-          vector_store_ids = testable.metadata&.dig("tool_resources", "file_search", "vector_store_ids") || []
-        elsif testable.is_a?(PromptTracker::PromptVersion)
-          # PromptVersions store vector stores in model_config.tool_config (for Responses API)
+        if testable.is_a?(PromptTracker::PromptVersion)
+          # PromptVersions store vector stores in model_config.tool_config
           vector_store_ids = testable.model_config&.dig("tool_config", "file_search", "vector_store_ids") || []
         end
 
