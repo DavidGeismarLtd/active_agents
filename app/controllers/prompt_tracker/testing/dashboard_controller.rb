@@ -27,15 +27,9 @@ module PromptTracker
           @prompts = []
         end
 
-        # Load assistants with their tests
-        if @filter.in?([ "all", "assistants" ])
-          @assistants = PromptTracker::Openai::Assistant.includes(
-            :tests,
-            { tests: :test_runs }
-          ).order(created_at: :desc)
-        else
-          @assistants = []
-        end
+        # Assistants are now PromptVersions with api: "assistants"
+        # No separate assistant list needed
+        @assistants = []
 
         # Calculate statistics
         calculate_statistics
@@ -70,7 +64,7 @@ module PromptTracker
 
         # Count by testable type
         @prompt_count = Prompt.count
-        @assistant_count = PromptTracker::Openai::Assistant.count
+        @assistant_count = 0 # Assistants are now PromptVersions
       end
     end
   end
