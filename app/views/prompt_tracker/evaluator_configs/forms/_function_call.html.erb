@@ -5,11 +5,10 @@
 <% namespace ||= 'config' %>
 <% testable ||= nil %>
 <%
-  # Get available functions from the assistant
+  # Get available functions from the testable (if any)
   available_functions = []
-  if testable.is_a?(PromptTracker::Openai::Assistant)
-    available_functions = testable.functions
-  end
+  # Note: Functions are now stored in model_config for PromptVersions
+  # This evaluator may not be applicable for all testable types
   selected_functions = Array(config['expected_functions'] || config[:expected_functions])
 %>
 
