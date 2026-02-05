@@ -32,11 +32,25 @@ module PromptTracker
         render json: result, status: :created
       end
 
+      # GET /prompt_tracker/api/vector_stores/:id/files
+      # Returns list of files in a specific vector store
+      def files
+        vector_store_id = params[:id]
+
+        if vector_store_id.blank?
+          render json: { error: "Vector store ID is required" }, status: :unprocessable_entity
+          return
+        end
+
+        files = fetch_vector_store_files(vector_store_id)
+
+        render json: { files: files }
+      end
+
       private
 
       def openai_client
-        api_key = PromptTracker.configuration.openai_assistants[:api_key] ||
-                  PromptTracker.configuration.api_keys[:openai]
+        api_key = PromptTracker.configuration.api_key_for(:openai)
 
         raise "OpenAI API key not configured" unless api_key.present?
 
@@ -96,6 +110,16 @@ module PromptTracker
           )
           response["id"]
         end
+      end
+
+      def fetch_vector_store_files(vector_store_id)
+        VectorStoreService.list_vector_store_files(
+          provider: :openai,
+          vector_store_id: vector_store_id
+        )
+      rescue StandardError => e
+        Rails.logger.error("Failed to fetch vector store files: #{e.message}")
+        []
       end
     end
   end
