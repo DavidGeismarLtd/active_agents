@@ -56,9 +56,7 @@ module PromptTracker
     # @return [Hash] hash of provider symbol => array of model hashes
     attr_accessor :models
 
-    # OpenAI Assistants configuration (separate from chat completions).
-    # @return [Hash] hash with :api_key and :available_models keys
-    attr_accessor :openai_assistants
+
 
     # Context-specific model restrictions.
     # @return [Hash] hash of context symbol => restrictions hash
@@ -89,7 +87,6 @@ module PromptTracker
       @api_keys = {}
       @providers = {}
       @models = {}
-      @openai_assistants = { api_key: nil, available_models: [] }
       @contexts = {}
       @defaults = {}
       @builtin_tools = default_builtin_tools
@@ -275,24 +272,6 @@ module PromptTracker
           }
         end
       end
-    end
-
-    # Check if OpenAI Assistants API is configured.
-    # @return [Boolean] true if configured with an API key
-    def openai_assistants_configured?
-      openai_assistants[:api_key].present?
-    end
-
-    # Get available models for OpenAI Assistants.
-    # @return [Array<Hash>] list of model hashes
-    def openai_assistants_models
-      openai_assistants[:available_models] || []
-    end
-
-    # Get the API key for OpenAI Assistants.
-    # @return [String, nil] the API key
-    def openai_assistants_api_key
-      openai_assistants[:api_key]
     end
 
     # =========================================================================

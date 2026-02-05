@@ -183,17 +183,4 @@ PromptTracker.configure do |config|
     prompt_generator_model: "gpt-4o-mini",
     dataset_generator_model: "gpt-4o"
   }
-
-  # ===========================================================================
-  # OpenAI Assistants Configuration (Optional)
-  # ===========================================================================
-  # Separate configuration for OpenAI Assistants API.
-  # This can use a different API key than the chat completions API.
-  # config.openai_assistants = {
-  #   api_key: ENV["OPENAI_ASSISTANTS_API_KEY"],
-  #   available_models: [
-  #     { id: "gpt-4o", name: "GPT-4o" },
-  #     { id: "gpt-4-turbo", name: "GPT-4 Turbo" }
-  #   ]
-  # }
 end
