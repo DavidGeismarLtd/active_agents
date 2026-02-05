@@ -59,17 +59,14 @@ RSpec.describe "File Search Evaluator Availability", type: :system, js: true do
       end
 
       before do
-        # Mock the AssistantPlaygroundService to return files
-        allow_any_instance_of(PromptTracker::AssistantPlaygroundService)
+        # Mock the VectorStoreService to return files
+        allow(PromptTracker::VectorStoreService)
           .to receive(:list_vector_store_files)
-          .with(vector_store_id: "vs_test123")
-          .and_return({
-            success: true,
-            files: [
-              { id: "file_1", filename: "document1.pdf", bytes: 1024 },
-              { id: "file_2", filename: "document2.txt", bytes: 2048 }
-            ]
-          })
+          .with(provider: :openai, vector_store_id: "vs_test123")
+          .and_return([
+            { id: "file_1", filename: "document1.pdf", bytes: 1024 },
+            { id: "file_2", filename: "document2.txt", bytes: 2048 }
+          ])
       end
 
       it "enables the file search evaluator" do
@@ -168,17 +165,14 @@ RSpec.describe "File Search Evaluator Availability", type: :system, js: true do
       end
 
       before do
-        # Mock the AssistantPlaygroundService to return files
-        allow_any_instance_of(PromptTracker::AssistantPlaygroundService)
+        # Mock the VectorStoreService to return files
+        allow(PromptTracker::VectorStoreService)
           .to receive(:list_vector_store_files)
-          .with(vector_store_id: "vs_assistant123")
-          .and_return({
-            success: true,
-            files: [
-              { id: "file_a", filename: "manual.pdf", bytes: 5120 },
-              { id: "file_b", filename: "guide.docx", bytes: 3072 }
-            ]
-          })
+          .with(provider: :openai, vector_store_id: "vs_assistant123")
+          .and_return([
+            { id: "file_a", filename: "manual.pdf", bytes: 5120 },
+            { id: "file_b", filename: "guide.docx", bytes: 3072 }
+          ])
       end
 
       it "enables the file search evaluator" do

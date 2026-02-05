@@ -34,11 +34,6 @@ module PromptTracker
       it "sets defaults to empty hash" do
         expect(config.defaults).to eq({})
       end
-
-      it "sets openai_assistants with nil api_key" do
-        expect(config.openai_assistants[:api_key]).to be_nil
-        expect(config.openai_assistants[:available_models]).to eq([])
-      end
     end
 
     describe "#basic_auth_enabled?" do
@@ -277,68 +272,6 @@ module PromptTracker
 
       it "returns nil for unknown context" do
         expect(config.default_provider_for(:unknown)).to be_nil
-      end
-    end
-
-    describe "#openai_assistants_configured?" do
-      context "when openai_assistants is configured with API key" do
-        before do
-          config.openai_assistants = {
-            api_key: "sk-test",
-            available_models: [ { id: "gpt-4o", name: "GPT-4o" } ]
-          }
-        end
-
-        it "returns true" do
-          expect(config.openai_assistants_configured?).to be true
-        end
-      end
-
-      context "when openai_assistants has nil API key" do
-        before do
-          config.openai_assistants = { api_key: nil, available_models: [] }
-        end
-
-        it "returns false" do
-          expect(config.openai_assistants_configured?).to be false
-        end
-      end
-
-      context "when openai_assistants has blank API key" do
-        before do
-          config.openai_assistants = { api_key: "", available_models: [] }
-        end
-
-        it "returns false" do
-          expect(config.openai_assistants_configured?).to be false
-        end
-      end
-    end
-
-    describe "#openai_assistants_models" do
-      before do
-        config.openai_assistants = {
-          api_key: "sk-test",
-          available_models: [
-            { id: "gpt-4o", name: "GPT-4o" },
-            { id: "gpt-4-turbo", name: "GPT-4 Turbo" }
-          ]
-        }
-      end
-
-      it "returns the configured models" do
-        expect(config.openai_assistants_models.length).to eq(2)
-        expect(config.openai_assistants_models.first[:id]).to eq("gpt-4o")
-      end
-    end
-
-    describe "#openai_assistants_api_key" do
-      before do
-        config.openai_assistants = { api_key: "sk-asst-key", available_models: [] }
-      end
-
-      it "returns the API key" do
-        expect(config.openai_assistants_api_key).to eq("sk-asst-key")
       end
     end
   end

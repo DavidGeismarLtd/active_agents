@@ -78,23 +78,25 @@ module PromptTracker
         let(:provider) { "openai" }
         let(:api) { "assistants" }
         let(:assistant_id) { "asst_abc123" }
+        let(:model) { "gpt-4o" }
         let(:assistant_response) do
           {
             text: "The weather is sunny.",
             usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-            model: assistant_id,
+            model: model,
             raw: { thread_id: "thread_123", run_id: "run_456" }
           }
         end
 
-        it "routes to OpenaiAssistantService" do
+        it "routes to OpenaiAssistantService with assistant_id from options" do
           allow(OpenaiAssistantService).to receive(:call).and_return(assistant_response)
 
           result = described_class.call(
             provider: provider,
             api: api,
-            model: assistant_id,
-            prompt: prompt
+            model: model,
+            prompt: prompt,
+            assistant_id: assistant_id
           )
 
           expect(OpenaiAssistantService).to have_received(:call).with(
@@ -103,6 +105,25 @@ module PromptTracker
             timeout: 60
           )
           expect(result).to eq(assistant_response)
+        end
+
+        it "uses custom timeout when provided" do
+          allow(OpenaiAssistantService).to receive(:call).and_return(assistant_response)
+
+          described_class.call(
+            provider: provider,
+            api: api,
+            model: model,
+            prompt: prompt,
+            assistant_id: assistant_id,
+            timeout: 120
+          )
+
+          expect(OpenaiAssistantService).to have_received(:call).with(
+            assistant_id: assistant_id,
+            prompt: prompt,
+            timeout: 120
+          )
         end
       end
 
