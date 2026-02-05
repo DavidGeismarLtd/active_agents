@@ -1,0 +1,111 @@
+<%#
+  File Search Configuration Panel
+
+  Local variables:
+    - file_search_config: Hash with file search configuration
+    - enabled_tools_hash: Hash of enabled tools
+    - tool_config: Hash with detailed tool configuration
+%>
+
+<div id="file-search-config"
+     class="tool-config-panel mt-3 p-3 border rounded bg-light <%= 'show' if enabled_tools_hash['file_search'].present? %>"
+     data-tools-config-target="fileSearchPanel">
+  <h6 class="mb-3">
+    <i class="bi bi-file-earmark-search me-1"></i>
+    File Search Configuration
+  </h6>
+  <div class="mb-3">
+    <label class="form-label">
+      Vector Stores
+      (<span data-tools-config-target="vectorStoreCount">0</span>/2)
+    </label>
+    <div class="d-flex gap-2 mb-2">
+      <select class="form-select form-select-sm"
+              id="vector-store-select"
+              data-tools-config-target="vectorStoreSelect">
+        <option value="">Select a vector store...</option>
+      </select>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-action="click->tools-config#loadVectorStores"
+              title="Refresh list">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-primary"
+              data-action="click->tools-config#addVectorStore"
+              data-tools-config-target="vectorStoreAddButton"
+              title="Add selected store">
+        <i class="bi bi-plus"></i> Add
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-success"
+              data-action="click->tools-config#showCreateVectorStoreModal"
+              title="Create new vector store">
+        <i class="bi bi-cloud-upload"></i> New
+      </button>
+    </div>
+    <!-- Error message area -->
+    <div class="alert alert-warning alert-dismissible fade show d-none mb-2"
+         role="alert"
+         data-tools-config-target="vectorStoreError">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      <span></span>
+      <button type="button"
+              class="btn-close"
+              data-action="click->tools-config#hideVectorStoreError"
+              aria-label="Close"></button>
+    </div>
+    <div id="selected-vector-stores"
+         class="d-flex flex-wrap gap-2 mb-2"
+         data-tools-config-target="selectedVectorStores">
+      <%
+        # Support both old format (array of IDs) and new format (array of {id, name} hashes)
+        vector_stores = file_search_config['vector_stores'] || []
+        vector_store_ids = file_search_config['vector_store_ids'] || []
+
+        # If we have the new format with names, use it
+        if vector_stores.present?
+          vector_stores.each do |vs|
+            vs_id = vs['id']
+            vs_name = vs['name'] || vs_id
+      %>
+        <span class="badge bg-primary d-flex align-items-center gap-1"
+              data-vector-store-id="<%= vs_id %>"
+              data-vector-store-name="<%= vs_name %>"
+              style="cursor: pointer;"
+              data-action="click->tools-config#showVectorStoreFiles"
+              title="Click to view files">
+          <span class="vector-store-name"><%= vs_name %></span>
+          <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
+                  data-action="click->tools-config#removeVectorStore"
+                  onclick="event.stopPropagation()"></button>
+        </span>
+      <%
+          end
+        # Otherwise fall back to old format (IDs only)
+        else
+          vector_store_ids.each do |vs_id|
+      %>
+        <span class="badge bg-primary d-flex align-items-center gap-1"
+              data-vector-store-id="<%= vs_id %>"
+              data-vector-store-name="<%= vs_id %>"
+              style="cursor: pointer;"
+              data-action="click->tools-config#showVectorStoreFiles"
+              title="Click to view files">
+          <%= vs_id.truncate(20) %>
+          <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
+                  data-action="click->tools-config#removeVectorStore"
+                  onclick="event.stopPropagation()"></button>
+        </span>
+      <%
+          end
+        end
+      %>
+    </div>
+    <div class="form-text">
+      Select existing vector stores or create a new one with uploaded files.
+      <strong>Note:</strong> OpenAI Responses API supports a maximum of 2 vector stores per request.
+    </div>
+  </div>
+</div>

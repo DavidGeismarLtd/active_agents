@@ -14,19 +14,22 @@
   vector_store_files = []
   vector_store_ids = []
 
-  if testable.is_a?(PromptTracker::Openai::Assistant)
-    # Assistants store vector stores in metadata.tool_resources
-    vector_store_ids = testable.metadata&.dig("tool_resources", "file_search", "vector_store_ids") || []
-  elsif testable.is_a?(PromptTracker::PromptVersion)
-    # PromptVersions store vector stores in model_config.tool_config (for Responses API)
+  if testable.is_a?(PromptTracker::PromptVersion)
+    # PromptVersions store vector stores in model_config.tool_config
     vector_store_ids = testable.model_config&.dig("tool_config", "file_search", "vector_store_ids") || []
   end
 
   if vector_store_ids.present?
-    service = PromptTracker::AssistantPlaygroundService.new
     vector_store_ids.each do |vs_id|
-      result = service.list_vector_store_files(vector_store_id: vs_id)
-      vector_store_files.concat(result[:files]) if result[:success]
+      begin
+        files = PromptTracker::VectorStoreService.list_vector_store_files(
+          provider: :openai,
+          vector_store_id: vs_id
+        )
+        vector_store_files.concat(files)
+      rescue => e
+        Rails.logger.error "Failed to list vector store files: #{e.message}"
+      end
     end
   end
 %>
@@ -63,21 +66,32 @@
       <% end %>
     </div>
     <input type="hidden"
-           name="<%= namespace %>[expected_files]"
+           name="config[expected_files]"
            id="<%= evaluator_key %>_expected_files"
-           value="<%= expected_files.join("\n") %>">
+           value="<%= expected_files.join("\n") %>"
+           data-evaluator-key="<%= evaluator_key %>">
     <small class="form-text text-muted">
       Select the files the assistant should search during the conversation.
     </small>
     <script>
-      // Update hidden field when checkboxes change
-      document.querySelectorAll('.file-search-file-checkbox').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-          var selectedFiles = [];
-          document.querySelectorAll('.file-search-file-checkbox:checked').forEach(function(cb) {
-            selectedFiles.push(cb.value);
+      // Update hidden field when checkboxes change and trigger Stimulus sync
+      document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.file-search-file-checkbox');
+        const hiddenField = document.getElementById('<%= evaluator_key %>_expected_files');
+
+        if (!hiddenField) return;
+
+        checkboxes.forEach(function(checkbox) {
+          checkbox.addEventListener('change', function() {
+            const selectedFiles = [];
+            document.querySelectorAll('.file-search-file-checkbox:checked').forEach(function(cb) {
+              selectedFiles.push(cb.value);
+            });
+            hiddenField.value = selectedFiles.join('\n');
+
+            // Trigger change event so Stimulus controller picks it up
+            hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
           });
-          document.getElementById('<%= evaluator_key %>_expected_files').value = selectedFiles.join('\n');
         });
       });
     </script>

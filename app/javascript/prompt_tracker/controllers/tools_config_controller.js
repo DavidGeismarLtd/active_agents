@@ -13,6 +13,9 @@ export default class extends Controller {
     "fileSearchPanel",
     "vectorStoreSelect",
     "selectedVectorStores",
+    "vectorStoreCount",
+    "vectorStoreAddButton",
+    "vectorStoreError",
     "functionsPanel",
     "functionsList",
     "functionItem",
@@ -25,14 +28,26 @@ export default class extends Controller {
     "createVectorStoreStatusText",
     "createVectorStoreError",
     "createVectorStoreErrorText",
-    "createVectorStoreButton"
+    "createVectorStoreButton",
+    // Vector store files modal targets
+    "vectorStoreFilesModal",
+    "vectorStoreFilesModalTitle",
+    "vectorStoreFilesLoading",
+    "vectorStoreFilesError",
+    "vectorStoreFilesErrorText",
+    "vectorStoreFilesList"
   ]
+
+  // OpenAI Responses API hard limit
+  static MAX_VECTOR_STORES = 2
 
   connect() {
     this.vectorStoresLoaded = false
     // Defer initial update to ensure DOM is fully ready
     requestAnimationFrame(() => {
       this.updatePanelVisibility()
+      this.updateVectorStoreCount()
+      this.checkVectorStoreLimit()
     })
   }
 
@@ -134,14 +149,25 @@ export default class extends Controller {
     const existing = this.selectedVectorStoresTarget.querySelector(`[data-vector-store-id="${storeId}"]`)
     if (existing) return
 
+    // Check vector store limit
+    const currentCount = this.getVectorStoreCount()
+    if (currentCount >= this.constructor.MAX_VECTOR_STORES) {
+      this.showVectorStoreError(`Maximum ${this.constructor.MAX_VECTOR_STORES} vector stores allowed for OpenAI Responses API`)
+      return
+    }
+
     const badge = document.createElement("span")
     badge.className = "badge bg-primary d-flex align-items-center gap-1"
     badge.dataset.vectorStoreId = storeId
     badge.dataset.vectorStoreName = storeName
+    badge.style.cursor = "pointer"
+    badge.dataset.action = "click->tools-config#showVectorStoreFiles"
+    badge.title = "Click to view files"
     badge.innerHTML = `
       <span class="vector-store-name">${this.escapeHtml(storeName)}</span>
       <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
-              data-action="click->tools-config#removeVectorStore"></button>
+              data-action="click->tools-config#removeVectorStore"
+              onclick="event.stopPropagation()"></button>
     `
 
     this.selectedVectorStoresTarget.appendChild(badge)
@@ -150,6 +176,8 @@ export default class extends Controller {
     selectedOption.remove()
     select.value = ""
 
+    this.updateVectorStoreCount()
+    this.updateAddButtonState()
     this.dispatchToolConfigChange()
   }
 
@@ -169,6 +197,9 @@ export default class extends Controller {
     select.appendChild(option)
 
     badge.remove()
+    this.updateVectorStoreCount()
+    this.updateAddButtonState()
+    this.hideVectorStoreError()
     this.dispatchToolConfigChange()
   }
 
@@ -223,6 +254,13 @@ export default class extends Controller {
       return
     }
 
+    // Check vector store limit before creating
+    const currentCount = this.getVectorStoreCount()
+    if (currentCount >= this.constructor.MAX_VECTOR_STORES) {
+      this.showCreateError(`Maximum ${this.constructor.MAX_VECTOR_STORES} vector stores allowed. Please remove one before creating a new one.`)
+      return
+    }
+
     // Show progress
     this.createVectorStoreButtonTarget.disabled = true
     this.createVectorStoreStatusTarget.classList.remove("d-none")
@@ -260,10 +298,14 @@ export default class extends Controller {
       badge.className = "badge bg-primary d-flex align-items-center gap-1"
       badge.dataset.vectorStoreId = data.id
       badge.dataset.vectorStoreName = data.name
+      badge.style.cursor = "pointer"
+      badge.dataset.action = "click->tools-config#showVectorStoreFiles"
+      badge.title = "Click to view files"
       badge.innerHTML = `
         <span class="vector-store-name">${this.escapeHtml(data.name)}</span>
         <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
-                data-action="click->tools-config#removeVectorStore"></button>
+                data-action="click->tools-config#removeVectorStore"
+                onclick="event.stopPropagation()"></button>
       `
       this.selectedVectorStoresTarget.appendChild(badge)
 
@@ -272,6 +314,8 @@ export default class extends Controller {
         Modal.getInstance(this.createVectorStoreModalTarget)?.hide()
       }, 500)
 
+      this.updateVectorStoreCount()
+      this.updateAddButtonState()
       this.dispatchToolConfigChange()
 
       // Reload vector stores to update the list
@@ -296,6 +340,79 @@ export default class extends Controller {
     }
     if (this.hasCreateVectorStoreStatusTarget) {
       this.createVectorStoreStatusTarget.classList.add("d-none")
+    }
+  }
+
+  /**
+   * Get current vector store count
+   */
+  getVectorStoreCount() {
+    if (!this.hasSelectedVectorStoresTarget) return 0
+    return this.selectedVectorStoresTarget.querySelectorAll("[data-vector-store-id]").length
+  }
+
+  /**
+   * Update vector store count display
+   */
+  updateVectorStoreCount() {
+    if (!this.hasVectorStoreCountTarget) return
+    const count = this.getVectorStoreCount()
+    this.vectorStoreCountTarget.textContent = count
+  }
+
+  /**
+   * Update add button state based on vector store limit
+   */
+  updateAddButtonState() {
+    if (!this.hasVectorStoreAddButtonTarget) return
+
+    const currentCount = this.getVectorStoreCount()
+    const atLimit = currentCount >= this.constructor.MAX_VECTOR_STORES
+
+    this.vectorStoreAddButtonTarget.disabled = atLimit
+
+    if (atLimit) {
+      this.vectorStoreAddButtonTarget.title = `Maximum ${this.constructor.MAX_VECTOR_STORES} vector stores allowed`
+    } else {
+      this.vectorStoreAddButtonTarget.title = "Add selected store"
+    }
+  }
+
+  /**
+   * Show vector store error message
+   */
+  showVectorStoreError(message) {
+    if (!this.hasVectorStoreErrorTarget) return
+    this.vectorStoreErrorTarget.textContent = message
+    this.vectorStoreErrorTarget.classList.remove("d-none")
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      this.hideVectorStoreError()
+    }, 5000)
+  }
+
+  /**
+   * Hide vector store error message
+   */
+  hideVectorStoreError() {
+    if (!this.hasVectorStoreErrorTarget) return
+    this.vectorStoreErrorTarget.classList.add("d-none")
+  }
+
+  /**
+   * Check vector store limit on page load and show warning if exceeded
+   */
+  checkVectorStoreLimit() {
+    const currentCount = this.getVectorStoreCount()
+
+    if (currentCount > this.constructor.MAX_VECTOR_STORES) {
+      // Show warning for existing configurations with too many stores
+      const warningMessage = `⚠️ Warning: ${currentCount} vector stores configured, but OpenAI Responses API only supports ${this.constructor.MAX_VECTOR_STORES}. Only the first ${this.constructor.MAX_VECTOR_STORES} will be used.`
+      this.showVectorStoreError(warningMessage)
+
+      // Disable add button
+      this.updateAddButtonState()
     }
   }
 
@@ -424,9 +541,12 @@ export default class extends Controller {
         })
       })
       if (vectorStores.length > 0) {
+        // Only use first MAX_VECTOR_STORES for backward compatibility
+        const limitedVectorStores = vectorStores.slice(0, this.constructor.MAX_VECTOR_STORES)
+
         config.tool_config.file_search = {
-          vector_store_ids: vectorStores.map(vs => vs.id),
-          vector_stores: vectorStores
+          vector_store_ids: limitedVectorStores.map(vs => vs.id),
+          vector_stores: limitedVectorStores
         }
       }
     }
@@ -482,5 +602,191 @@ export default class extends Controller {
   dispatchToolConfigChange() {
     const config = this.getToolConfig()
     this.dispatch("change", { detail: config })
+  }
+
+  /**
+   * Show vector store files modal
+   */
+  async showVectorStoreFiles(event) {
+    // Stop propagation to prevent badge removal
+    event.stopPropagation()
+
+    const badge = event.currentTarget
+    const vectorStoreId = badge.dataset.vectorStoreId
+    const vectorStoreName = badge.dataset.vectorStoreName || vectorStoreId
+
+    // Get modal element - either from target or from document if already moved
+    let modalEl = this.hasVectorStoreFilesModalTarget
+      ? this.vectorStoreFilesModalTarget
+      : document.getElementById('vectorStoreFilesModal')
+
+    if (!modalEl) {
+      console.error("Vector store files modal not found")
+      return
+    }
+
+    // Move modal to end of body to fix z-index issues with backdrop
+    if (!modalEl.hasAttribute('data-moved-to-body')) {
+      document.body.appendChild(modalEl)
+      modalEl.setAttribute('data-moved-to-body', 'true')
+    }
+
+    // Update modal title using direct DOM query (since modal may be moved to body)
+    const titleEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesModalTitle"]')
+    if (titleEl) {
+      titleEl.textContent = `Files in ${vectorStoreName}`
+    }
+
+    // Show modal
+    const modal = new Modal(modalEl)
+    modal.show()
+
+    // Show loading state
+    this.showFilesLoading(modalEl)
+
+    try {
+      // Fetch files from API
+      const response = await fetch(`/prompt_tracker/api/vector_stores/${vectorStoreId}/files`, {
+        headers: {
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch files")
+      }
+
+      const data = await response.json()
+      this.displayVectorStoreFiles(data.files, modalEl)
+
+    } catch (error) {
+      console.error("Error fetching vector store files:", error)
+      this.showFilesError(error.message, modalEl)
+    }
+  }
+
+  /**
+   * Show loading state for files
+   */
+  showFilesLoading(modalEl) {
+    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
+    const errorEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesError"]')
+    const listEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesList"]')
+
+    if (loadingEl) loadingEl.classList.remove("d-none")
+    if (errorEl) errorEl.classList.add("d-none")
+    if (listEl) listEl.innerHTML = ""
+  }
+
+  /**
+   * Show error state for files
+   */
+  showFilesError(message, modalEl) {
+    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
+    const errorEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesError"]')
+    const errorTextEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesErrorText"]')
+
+    if (loadingEl) loadingEl.classList.add("d-none")
+    if (errorEl) errorEl.classList.remove("d-none")
+    if (errorTextEl) errorTextEl.textContent = message
+  }
+
+  /**
+   * Display vector store files in the modal
+   */
+  displayVectorStoreFiles(files, modalEl) {
+    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
+    const listEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesList"]')
+
+    // Hide loading
+    if (loadingEl) loadingEl.classList.add("d-none")
+
+    if (!listEl) return
+
+    if (files.length === 0) {
+      listEl.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          No files found in this vector store.
+        </div>
+      `
+      return
+    }
+
+    // Build files table
+    const filesHtml = `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead>
+            <tr>
+              <th><i class="bi bi-file-earmark"></i> Filename</th>
+              <th><i class="bi bi-hdd"></i> Size</th>
+              <th><i class="bi bi-check-circle"></i> Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${files.map(file => this.renderFileRow(file)).join('')}
+          </tbody>
+        </table>
+      </div>
+    `
+
+    listEl.innerHTML = filesHtml
+  }
+
+  /**
+   * Render a single file row
+   */
+  renderFileRow(file) {
+    const statusBadge = this.getStatusBadge(file.status)
+    const fileSize = this.formatFileSize(file.bytes)
+
+    return `
+      <tr>
+        <td>
+          <i class="bi bi-file-earmark-text text-primary me-1"></i>
+          ${this.escapeHtml(file.filename)}
+        </td>
+        <td>${fileSize}</td>
+        <td>${statusBadge}</td>
+      </tr>
+    `
+  }
+
+  /**
+   * Get status badge HTML
+   */
+  getStatusBadge(status) {
+    const statusMap = {
+      'completed': '<span class="badge bg-success">Completed</span>',
+      'in_progress': '<span class="badge bg-warning">In Progress</span>',
+      'failed': '<span class="badge bg-danger">Failed</span>',
+      'cancelled': '<span class="badge bg-secondary">Cancelled</span>'
+    }
+    return statusMap[status] || `<span class="badge bg-secondary">${status}</span>`
+  }
+
+  /**
+   * Format file size in human-readable format
+   */
+  formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B'
+
+    const units = ['B', 'KB', 'MB', 'GB']
+    const k = 1024
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
   }
 }

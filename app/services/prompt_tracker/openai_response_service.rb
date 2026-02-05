@@ -107,11 +107,22 @@ module PromptTracker
 
       normalize_response(response)
     rescue Faraday::BadRequestError => e
-      # Extract error details from the response body
+      # Extract detailed error information from the response body
       error_body = JSON.parse(e.response[:body]) rescue {}
       error_message = error_body.dig("error", "message") || e.message
+      error_type = error_body.dig("error", "type")
+      error_code = error_body.dig("error", "code")
+      error_param = error_body.dig("error", "param")
 
-      raise ResponseApiError, "OpenAI Responses API error: #{error_message}\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
+      # Build detailed error message
+      detailed_error = "OpenAI Responses API error (#{e.response[:status]}): #{error_message}"
+      detailed_error += "\nError Type: #{error_type}" if error_type
+      detailed_error += "\nError Code: #{error_code}" if error_code
+      detailed_error += "\nError Param: #{error_param}" if error_param
+      detailed_error += "\n\nFull error body: #{error_body.inspect}"
+      detailed_error += "\n\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
+
+      raise ResponseApiError, detailed_error
     end
 
     private
@@ -122,7 +133,7 @@ module PromptTracker
     def client
       @client ||= begin
         require "openai"
-        api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+        api_key = ENV["OPENAI_LOUNA_API_KEY"]
         raise ResponseApiError, "OpenAI API key not configured" if api_key.blank?
 
         OpenAI::Client.new(access_token: api_key)
@@ -226,6 +237,10 @@ module PromptTracker
       file_search_config = tool_config["file_search"] || {}
       vector_store_ids = file_search_config["vector_store_ids"] || []
 
+      # OpenAI Responses API has a hard limit of 2 vector stores
+      # Enforce this limit as a fallback for backward compatibility
+      vector_store_ids = vector_store_ids.first(2) if vector_store_ids.length > 2
+
       tool_hash = { type: "file_search" }
       tool_hash[:vector_store_ids] = vector_store_ids if vector_store_ids.any?
       tool_hash
@@ -240,13 +255,22 @@ module PromptTracker
       functions = tool_config["functions"] || []
 
       functions.map do |func|
-        {
+        tool_hash = {
           type: "function",
           name: func["name"],
           description: func["description"] || "",
-          parameters: func["parameters"] || {},
-          strict: func["strict"] || false
+          parameters: func["parameters"] || {}
         }
+
+        # Handle strict mode:
+        # - If strict is explicitly true, include it (requires additionalProperties: false in schema)
+        # - If strict is explicitly false, include it to opt out of auto-normalization
+        # - If strict is nil/omitted, don't include it (Responses API will auto-normalize to strict mode)
+        if func["strict"] == true || func["strict"] == false
+          tool_hash[:strict] = func["strict"]
+        end
+
+        tool_hash
       end
     end
 
