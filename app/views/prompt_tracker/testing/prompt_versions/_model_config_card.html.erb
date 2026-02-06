@@ -2,99 +2,56 @@
   # Local variables expected:
   # - version: PromptVersion object
 
-  model_config = version.model_config || {}
-  return if model_config.blank?
-
-  # Extract key configuration values
-  provider = model_config['provider']
-  api = model_config['api']
-  model = model_config['model']
-  temperature = model_config['temperature']
-  max_tokens = model_config['max_tokens']
-  top_p = model_config['top_p']
-  frequency_penalty = model_config['frequency_penalty']
-  presence_penalty = model_config['presence_penalty']
-  tools = model_config['tools'] || []
-  tool_config = model_config['tool_config'] || {}
-
-  # Determine API type icon and color
-  api_icon = case api
-  when 'chat_completions'
-    'chat-dots'
-  when 'responses'
-    'reply'
-  else
-    'gear'
-  end
-
-  provider_color = case provider
-  when 'openai'
-    '#10A37F'
-  when 'anthropic'
-    '#D97757'
-  else
-    '#6366F1'
-  end
-
-  # Tool metadata: human-readable names and icons
-  tool_metadata = {
-    'web_search' => { name: 'Web Search', icon: 'globe', color: '#3B82F6' },
-    'code_interpreter' => { name: 'Code Interpreter', icon: 'code-slash', color: '#8B5CF6' },
-    'file_search' => { name: 'File Search', icon: 'file-earmark-text', color: '#10B981' },
-    'functions' => { name: 'Custom Functions', icon: 'braces', color: '#F59E0B' },
-    'function' => { name: 'Custom Functions', icon: 'braces', color: '#F59E0B' }
-  }
-
-  # Generate unique ID for accordion
-  accordion_id = "tool-config-#{version.id}"
+  config = model_config_presenter(version)
+  return unless config.present?
 %>
 
 <div class="card h-100">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h6 class="mb-0">
-      <i class="bi bi-<%= api_icon %>"></i> Model Configuration
+      <i class="bi bi-<%= config.api_icon %>"></i> Model Configuration
     </h6>
-    <% if provider.present? %>
-      <span class="badge" style="background-color: <%= provider_color %>;">
-        <%= provider.titleize %>
+    <% if config.provider.present? %>
+      <span class="badge" style="background-color: <%= config.provider_color %>;">
+        <%= config.provider.titleize %>
       </span>
     <% end %>
   </div>
   <div class="card-body">
     <!-- Primary Configuration -->
-    <% if model.present? %>
+    <% if config.model.present? %>
       <div class="mb-3 pb-3 border-bottom">
         <div class="d-flex align-items-center justify-content-between mb-2">
           <small class="text-muted">Model</small>
           <i class="bi bi-cpu text-primary"></i>
         </div>
-        <code class="d-block p-2 bg-light rounded"><%= model %></code>
+        <code class="d-block p-2 bg-light rounded"><%= config.model %></code>
       </div>
     <% end %>
 
-    <% if api.present? %>
+    <% if config.api.present? %>
       <div class="mb-3 pb-3 border-bottom">
         <div class="d-flex align-items-center justify-content-between mb-2">
           <small class="text-muted">API Type</small>
-          <i class="bi bi-<%= api_icon %> text-info"></i>
+          <i class="bi bi-<%= config.api_icon %> text-info"></i>
         </div>
-        <span class="badge bg-info"><%= api.humanize %></span>
+        <span class="badge bg-info"><%= config.api.humanize %></span>
       </div>
     <% end %>
 
     <!-- Tools -->
-    <% if tools.any? %>
+    <% if config.normalized_tools.any? %>
       <div class="mb-3 pb-3 border-bottom">
         <div class="d-flex align-items-center justify-content-between mb-2">
           <small class="text-muted">
             <i class="bi bi-tools"></i> Enabled Tools
           </small>
-          <span class="badge bg-secondary"><%= tools.count %></span>
+          <span class="badge bg-secondary"><%= config.normalized_tools.count %></span>
         </div>
 
         <div class="d-flex flex-wrap gap-2">
-          <% tools.each do |tool| %>
-            <% meta = tool_metadata[tool] || { name: tool.titleize, icon: 'gear', color: '#6B7280' } %>
+          <% config.normalized_tools.each do |tool| %>
+            <% meta = config.tool_metadata(tool) %>
             <span class="badge d-flex align-items-center gap-1 px-2 py-1"
                   style="background-color: <%= meta[:color] %>; font-size: 0.875rem;">
               <i class="bi bi-<%= meta[:icon] %>"></i>
@@ -104,36 +61,36 @@
         </div>
 
         <!-- Tool Configuration (Collapsible) -->
-        <% if tool_config.any? %>
-          <div class="accordion accordion-flush mt-3" id="<%= accordion_id %>">
+        <% if config.tool_config.any? %>
+          <div class="accordion accordion-flush mt-3" id="<%= config.accordion_id %>">
             <div class="accordion-item border-0">
               <h2 class="accordion-header">
                 <button class="accordion-button collapsed px-0 py-2 bg-transparent shadow-none"
                         type="button"
                         data-bs-toggle="collapse"
-                        data-bs-target="#<%= accordion_id %>-collapse"
+                        data-bs-target="#<%= config.accordion_id %>-collapse"
                         style="font-size: 0.875rem; color: #6B7280;">
                   <i class="bi bi-gear me-2"></i>
                   Tool Configuration Details
                 </button>
               </h2>
-              <div id="<%= accordion_id %>-collapse"
+              <div id="<%= config.accordion_id %>-collapse"
                    class="accordion-collapse collapse"
-                   data-bs-parent="#<%= accordion_id %>">
+                   data-bs-parent="#<%= config.accordion_id %>">
                 <div class="accordion-body px-0 py-2">
-                  <% tool_config.each do |tool_name, config| %>
+                  <% config.tool_config.each do |tool_name, tool_cfg| %>
                     <div class="mb-3">
                       <div class="d-flex align-items-center gap-2 mb-2">
-                        <% meta = tool_metadata[tool_name] || { name: tool_name.titleize, icon: 'gear', color: '#6B7280' } %>
+                        <% meta = config.tool_metadata(tool_name) %>
                         <i class="bi bi-<%= meta[:icon] %>" style="color: <%= meta[:color] %>;"></i>
                         <strong class="small"><%= meta[:name] %></strong>
                       </div>
 
-                      <% if config.is_a?(Array) && tool_name == 'functions' %>
+                      <% if tool_cfg.is_a?(Array) && tool_name == 'functions' %>
                         <!-- Functions list -->
                         <div class="ms-3">
-                          <% config.each_with_index do |func, idx| %>
-                            <div class="<%= 'mb-2 pb-2 border-bottom' if idx < config.length - 1 %>">
+                          <% tool_cfg.each_with_index do |func, idx| %>
+                            <div class="<%= 'mb-2 pb-2 border-bottom' if idx < tool_cfg.length - 1 %>">
                               <div class="d-flex align-items-start gap-2 mb-1">
                                 <i class="bi bi-arrow-return-right text-muted small"></i>
                                 <div class="flex-grow-1">
@@ -157,7 +114,7 @@
                         </div>
                       <% else %>
                         <!-- Generic config display -->
-                        <pre class="mb-0 p-2 bg-light rounded small" style="font-size: 0.75rem;"><code><%= JSON.pretty_generate(config) %></code></pre>
+                        <pre class="mb-0 p-2 bg-light rounded small" style="font-size: 0.75rem;"><code><%= JSON.pretty_generate(tool_cfg) %></code></pre>
                       <% end %>
                     </div>
                   <% end %>
@@ -170,7 +127,7 @@
     <% end %>
 
     <!-- Parameters -->
-    <% if temperature.present? || max_tokens.present? || top_p.present? || frequency_penalty.present? || presence_penalty.present? %>
+    <% if config.temperature.present? || config.max_tokens.present? || config.top_p.present? || config.frequency_penalty.present? || config.presence_penalty.present? %>
       <div class="mb-2">
         <small class="text-muted d-block mb-2">
           <i class="bi bi-sliders"></i> Parameters
@@ -178,47 +135,47 @@
 
         <table class="table table-sm table-borderless mb-0">
           <tbody>
-            <% if temperature.present? %>
+            <% if config.temperature.present? %>
               <tr>
                 <td class="text-muted" style="width: 60%;">Temperature</td>
                 <td class="text-end">
-                  <span class="badge bg-secondary"><%= temperature %></span>
+                  <span class="badge bg-secondary"><%= config.temperature %></span>
                 </td>
               </tr>
             <% end %>
 
-            <% if max_tokens.present? %>
+            <% if config.max_tokens.present? %>
               <tr>
                 <td class="text-muted">Max Tokens</td>
                 <td class="text-end">
-                  <span class="badge bg-secondary"><%= max_tokens %></span>
+                  <span class="badge bg-secondary"><%= config.max_tokens %></span>
                 </td>
               </tr>
             <% end %>
 
-            <% if top_p.present? %>
+            <% if config.top_p.present? %>
               <tr>
                 <td class="text-muted">Top P</td>
                 <td class="text-end">
-                  <span class="badge bg-secondary"><%= top_p %></span>
+                  <span class="badge bg-secondary"><%= config.top_p %></span>
                 </td>
               </tr>
             <% end %>
 
-            <% if frequency_penalty.present? %>
+            <% if config.frequency_penalty.present? %>
               <tr>
                 <td class="text-muted">Frequency Penalty</td>
                 <td class="text-end">
-                  <span class="badge bg-secondary"><%= frequency_penalty %></span>
+                  <span class="badge bg-secondary"><%= config.frequency_penalty %></span>
                 </td>
               </tr>
             <% end %>
 
-            <% if presence_penalty.present? %>
+            <% if config.presence_penalty.present? %>
               <tr>
                 <td class="text-muted">Presence Penalty</td>
                 <td class="text-end">
-                  <span class="badge bg-secondary"><%= presence_penalty %></span>
+                  <span class="badge bg-secondary"><%= config.presence_penalty %></span>
                 </td>
               </tr>
             <% end %>
@@ -230,7 +187,7 @@
     <!-- Other Configuration (anything not explicitly handled above) -->
     <%
       handled_keys = ['provider', 'api', 'model', 'temperature', 'max_tokens', 'top_p', 'frequency_penalty', 'presence_penalty', 'tools', 'tool_config']
-      other_config = model_config.except(*handled_keys)
+      other_config = config.model_config.except(*handled_keys)
     %>
 
     <% if other_config.any? %>

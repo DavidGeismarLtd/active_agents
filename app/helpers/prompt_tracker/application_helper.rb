@@ -3,6 +3,7 @@
 module PromptTracker
   # Application-wide helper methods for PromptTracker views
   module ApplicationHelper
+    include ModelConfigHelper
     # Format USD amount with dollar sign
     #
     # @param amount [Float, nil] the amount in USD

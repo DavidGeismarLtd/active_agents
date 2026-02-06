@@ -38,11 +38,16 @@ module PromptTracker
       # POST /testing/sync_openai_assistants
       # Sync all assistants from OpenAI API
       def sync_openai_assistants
-        result = SyncOpenaiAssistantsService.call
+        result = SyncOpenaiAssistantsToPromptVersionsService.new.call
 
-        redirect_to testing_root_path(filter: "assistants"),
-                    notice: "Synced #{result[:total]} assistants from OpenAI (#{result[:created]} created, #{result[:updated]} updated)."
-      rescue SyncOpenaiAssistantsService::SyncError => e
+        if result[:success]
+          redirect_to testing_root_path(filter: "assistants"),
+                      notice: "Synced #{result[:created_count]} assistants from OpenAI."
+        else
+          redirect_to testing_root_path,
+                      alert: "Failed to sync assistants: #{result[:errors].join(', ')}"
+        end
+      rescue SyncOpenaiAssistantsToPromptVersionsService::SyncError => e
         redirect_to testing_root_path,
                     alert: "Failed to sync assistants: #{e.message}"
       end

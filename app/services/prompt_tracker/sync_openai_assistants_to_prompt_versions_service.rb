@@ -61,10 +61,10 @@ module PromptTracker
     rescue SyncError
       # Re-raise SyncError (API key not configured)
       raise
-    rescue => e
-      # Catch other errors and add to errors array
-      @errors << "Failed to fetch assistants: #{e.message}"
-      []
+      # rescue => e
+      #   # Catch other errors and add to errors array
+      #   @errors << "Failed to fetch assistants: #{e.message}"
+      #   []
     end
 
     # Create a Prompt and PromptVersion from assistant data
@@ -72,7 +72,8 @@ module PromptTracker
     # @param assistant_data [Hash] assistant data from OpenAI API
     def create_prompt_and_version_from_assistant(assistant_data)
       assistant_id = assistant_data["id"]
-      assistant_name = assistant_data["name"] || assistant_id
+      # Ensure we always have a valid name (fallback to assistant_id if name is blank)
+      assistant_name = assistant_data["name"].presence || "Assistant #{assistant_id}"
 
       # Create the Prompt
       prompt = Prompt.create!(
@@ -125,9 +126,17 @@ module PromptTracker
     # @param assistant_id [String] the OpenAI assistant ID (e.g., "asst_abc123")
     # @return [String] slug for the prompt (e.g., "assistant_asst_abc123")
     def generate_slug(assistant_id)
-      # Use assistant_id as base for slug (keep underscores, no hyphens)
+      # Sanitize assistant_id to ensure it only contains valid characters
+      # Replace hyphens with underscores, remove other invalid chars
+      sanitized_id = assistant_id.to_s
+                                  .downcase
+                                  .gsub(/[^a-z0-9_]+/, "_")  # Replace invalid chars with underscore
+                                  .gsub(/^_+|_+$/, "")        # Remove leading/trailing underscores
+                                  .gsub(/_+/, "_")            # Collapse multiple underscores
+
+      # Use sanitized assistant_id as base for slug
       # "asst_abc123" → "assistant_asst_abc123"
-      base_slug = "assistant_#{assistant_id}"
+      base_slug = "assistant_#{sanitized_id}"
 
       # Ensure uniqueness by appending a counter if needed
       slug = base_slug
