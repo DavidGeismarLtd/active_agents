@@ -14,6 +14,5 @@ PromptTracker::DatasetRow.delete_all  # Delete dataset rows before datasets
 PromptTracker::Dataset.delete_all  # Delete datasets before prompt versions
 PromptTracker::PromptVersion.delete_all
 PromptTracker::Prompt.delete_all
-PromptTracker::Openai::Assistant.delete_all
 
 puts "  ✓ Cleanup complete"

@@ -167,11 +167,12 @@ module PromptTracker
         expect(version.model_config["temperature"]).to eq(0.7)
       end
 
-      it "stores tools in model_config" do
+      it "stores tools in model_config as normalized string array" do
         result = described_class.new.call
 
         version = result[:created_versions].first
-        expect(version.model_config["tools"]).to eq([ { "type" => "code_interpreter" } ])
+        # Tools should be normalized from hash format to string array
+        expect(version.model_config["tools"]).to eq([ "code_interpreter" ])
       end
 
       it "stores tool_resources in model_config" do
@@ -196,6 +197,53 @@ module PromptTracker
         version = result[:created_versions].first
         expect(version.notes).to include("Synced from OpenAI Assistant")
         expect(version.notes).to include("Customer Support Assistant")
+      end
+
+      context "with complex tools including file_search" do
+        let(:assistant_with_file_search) do
+          {
+            "id" => "asst_789",
+            "name" => "Research Assistant",
+            "description" => "Helps with research",
+            "instructions" => "You are a research assistant.",
+            "model" => "gpt-4o",
+            "temperature" => 0.7,
+            "top_p" => 1.0,
+            "tools" => [
+              { "type" => "file_search", "file_search" => { "ranking_options" => { "ranker" => "auto" } } },
+              { "type" => "code_interpreter" }
+            ],
+            "tool_resources" => {
+              "file_search" => {
+                "vector_store_ids" => [ "vs_123", "vs_456" ]
+              }
+            }
+          }
+        end
+
+        before do
+          allow(mock_assistants).to receive(:list).and_return({
+            "data" => [ assistant_with_file_search ]
+          })
+        end
+
+        it "normalizes tools from hash format to string array" do
+          result = described_class.new.call
+
+          version = result[:created_versions].first
+          expect(version.model_config["tools"]).to eq([ "file_search", "code_interpreter" ])
+        end
+
+        it "preserves tool_resources with vector store configuration" do
+          result = described_class.new.call
+
+          version = result[:created_versions].first
+          expect(version.model_config["tool_resources"]).to eq({
+            "file_search" => {
+              "vector_store_ids" => [ "vs_123", "vs_456" ]
+            }
+          })
+        end
       end
 
       context "when API call fails" do

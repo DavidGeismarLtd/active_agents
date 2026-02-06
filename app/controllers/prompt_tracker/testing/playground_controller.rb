@@ -29,6 +29,7 @@ module PromptTracker
         @version = nil
         @variables = []
       end
+
       @sample_variables = build_sample_variables(@variables)
       @available_providers = helpers.providers_for(:playground)
     end

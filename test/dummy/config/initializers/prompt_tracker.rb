@@ -45,7 +45,8 @@ PromptTracker.configure do |config|
         },
         assistants: {
           name: "Assistants",
-          description: "Full assistant features with threads and runs"
+          description: "Full assistant features with threads and runs",
+          capabilities: [ :code_interpreter, :file_search, :functions ]
         }
       }
     },

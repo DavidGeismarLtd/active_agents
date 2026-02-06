@@ -61,10 +61,10 @@ module PromptTracker
     rescue SyncError
       # Re-raise SyncError (API key not configured)
       raise
-      # rescue => e
-      #   # Catch other errors and add to errors array
-      #   @errors << "Failed to fetch assistants: #{e.message}"
-      #   []
+    rescue StandardError => e
+      # Catch other errors and add to errors array
+      @errors << "Failed to fetch assistants: #{e.message}"
+      []
     end
 
     # Create a Prompt and PromptVersion from assistant data
@@ -101,24 +101,13 @@ module PromptTracker
 
     # Build model_config hash from assistant data
     #
+    # Uses ModelConfigNormalizer to ensure tools are in the correct format
+    # (string array instead of OpenAI's hash format)
+    #
     # @param assistant_data [Hash] assistant data from OpenAI API
-    # @return [Hash] model_config hash
+    # @return [Hash] normalized model_config hash
     def build_model_config(assistant_data)
-      {
-        provider: "openai",
-        api: "assistants",
-        assistant_id: assistant_data["id"],  # NEW: Store assistant_id here
-        model: assistant_data["model"],      # Actual model name (e.g., "gpt-4o")
-        temperature: assistant_data["temperature"] || 0.7,
-        top_p: assistant_data["top_p"] || 1.0,
-        tools: assistant_data["tools"] || [],
-        tool_resources: assistant_data["tool_resources"] || {},
-        metadata: {
-          name: assistant_data["name"],
-          description: assistant_data["description"],
-          synced_at: Time.current.iso8601
-        }
-      }
+      Openai::Assistants::ModelConfigNormalizer.normalize(assistant_data)
     end
 
     # Generate a unique slug for the assistant

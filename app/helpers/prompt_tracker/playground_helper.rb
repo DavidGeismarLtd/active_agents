@@ -45,6 +45,18 @@ module PromptTracker
         "gpt-4o"
     end
 
+    # Convert enabled_tools array to hash for easy lookup in views
+    #
+    # @param enabled_tools [Array<String>] array of enabled tool IDs
+    # @return [Hash] hash with tool IDs as keys and true as values
+    #
+    # @example
+    #   enabled_tools_hash_for(["file_search", "web_search"])
+    #   # => {"file_search" => true, "web_search" => true}
+    def enabled_tools_hash_for(enabled_tools)
+      (enabled_tools || []).index_with { true }
+    end
+
     # Check if the provider/API supports tools
     #
     # @param provider [String] the provider name

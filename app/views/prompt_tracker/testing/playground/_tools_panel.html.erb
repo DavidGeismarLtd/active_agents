@@ -10,61 +10,9 @@
 
 <%
   available_tools ||= []
-  # Handle both array format (legacy) and hash format (new)
-  if enabled_tools.is_a?(Array)
-    enabled_tools_hash = enabled_tools.each_with_object({}) { |t, h| h[t.to_s] = true }
-  else
-    enabled_tools_hash = enabled_tools || {}
-  end
+  enabled_tools_hash = enabled_tools_hash_for(enabled_tools)
   tool_config ||= @version&.model_config&.dig('tool_config') || {}
 %>
-
-<style>
-  .tool-card {
-    cursor: pointer;
-    transition: all 0.15s ease-in-out;
-    border: 2px solid transparent;
-  }
-  .tool-card:hover {
-    border-color: var(--bs-primary);
-    background-color: var(--bs-light);
-  }
-  .tool-card.active {
-    border-color: var(--bs-primary);
-    background-color: rgba(var(--bs-primary-rgb), 0.1);
-  }
-  .tool-card .tool-icon {
-    font-size: 1.25rem;
-    opacity: 0.6;
-    transition: opacity 0.15s ease-in-out;
-  }
-  .tool-card.active .tool-icon {
-    opacity: 1;
-    color: var(--bs-primary);
-  }
-  .tool-card .check-indicator {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    opacity: 0;
-    color: var(--bs-primary);
-    transition: opacity 0.15s ease-in-out;
-  }
-  .tool-card.active .check-indicator {
-    opacity: 1;
-  }
-  .tool-config-panel {
-    display: none;
-    animation: slideDown 0.2s ease-out;
-  }
-  .tool-config-panel.show {
-    display: block;
-  }
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-</style>
 
 <div class="tools-panel mt-3"
      data-controller="tools-config"
