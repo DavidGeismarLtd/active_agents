@@ -1,0 +1,19 @@
+<%# Provider Selection %>
+<div class="mb-3">
+  <label for="model-provider" class="form-label">Provider</label>
+  <select
+    id="model-provider"
+    class="form-select"
+    data-playground-ui-target="modelProvider"
+    data-action="change->playground-ui#onProviderChange"
+    data-provider-data="<%= config_data[:provider_data].to_json %>"
+  >
+    <% config_data[:available_providers].each do |provider_key| %>
+      <option value="<%= provider_key %>" <%= 'selected' if config_data[:current_provider] == provider_key.to_s %>>
+        <%= provider_name(provider_key) %>
+      </option>
+    <% end %>
+  </select>
+  <div class="form-text">LLM provider to use for API calls. Only providers with configured API keys are shown.</div>
+</div>
+

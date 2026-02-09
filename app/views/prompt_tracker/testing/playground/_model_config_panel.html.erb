@@ -1,0 +1,43 @@
+<%# Model Configuration Card %>
+<div class="card mb-3">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-gear"></i>
+      Model Configuration
+    </h5>
+  </div>
+  <div class="card-body">
+    <% config_data = playground_model_config_data(@version) %>
+
+    <%# Provider Selection %>
+    <%= render "prompt_tracker/testing/playground/model_settings/provider_selection",
+               config_data: config_data %>
+
+    <%# API Selection %>
+    <%= render "prompt_tracker/testing/playground/model_settings/api_selection",
+               config_data: config_data %>
+
+    <%# Tools Panel - shown when API supports tools %>
+    <div id="tools-panel-container"
+         style="<%= config_data[:supports_tools] ? '' : 'display: none;' %>"
+         data-playground-ui-target="toolsPanelContainer">
+      <%= render "prompt_tracker/testing/playground/tools_panel",
+                 available_tools: config_data[:current_available_tools],
+                 enabled_tools: @version&.model_config&.dig('tools') || [] %>
+    </div>
+
+    <%# Generic Settings (Model, Temperature, Max Tokens) %>
+    <%= render "prompt_tracker/testing/playground/model_settings/generic_settings",
+               config_data: config_data,
+               version: @version %>
+
+    <%# Advanced Options Accordion %>
+    <div class="accordion" id="advancedModelConfig">
+      <%= render "prompt_tracker/testing/playground/model_settings/advanced_options",
+                 version: @version %>
+
+      <%= render "prompt_tracker/testing/playground/model_settings/response_schema",
+                 version: @version %>
+    </div>
+  </div>
+</div>

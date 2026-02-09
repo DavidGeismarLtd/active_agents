@@ -1,0 +1,109 @@
+<%# User Prompt Template Editor Partial %>
+<div data-playground-ui-target="userPromptTemplateSection"
+     style="<%= playground_ui.include?(:user_prompt_template) ? '' : 'display: none;' %>">
+  <div class="mb-3">
+    <label for="user-prompt-editor" class="form-label">
+      User Prompt Template
+      <span class="badge bg-danger">Required</span>
+    </label>
+    <div class="highlighted-editor-wrapper" data-controller="syntax-highlighter">
+      <div class="highlight-layer" data-syntax-highlighter-target="highlight"></div>
+      <textarea
+        id="user-prompt-editor"
+        class="form-control font-monospace"
+        rows="10"
+        placeholder="Enter your user prompt template here...&#10;&#10;Examples:&#10;  Variable: Hello {{ name }}!&#10;  Filter: Hello {{ name | capitalize }}!&#10;  Conditional: {% if premium %}Premium user{% endif %}"
+        data-playground-editor-target="userPromptEditor"
+        data-syntax-highlighter-target="textarea"
+        data-action="input->playground-editor#onUserPromptInput input->syntax-highlighter#onInput"
+      ><%= version&.user_prompt %></textarea>
+    </div>
+    <div class="form-text">
+      Use Liquid syntax: <code>{{ variable }}</code> for substitution, filters, conditionals, and loops.
+      <br>Use sections like <code>#role</code>, <code>#goal</code>, <code>#context</code> to structure your prompt.
+    </div>
+  </div>
+
+  <!-- Liquid syntax help -->
+  <div class="accordion" id="syntaxHelp">
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#liquidHelp">
+          <i class="bi bi-question-circle me-2"></i>
+          Liquid Syntax Help
+        </button>
+      </h2>
+      <div id="liquidHelp" class="accordion-collapse collapse" data-bs-parent="#syntaxHelp">
+        <div class="accordion-body">
+          <h6>Filters</h6>
+          <code>{{ name | upcase }}</code> - Convert to uppercase<br>
+          <code>{{ name | downcase }}</code> - Convert to lowercase<br>
+          <code>{{ name | capitalize }}</code> - Capitalize first letter<br>
+          <code>{{ text | truncate: 100 }}</code> - Truncate to 100 chars<br>
+
+          <h6 class="mt-3">Conditionals</h6>
+          <code>{% if premium %}Premium{% else %}Basic{% endif %}</code><br>
+
+          <h6 class="mt-3">Loops</h6>
+          <code>{% for item in items %}{{ item }}{% endfor %}</code><br>
+
+          <a href="https://shopify.github.io/liquid/" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+            Full Liquid Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sections help -->
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sectionsHelp">
+          <i class="bi bi-hash me-2"></i>
+          Prompt Sections
+        </button>
+      </h2>
+      <div id="sectionsHelp" class="accordion-collapse collapse" data-bs-parent="#syntaxHelp">
+        <div class="accordion-body">
+          <p class="small text-muted mb-3">Structure your prompts using these sections (use the ones that are relevant):</p>
+
+          <h6><code>#role</code></h6>
+          <p class="small">Define the AI persona, expertise, and capabilities</p>
+
+          <h6><code>#goal</code></h6>
+          <p class="small">Specify the main objective or task</p>
+
+          <h6><code>#context</code></h6>
+          <p class="small">Provide background information</p>
+
+          <h6><code>#format</code></h6>
+          <p class="small">Specify output format and structure</p>
+
+          <h6><code>#example</code></h6>
+          <p class="small">Show what good output looks like</p>
+
+          <h6><code>#audience</code></h6>
+          <p class="small">Describe who will read the output</p>
+
+          <h6><code>#step by step instructions</code></h6>
+          <p class="small">Guide with step-by-step instructions</p>
+
+          <h6><code>#reasoning approach</code></h6>
+          <p class="small">Suggest a reasoning or analytical approach</p>
+
+          <h6><code>#tone and style</code></h6>
+          <p class="small">Suggest appropriate tone or style</p>
+
+          <h6><code>#what to prioritise</code></h6>
+          <p class="small">Highlight key aspects to focus on in the response</p>
+
+          <h6><code>#out of scope</code></h6>
+          <p class="small">Define the scope and limits of the response</p>
+
+          <h6><code>#resources</code></h6>
+          <p class="small">Mention any resources that could be used</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
