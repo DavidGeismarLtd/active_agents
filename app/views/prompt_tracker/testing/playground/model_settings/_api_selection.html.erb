@@ -8,6 +8,7 @@
     id="model-api"
     class="form-select"
     data-playground-ui-target="modelApi"
+    data-playground-model-config-target="api"
     data-action="change->playground-ui#onApiChange"
   >
     <% provider_apis.each do |api| %>
@@ -23,4 +24,3 @@
     <%= config_data[:current_api_config]&.dig(:description) || "Select an API endpoint" %>
   </div>
 </div>
-

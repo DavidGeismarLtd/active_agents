@@ -13,9 +13,9 @@
         class="form-control font-monospace"
         rows="10"
         placeholder="Enter your user prompt template here...&#10;&#10;Examples:&#10;  Variable: Hello {{ name }}!&#10;  Filter: Hello {{ name | capitalize }}!&#10;  Conditional: {% if premium %}Premium user{% endif %}"
-        data-playground-editor-target="userPromptEditor"
+        data-playground-prompt-editor-target="userPromptEditor"
         data-syntax-highlighter-target="textarea"
-        data-action="input->playground-editor#onUserPromptInput input->syntax-highlighter#onInput"
+        data-action="input->playground-prompt-editor#onUserPromptInput input->syntax-highlighter#onInput"
       ><%= version&.user_prompt %></textarea>
     </div>
     <div class="form-text">
@@ -106,4 +106,3 @@
     </div>
   </div>
 </div>
-

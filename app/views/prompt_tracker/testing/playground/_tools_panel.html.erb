@@ -15,8 +15,7 @@
 %>
 
 <div class="tools-panel mt-3"
-     data-controller="tools-config"
-     data-playground-target="toolsPanel">
+     data-controller="playground-tools">
   <label class="form-label">
     <i class="bi bi-tools"></i> Tools
     <span class="badge bg-info ms-1">Beta</span>
@@ -26,50 +25,20 @@
     analyze files, execute code, and call custom functions.
   </div>
 
-  <div class="row g-2" data-playground-target="toolsPanelContent">
+  <div class="row g-2">
     <% available_tools.each do |tool| %>
-      <%
-        is_enabled = enabled_tools_hash[tool[:id].to_s].present?
-        card_class = is_enabled ? 'active' : ''
-        is_configurable = tool[:configurable] == true
-      %>
-      <div class="col-md-3">
-        <label class="card tool-card p-3 h-100 position-relative <%= card_class %>"
-               for="tool_<%= tool[:id] %>"
-               data-action="click->playground#onToolCardClick">
-          <input class="d-none"
-                 type="checkbox"
-                 id="tool_<%= tool[:id] %>"
-                 value="<%= tool[:id] %>"
-                 data-playground-target="toolCheckbox"
-                 data-tools-config-target="toolCheckbox"
-                 data-tool-id="<%= tool[:id] %>"
-                 data-configurable="<%= is_configurable %>"
-                 data-action="change->playground#onToolChange change->tools-config#onToolToggle"
-                 <%= 'checked' if is_enabled %>>
-          <i class="bi bi-check-circle-fill check-indicator"></i>
-          <div class="text-center">
-            <i class="bi <%= tool[:icon] %> tool-icon d-block mb-2"></i>
-            <strong class="d-block" style="font-size: 0.85rem;"><%= tool[:name] %></strong>
-            <small class="text-muted" style="font-size: 0.7rem;"><%= tool[:description] %></small>
-          </div>
-        </label>
-      </div>
+      <%= render 'prompt_tracker/testing/playground/tools/tool_card',
+                 tool: tool,
+                 enabled_tools_hash: enabled_tools_hash %>
     <% end %>
   </div>
 
-  <%# File Search Configuration Panel %>
+  <%# File Search Configuration Panel (includes modals inside its scope) %>
   <% file_search_config = tool_config.dig('file_search') || {} %>
   <%= render 'prompt_tracker/testing/playground/tools/file_search_configuration_panel',
              file_search_config: file_search_config,
              enabled_tools_hash: enabled_tools_hash,
              tool_config: tool_config %>
-
-  <%# Create Vector Store Modal - will be moved to body by JS for z-index fix %>
-  <%= render 'prompt_tracker/testing/playground/tools/create_vector_store_modal' %>
-
-  <%# Vector Store Files Modal - shows files in a selected vector store %>
-  <%= render 'prompt_tracker/testing/playground/tools/vector_store_files_modal' %>
 
   <%# Functions Configuration Panel %>
   <% functions_config = tool_config.dig('functions') || [] %>
@@ -79,7 +48,7 @@
              tool_config: tool_config %>
 
   <% if available_tools.empty? %>
-    <div class="alert alert-secondary py-2" data-playground-target="noToolsAlert">
+    <div class="alert alert-secondary py-2">
       <i class="bi bi-info-circle"></i>
       No tools available for this API.
     </div>

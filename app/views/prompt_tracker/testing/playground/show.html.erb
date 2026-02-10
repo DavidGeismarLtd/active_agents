@@ -40,21 +40,31 @@
 
 <div id="playground-container"
      class="container-fluid mt-4"
-     data-controller="playground-editor playground-preview playground-save playground-sync playground-response-schema playground-ui"
-     data-playground-editor-generate-prompt-outlet="#generate-prompt-controller"
+     data-controller="playground-preview playground-save playground-sync playground-response-schema playground-ui playground-generate-prompt"
      data-playground-ui-conversation-outlet="#conversation-panel"
      data-playground-ui-capabilities-value="<%= capabilities_json %>"
-     data-action="playground-editor:promptChanged->playground-preview#onPromptChanged"
+     data-playground-preview-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-preview-playground-variables-outlet="#variables-panel"
+     data-playground-save-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-save-playground-variables-outlet="#variables-panel"
+     data-playground-save-playground-model-config-outlet="#model-config-panel"
+     data-action="playground-prompt-editor:promptChanged->playground-preview#onPromptChanged
+                  playground-prompt-editor:promptChanged->playground-generate-prompt#onPromptChanged
+                  playground-variables:changed->playground-preview#onVariablesChanged"
      <% if @prompt_version %>
        data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
+       data-playground-save-prompt-name-value="<%= @prompt.name %>"
        data-playground-save-version-id-value="<%= @prompt_version.id %>"
        data-playground-sync-version-id-value="<%= @prompt_version.id %>"
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
      <% elsif @prompt %>
        data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
+       data-playground-save-prompt-name-value="<%= @prompt.name %>"
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
        <% if @version %>
          data-playground-save-version-id-value="<%= @version.id %>"
          data-playground-sync-version-id-value="<%= @version.id %>"
@@ -62,6 +72,7 @@
      <% else %>
        data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
        data-playground-save-save-url-value="<%= save_testing_playground_path %>"
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
      <% end %>
 >
   <div class="row mb-3">
@@ -165,123 +176,15 @@
   </div>
 
   <!-- Action buttons -->
-  <div class="row mt-3">
-    <div class="col">
-      <% unless @prompt %>
-        <!-- Prompt name and slug inputs for standalone mode -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="prompt-name-input" class="form-label">Prompt Name</label>
-            <input
-              type="text"
-              class="form-control"
-              id="prompt-name-input"
-              placeholder="e.g., Customer Support Greeting"
-              required
-              data-playground-save-target="promptName"
-              data-action="input->playground-save#onPromptNameInput"
-            >
-            <div class="form-text">Human-friendly name for display</div>
-          </div>
-          <div class="col-md-6">
-            <label for="prompt-slug-input" class="form-label">
-              Slug
-              <span class="badge bg-secondary">Auto-generated</span>
-            </label>
-            <input
-              type="text"
-              class="form-control font-monospace"
-              id="prompt-slug-input"
-              placeholder="customer_support_greeting"
-              data-playground-save-target="promptSlug"
-            >
-            <div class="form-text">Used in code (lowercase, numbers, underscores only)</div>
-          </div>
-        </div>
-      <% end %>
-
-      <% if @prompt %>
-        <% if @version && !@version.has_responses? %>
-          <!-- Dropdown button for versions without responses -->
-          <div class="btn-group" role="group">
-            <button id="save-update-btn"
-                    type="button"
-                    class="btn btn-primary"
-                    data-playground-save-target="saveUpdateBtn"
-                    data-action="click->playground-save#saveUpdate">
-              <i class="bi bi-save"></i> Update This Version
-            </button>
-            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-              <span class="visually-hidden">Toggle Dropdown</span>
-            </button>
-            <ul class="dropdown-menu">
-              <li>
-                <button id="save-new-version-btn"
-                        class="dropdown-item"
-                        type="button"
-                        data-playground-save-target="saveNewVersionBtn"
-                        data-action="click->playground-save#saveNewVersion">
-                  <i class="bi bi-plus-circle"></i> Save as New Version
-                </button>
-              </li>
-            </ul>
-          </div>
-        <% else %>
-          <!-- Single button for versions with responses or no version -->
-          <button id="save-draft-btn"
-                  class="btn btn-primary"
-                  data-playground-save-target="saveDraftBtn"
-                  data-action="click->playground-save#saveDraft">
-            <i class="bi bi-save"></i> Save as Draft Version
-          </button>
-        <% end %>
-      <% else %>
-        <!-- Standalone mode -->
-        <button id="save-draft-btn"
-                class="btn btn-primary"
-                data-playground-save-target="saveDraftBtn"
-                data-action="click->playground-save#saveDraft">
-          <i class="bi bi-save"></i> Create Prompt
-        </button>
-        <a href="<%= testing_root_path %>" class="btn btn-outline-secondary">
-          <i class="bi bi-x-circle"></i>
-          Cancel
-        </a>
-      <% end %>
-
-      <!-- Sync Now button (only for remote entity linked APIs) -->
-      <% if is_remote_entity_linked && @version %>
-        <button id="sync-now-btn"
-                type="button"
-                class="btn btn-outline-primary ms-2"
-                data-playground-sync-target="syncNowBtn"
-                data-action="click->playground-sync#syncRemoteEntity"
-                title="Sync with remote assistant">
-          <i class="bi bi-cloud-arrow-up"></i> Sync Now
-          <% if sync_status == 'synced' && synced_at %>
-            <span class="badge bg-success ms-1" title="Last synced: <%= synced_at %>">✓</span>
-          <% elsif sync_status == 'failed' %>
-            <span class="badge bg-danger ms-1">✗</span>
-          <% elsif sync_status == 'pending' %>
-            <span class="badge bg-warning ms-1">⚠</span>
-          <% end %>
-        </button>
-      <% end %>
-    </div>
-  </div>
+  <%= render "prompt_tracker/testing/playground/action_buttons",
+             prompt: @prompt,
+             version: @version,
+             is_remote_entity_linked: is_remote_entity_linked,
+             sync_status: sync_status,
+             synced_at: synced_at %>
 
   <!-- Modals (inside playground controller scope) -->
-  <div data-controller="modal-fix generate-prompt"
-       id="generate-prompt-controller"
-       data-generate-prompt-playground-outlet="[data-controller~='playground-editor']"
-       <% if @prompt_version %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       <% elsif @prompt %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
-       <% else %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
-       <% end %>
-  >
+  <div data-controller="modal-fix">
     <%= render "prompt_tracker/testing/playground/keyboard_shortcuts_modal" %>
     <%= render "prompt_tracker/testing/playground/template_examples_modal" %>
     <%= render "prompt_tracker/testing/playground/generate_prompt_modal" %>

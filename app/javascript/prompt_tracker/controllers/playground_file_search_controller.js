@@ -2,24 +2,26 @@ import { Controller } from "@hotwired/stimulus"
 import { Modal } from "bootstrap"
 
 /**
- * Tools Configuration Controller
- * Manages Response API tools configuration including:
- * - File Search with vector store selection
- * - Custom function definitions
+ * Playground File Search Controller
+ *
+ * Single Responsibility: Manage file search tool configuration (vector stores)
+ *
+ * This controller handles:
+ * - Loading available vector stores from API
+ * - Adding/removing vector stores from configuration
+ * - Creating new vector stores with file uploads
+ * - Viewing files in a vector store
+ * - Enforcing 2-vector-store limit (OpenAI Responses API hard limit)
+ *
+ * @fires playground-file-search:configChanged - When vector store config changes
  */
 export default class extends Controller {
   static targets = [
-    "toolCheckbox",
-    "fileSearchPanel",
     "vectorStoreSelect",
     "selectedVectorStores",
     "vectorStoreCount",
     "vectorStoreAddButton",
     "vectorStoreError",
-    "functionsPanel",
-    "functionsList",
-    "functionItem",
-    "noFunctionsMessage",
     // Create vector store modal targets
     "createVectorStoreModal",
     "vectorStoreName",
@@ -45,57 +47,14 @@ export default class extends Controller {
     this.vectorStoresLoaded = false
     // Defer initial update to ensure DOM is fully ready
     requestAnimationFrame(() => {
-      this.updatePanelVisibility()
       this.updateVectorStoreCount()
       this.checkVectorStoreLimit()
     })
   }
 
   /**
-   * Handle tool checkbox toggle
-   */
-  onToolToggle(event) {
-    const checkbox = event.target
-    const toolId = checkbox.dataset.toolId
-    const isConfigurable = checkbox.dataset.configurable === "true"
-
-    if (isConfigurable) {
-      this.updatePanelVisibility()
-
-      // Load vector stores when file_search is enabled
-      if (toolId === "file_search" && checkbox.checked && !this.vectorStoresLoaded) {
-        this.loadVectorStores()
-      }
-    }
-
-    this.dispatchToolConfigChange()
-  }
-
-  /**
-   * Update visibility of configuration panels based on checkbox state
-   */
-  updatePanelVisibility() {
-    // If no targets found via Stimulus, try querying the DOM directly
-    let checkboxes = this.toolCheckboxTargets
-    if (checkboxes.length === 0) {
-      checkboxes = this.element.querySelectorAll('input[type="checkbox"][data-tool-id]')
-    }
-
-    checkboxes.forEach(checkbox => {
-      const toolId = checkbox.dataset.toolId
-
-      if (toolId === "file_search" && this.hasFileSearchPanelTarget) {
-        this.fileSearchPanelTarget.classList.toggle("show", checkbox.checked)
-      }
-
-      if (toolId === "functions" && this.hasFunctionsPanelTarget) {
-        this.functionsPanelTarget.classList.toggle("show", checkbox.checked)
-      }
-    })
-  }
-
-  /**
    * Load available vector stores from the API
+   * @param {Event} event - Optional click event
    */
   async loadVectorStores(event) {
     if (event) event.preventDefault()
@@ -161,12 +120,12 @@ export default class extends Controller {
     badge.dataset.vectorStoreId = storeId
     badge.dataset.vectorStoreName = storeName
     badge.style.cursor = "pointer"
-    badge.dataset.action = "click->tools-config#showVectorStoreFiles"
+    badge.dataset.action = "click->playground-file-search#showVectorStoreFiles"
     badge.title = "Click to view files"
     badge.innerHTML = `
       <span class="vector-store-name">${this.escapeHtml(storeName)}</span>
       <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
-              data-action="click->tools-config#removeVectorStore"
+              data-action="click->playground-file-search#removeVectorStore"
               onclick="event.stopPropagation()"></button>
     `
 
@@ -178,11 +137,12 @@ export default class extends Controller {
 
     this.updateVectorStoreCount()
     this.updateAddButtonState()
-    this.dispatchToolConfigChange()
+    this.dispatchConfigChange()
   }
 
   /**
    * Remove a vector store from the selection
+   * @param {Event} event - Click event from remove button
    */
   removeVectorStore(event) {
     const badge = event.target.closest("[data-vector-store-id]")
@@ -200,30 +160,29 @@ export default class extends Controller {
     this.updateVectorStoreCount()
     this.updateAddButtonState()
     this.hideVectorStoreError()
-    this.dispatchToolConfigChange()
-  }
-
-  /**
-   * Escape HTML to prevent XSS
-   */
-  escapeHtml(text) {
-    const div = document.createElement("div")
-    div.textContent = text
-    return div.innerHTML
+    this.dispatchConfigChange()
   }
 
   /**
    * Show the create vector store modal
    */
   showCreateVectorStoreModal() {
-    if (!this.hasCreateVectorStoreModalTarget) return
+    console.log("[playground-file-search] showCreateVectorStoreModal called")
+    console.log("[playground-file-search] hasCreateVectorStoreModalTarget:", this.hasCreateVectorStoreModalTarget)
+
+    if (!this.hasCreateVectorStoreModalTarget) {
+      console.error("[playground-file-search] createVectorStoreModal target not found!")
+      return
+    }
 
     const modalEl = this.createVectorStoreModalTarget
+    console.log("[playground-file-search] Modal element found:", modalEl)
 
     // Move modal to end of body to fix z-index issues with backdrop
-    if (!modalEl.hasAttribute('data-moved-to-body')) {
+    if (!modalEl.hasAttribute("data-moved-to-body")) {
       document.body.appendChild(modalEl)
-      modalEl.setAttribute('data-moved-to-body', 'true')
+      modalEl.setAttribute("data-moved-to-body", "true")
+      console.log("[playground-file-search] Modal moved to body")
     }
 
     // Reset form
@@ -234,6 +193,7 @@ export default class extends Controller {
     if (this.hasCreateVectorStoreButtonTarget) this.createVectorStoreButtonTarget.disabled = false
 
     const modal = new Modal(modalEl)
+    console.log("[playground-file-search] Showing modal...")
     modal.show()
   }
 
@@ -299,12 +259,12 @@ export default class extends Controller {
       badge.dataset.vectorStoreId = data.id
       badge.dataset.vectorStoreName = data.name
       badge.style.cursor = "pointer"
-      badge.dataset.action = "click->tools-config#showVectorStoreFiles"
+      badge.dataset.action = "click->playground-file-search#showVectorStoreFiles"
       badge.title = "Click to view files"
       badge.innerHTML = `
         <span class="vector-store-name">${this.escapeHtml(data.name)}</span>
         <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
-                data-action="click->tools-config#removeVectorStore"
+                data-action="click->playground-file-search#removeVectorStore"
                 onclick="event.stopPropagation()"></button>
       `
       this.selectedVectorStoresTarget.appendChild(badge)
@@ -316,7 +276,7 @@ export default class extends Controller {
 
       this.updateVectorStoreCount()
       this.updateAddButtonState()
-      this.dispatchToolConfigChange()
+      this.dispatchConfigChange()
 
       // Reload vector stores to update the list
       this.vectorStoresLoaded = false
@@ -332,6 +292,7 @@ export default class extends Controller {
 
   /**
    * Show error in the create modal
+   * @param {string} message - Error message to display
    */
   showCreateError(message) {
     if (this.hasCreateVectorStoreErrorTarget) {
@@ -345,6 +306,7 @@ export default class extends Controller {
 
   /**
    * Get current vector store count
+   * @returns {number} Number of selected vector stores
    */
   getVectorStoreCount() {
     if (!this.hasSelectedVectorStoresTarget) return 0
@@ -380,6 +342,7 @@ export default class extends Controller {
 
   /**
    * Show vector store error message
+   * @param {string} message - Error message to display
    */
   showVectorStoreError(message) {
     if (!this.hasVectorStoreErrorTarget) return
@@ -417,195 +380,8 @@ export default class extends Controller {
   }
 
   /**
-   * Add a new function definition
-   */
-  addFunction() {
-    if (this.hasNoFunctionsMessageTarget) {
-      this.noFunctionsMessageTarget.remove()
-    }
-
-    const index = this.functionItemTargets.length
-    const template = this.createFunctionTemplate(index)
-    this.functionsListTarget.insertAdjacentHTML("beforeend", template)
-    this.dispatchToolConfigChange()
-  }
-
-  /**
-   * Create HTML template for a new function item
-   */
-  createFunctionTemplate(index) {
-    return `
-      <div class="function-item card mb-2" data-tools-config-target="functionItem" data-function-index="${index}">
-        <div class="card-body p-2">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="flex-grow-1 me-2">
-              <input type="text"
-                     class="form-control form-control-sm mb-1"
-                     placeholder="Function name (e.g., get_weather)"
-                     data-tools-config-target="functionName"
-                     data-action="input->tools-config#onFunctionChange">
-              <input type="text"
-                     class="form-control form-control-sm mb-2"
-                     placeholder="Description"
-                     data-tools-config-target="functionDescription"
-                     data-action="input->tools-config#onFunctionChange">
-              <textarea class="form-control form-control-sm"
-                        rows="2"
-                        placeholder="Output description (e.g., Returns a JSON object with temperature, condition, and humidity fields)"
-                        data-tools-config-target="functionOutputDescription"
-                        data-action="input->tools-config#onFunctionChange"></textarea>
-              <div class="form-text small">
-                Describe what this function returns to help generate better mock outputs
-              </div>
-            </div>
-            <button type="button"
-                    class="btn btn-sm btn-outline-danger"
-                    data-action="click->tools-config#removeFunction">
-              <i class="bi bi-trash"></i>
-            </button>
-          </div>
-
-          <div class="mb-2">
-            <label class="form-label small mb-1">Parameters (JSON Schema)</label>
-            <textarea class="form-control form-control-sm font-monospace"
-                      rows="4"
-                      placeholder='{"type": "object", "properties": {...}, "required": [...]}'
-                      data-tools-config-target="functionParameters"
-                      data-action="input->tools-config#onFunctionChange"></textarea>
-          </div>
-
-          <div class="form-check form-check-inline">
-            <input type="checkbox"
-                   class="form-check-input"
-                   id="strict_${index}"
-                   data-tools-config-target="functionStrict"
-                   data-action="change->tools-config#onFunctionChange">
-            <label class="form-check-label small" for="strict_${index}">
-              Strict mode (enforce schema)
-            </label>
-          </div>
-        </div>
-      </div>
-    `
-  }
-
-  /**
-   * Remove a function definition
-   */
-  removeFunction(event) {
-    event.target.closest(".function-item").remove()
-
-    // Show "no functions" message if list is empty
-    if (this.functionItemTargets.length === 0) {
-      this.functionsListTarget.innerHTML = `
-        <div class="text-muted text-center py-3" data-tools-config-target="noFunctionsMessage">
-          <i class="bi bi-info-circle"></i>
-          No functions defined. Click "Add Function" to create one.
-        </div>
-      `
-    }
-
-    this.dispatchToolConfigChange()
-  }
-
-  /**
-   * Handle function field changes
-   */
-  onFunctionChange() {
-    this.dispatchToolConfigChange()
-  }
-
-  /**
-   * Get the current tool configuration
-   */
-  getToolConfig() {
-    const config = {
-      enabled_tools: [],
-      tool_config: {}
-    }
-
-    // Collect enabled tools
-    this.toolCheckboxTargets.forEach(checkbox => {
-      if (checkbox.checked) {
-        config.enabled_tools.push(checkbox.dataset.toolId)
-      }
-    })
-
-    // Collect file_search config
-    if (this.hasSelectedVectorStoresTarget) {
-      const vectorStores = []
-      this.selectedVectorStoresTarget.querySelectorAll("[data-vector-store-id]").forEach(badge => {
-        vectorStores.push({
-          id: badge.dataset.vectorStoreId,
-          name: badge.dataset.vectorStoreName || badge.dataset.vectorStoreId
-        })
-      })
-      if (vectorStores.length > 0) {
-        // Only use first MAX_VECTOR_STORES for backward compatibility
-        const limitedVectorStores = vectorStores.slice(0, this.constructor.MAX_VECTOR_STORES)
-
-        config.tool_config.file_search = {
-          vector_store_ids: limitedVectorStores.map(vs => vs.id),
-          vector_stores: limitedVectorStores
-        }
-      }
-    }
-
-    // Collect functions config
-    const functions = []
-    this.functionItemTargets.forEach(item => {
-      const nameInput = item.querySelector('[data-tools-config-target="functionName"]')
-      const descInput = item.querySelector('[data-tools-config-target="functionDescription"]')
-      const outputDescInput = item.querySelector('[data-tools-config-target="functionOutputDescription"]')
-      const paramsInput = item.querySelector('[data-tools-config-target="functionParameters"]')
-      const strictInput = item.querySelector('[data-tools-config-target="functionStrict"]')
-
-      const name = nameInput?.value?.trim()
-      if (!name) return
-
-      let parameters = {}
-      try {
-        const paramsText = paramsInput?.value?.trim()
-        if (paramsText) {
-          parameters = JSON.parse(paramsText)
-        }
-      } catch (e) {
-        console.warn("Invalid JSON in function parameters:", e)
-      }
-
-      const func = {
-        name: name,
-        description: descInput?.value?.trim() || "",
-        parameters: parameters,
-        strict: strictInput?.checked || false
-      }
-
-      // Add output_description if present
-      const outputDesc = outputDescInput?.value?.trim()
-      if (outputDesc) {
-        func.output_description = outputDesc
-      }
-
-      functions.push(func)
-    })
-
-    if (functions.length > 0) {
-      config.tool_config.functions = functions
-    }
-
-    return config
-  }
-
-  /**
-   * Dispatch custom event with tool configuration
-   */
-  dispatchToolConfigChange() {
-    const config = this.getToolConfig()
-    this.dispatch("change", { detail: config })
-  }
-
-  /**
-   * Show vector store files modal
+   * Show modal with files in a vector store
+   * @param {Event} event - Click event from vector store badge
    */
   async showVectorStoreFiles(event) {
     // Stop propagation to prevent badge removal
@@ -632,7 +408,7 @@ export default class extends Controller {
     }
 
     // Update modal title using direct DOM query (since modal may be moved to body)
-    const titleEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesModalTitle"]')
+    const titleEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesModalTitle"]')
     if (titleEl) {
       titleEl.textContent = `Files in ${vectorStoreName}`
     }
@@ -669,11 +445,12 @@ export default class extends Controller {
 
   /**
    * Show loading state for files
+   * @param {HTMLElement} modalEl - Modal element
    */
   showFilesLoading(modalEl) {
-    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
-    const errorEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesError"]')
-    const listEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesList"]')
+    const loadingEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesLoading"]')
+    const errorEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesError"]')
+    const listEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesList"]')
 
     if (loadingEl) loadingEl.classList.remove("d-none")
     if (errorEl) errorEl.classList.add("d-none")
@@ -682,11 +459,13 @@ export default class extends Controller {
 
   /**
    * Show error state for files
+   * @param {string} message - Error message
+   * @param {HTMLElement} modalEl - Modal element
    */
   showFilesError(message, modalEl) {
-    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
-    const errorEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesError"]')
-    const errorTextEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesErrorText"]')
+    const loadingEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesLoading"]')
+    const errorEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesError"]')
+    const errorTextEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesErrorText"]')
 
     if (loadingEl) loadingEl.classList.add("d-none")
     if (errorEl) errorEl.classList.remove("d-none")
@@ -695,10 +474,12 @@ export default class extends Controller {
 
   /**
    * Display vector store files in the modal
+   * @param {Array} files - Array of file objects
+   * @param {HTMLElement} modalEl - Modal element
    */
   displayVectorStoreFiles(files, modalEl) {
-    const loadingEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesLoading"]')
-    const listEl = modalEl.querySelector('[data-tools-config-target="vectorStoreFilesList"]')
+    const loadingEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesLoading"]')
+    const listEl = modalEl.querySelector('[data-playground-file-search-target="vectorStoreFilesList"]')
 
     // Hide loading
     if (loadingEl) loadingEl.classList.add("d-none")
@@ -738,6 +519,8 @@ export default class extends Controller {
 
   /**
    * Render a single file row
+   * @param {Object} file - File object
+   * @returns {string} HTML string for file row
    */
   renderFileRow(file) {
     const statusBadge = this.getStatusBadge(file.status)
@@ -757,6 +540,8 @@ export default class extends Controller {
 
   /**
    * Get status badge HTML
+   * @param {string} status - File status
+   * @returns {string} HTML string for status badge
    */
   getStatusBadge(status) {
     const statusMap = {
@@ -770,6 +555,8 @@ export default class extends Controller {
 
   /**
    * Format file size in human-readable format
+   * @param {number} bytes - File size in bytes
+   * @returns {string} Formatted file size
    */
   formatFileSize(bytes) {
     if (!bytes || bytes === 0) return '0 B'
@@ -783,10 +570,43 @@ export default class extends Controller {
 
   /**
    * Escape HTML to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped HTML
    */
   escapeHtml(text) {
     const div = document.createElement('div')
     div.textContent = text
     return div.innerHTML
+  }
+
+  /**
+   * Get current vector store configuration
+   * @returns {Object} Vector store configuration
+   */
+  getVectorStoreConfig() {
+    const vectorStores = Array.from(
+      this.selectedVectorStoresTarget.querySelectorAll("[data-vector-store-id]")
+    ).map(badge => ({
+      id: badge.dataset.vectorStoreId,
+      name: badge.dataset.vectorStoreName
+    }))
+
+    return {
+      vector_store_ids: vectorStores.map(vs => vs.id),
+      vector_stores: vectorStores
+    }
+  }
+
+  /**
+   * Dispatch custom event when config changes
+   * @private
+   */
+  dispatchConfigChange() {
+    const config = this.getVectorStoreConfig()
+
+    this.dispatch("configChanged", {
+      detail: { config },
+      prefix: "playground-file-search"
+    })
   }
 }

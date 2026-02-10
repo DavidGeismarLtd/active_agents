@@ -90,7 +90,6 @@ export default class extends Controller {
   onApiChange(event) {
     const api = event.target.value
     console.log(`[PlaygroundUIController] API changed to: ${api}`)
-    debugger
     // Update visibility
     this.updateVisibility()
   }

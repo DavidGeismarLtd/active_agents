@@ -1,5 +1,7 @@
 <%# Prompt Editors Section - Contains System Prompt and User Prompt Template %>
-<div class="col-lg-6 mb-4"
+<div id="prompt-editor-panel"
+     class="col-lg-6 mb-4"
+     data-controller="playground-prompt-editor"
      data-playground-ui-target="promptEditorsSection"
      style="<%= (playground_ui.include?(:system_prompt) || playground_ui.include?(:user_prompt_template)) ? '' : 'display: none;' %>">
   <div class="card h-100">
@@ -12,16 +14,16 @@
            style="<%= playground_ui.include?(:user_prompt_template) ? '' : 'display: none;' %>">
         <button type="button"
                 class="btn btn-sm btn-outline-primary me-2"
-                data-action="click->playground-editor#openGenerateModal"
-                data-playground-editor-target="aiButton"
+                data-action="click->playground-generate-prompt#openModal"
+                data-playground-generate-prompt-target="aiButton"
                 data-bs-toggle="tooltip"
                 data-bs-placement="top"
                 title="Generate a new prompt from description">
-          <i class="bi bi-stars" data-playground-editor-target="aiButtonIcon"></i>
-          <span data-playground-editor-target="aiButtonText">Generate</span>
+          <i class="bi bi-stars" data-playground-generate-prompt-target="aiButtonIcon"></i>
+          <span data-playground-generate-prompt-target="aiButtonText">Generate</span>
         </button>
         <span class="badge bg-secondary me-2" id="template-engine-badge">Auto-detect</span>
-        <span class="badge bg-info" id="char-count" data-playground-editor-target="charCount">0 chars</span>
+        <span class="badge bg-info" id="char-count" data-playground-prompt-editor-target="charCount">0 chars</span>
       </div>
     </div>
     <div class="card-body">
@@ -35,4 +37,3 @@
     </div>
   </div>
 </div>
-

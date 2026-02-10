@@ -7,6 +7,7 @@
     id="model-name"
     class="form-select"
     data-playground-ui-target="modelName"
+    data-playground-model-config-target="model"
   >
     <% if config_data[:models].any? %>
       <% config_data[:models].group_by { |m| m[:category] }.each do |category, models_in_category| %>
@@ -49,6 +50,7 @@
     max="2"
     step="0.1"
     value="<%= version&.model_config&.dig('temperature') || 0.7 %>"
+    data-playground-model-config-target="temperature"
     data-action="input->playground-ui#onTemperatureChange"
   >
   <div class="form-text">
@@ -65,9 +67,9 @@
     class="form-control"
     placeholder="Leave empty for default"
     value="<%= version&.model_config&.dig('max_tokens') %>"
+    data-playground-model-config-target="maxTokens"
   >
   <div class="form-text">
     Maximum tokens to generate (leave empty for provider default)
   </div>
 </div>
-

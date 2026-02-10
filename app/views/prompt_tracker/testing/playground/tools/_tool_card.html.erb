@@ -1,0 +1,30 @@
+<%#
+  Tool Card
+  Renders a single tool selection card with checkbox
+
+  Local variables:
+    - tool: Hash with tool definition (id, name, description, icon, configurable)
+    - enabled_tools_hash: Hash of enabled tool IDs for lookup
+%>
+
+<div class="col-md-3">
+  <label class="card tool-card p-3 h-100 position-relative <%= tool_card_class(tool, enabled_tools_hash) %>"
+         for="tool_<%= tool[:id] %>">
+    <input class="d-none"
+           type="checkbox"
+           id="tool_<%= tool[:id] %>"
+           value="<%= tool[:id] %>"
+           data-playground-tools-target="toolCheckbox"
+           data-tool-id="<%= tool[:id] %>"
+           data-configurable="<%= tool_configurable?(tool) %>"
+           data-action="change->playground-tools#onToolToggle"
+           <%= 'checked' if tool_enabled?(tool, enabled_tools_hash) %>>
+    <i class="bi bi-check-circle-fill check-indicator"></i>
+    <div class="text-center">
+      <i class="bi <%= tool[:icon] %> tool-icon d-block mb-2"></i>
+      <strong class="d-block" style="font-size: 0.85rem;"><%= tool[:name] %></strong>
+      <small class="text-muted" style="font-size: 0.7rem;"><%= tool[:description] %></small>
+    </div>
+  </label>
+</div>
+

@@ -12,7 +12,7 @@
   index ||= 0
 %>
 
-<div class="function-item card mb-2" data-tools-config-target="functionItem" data-function-index="<%= index %>">
+<div class="function-item card mb-2" data-playground-functions-target="functionItem" data-function-index="<%= index %>">
   <div class="card-body p-2">
     <div class="d-flex justify-content-between align-items-start mb-2">
       <div class="flex-grow-1 me-2">
@@ -20,26 +20,26 @@
                class="form-control form-control-sm mb-1"
                placeholder="Function name (e.g., get_weather)"
                value="<%= function['name'] || function[:name] %>"
-               data-tools-config-target="functionName"
-               data-action="input->tools-config#onFunctionChange">
+               data-playground-functions-target="functionName"
+               data-action="input->playground-functions#onFunctionChange">
         <input type="text"
                class="form-control form-control-sm mb-2"
                placeholder="Description"
                value="<%= function['description'] || function[:description] %>"
-               data-tools-config-target="functionDescription"
-               data-action="input->tools-config#onFunctionChange">
+               data-playground-functions-target="functionDescription"
+               data-action="input->playground-functions#onFunctionChange">
         <textarea class="form-control form-control-sm"
                   rows="2"
                   placeholder="Output description (e.g., Returns a JSON object with temperature, condition, and humidity fields)"
-                  data-tools-config-target="functionOutputDescription"
-                  data-action="input->tools-config#onFunctionChange"><%= function['output_description'] || function[:output_description] %></textarea>
+                  data-playground-functions-target="functionOutputDescription"
+                  data-action="input->playground-functions#onFunctionChange"><%= function['output_description'] || function[:output_description] %></textarea>
         <div class="form-text small">
           Describe what this function returns to help generate better mock outputs
         </div>
       </div>
       <button type="button"
               class="btn btn-sm btn-outline-danger"
-              data-action="click->tools-config#removeFunction">
+              data-action="click->playground-functions#removeFunction">
         <i class="bi bi-trash"></i>
       </button>
     </div>
@@ -49,8 +49,8 @@
       <textarea class="form-control form-control-sm font-monospace"
                 rows="4"
                 placeholder='{"type": "object", "properties": {...}, "required": [...]}'
-                data-tools-config-target="functionParameters"
-                data-action="input->tools-config#onFunctionChange"><%= (function['parameters'] || function[:parameters])&.to_json %></textarea>
+                data-playground-functions-target="functionParameters"
+                data-action="input->playground-functions#onFunctionChange"><%= (function['parameters'] || function[:parameters])&.to_json %></textarea>
       <div class="form-text small">
         Define parameters using JSON Schema format.
         <a href="https://json-schema.org/understanding-json-schema/" target="_blank">Learn more</a>
@@ -62,8 +62,8 @@
              class="form-check-input"
              id="strict_<%= index %>"
              <%= 'checked' if function['strict'] || function[:strict] %>
-             data-tools-config-target="functionStrict"
-             data-action="change->tools-config#onFunctionChange">
+             data-playground-functions-target="functionStrict"
+             data-action="change->playground-functions#onFunctionChange">
       <label class="form-check-label small" for="strict_<%= index %>">
         Strict mode (enforce schema)
       </label>

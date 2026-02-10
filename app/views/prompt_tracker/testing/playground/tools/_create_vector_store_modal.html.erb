@@ -1,10 +1,10 @@
 <%#
   Create Vector Store Modal
-  
+
   No local variables needed - uses Stimulus controller targets
 %>
 
-<div class="modal fade" id="createVectorStoreModal" tabindex="-1" data-tools-config-target="createVectorStoreModal">
+<div class="modal fade" id="createVectorStoreModal" tabindex="-1" data-playground-file-search-target="createVectorStoreModal">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -19,7 +19,7 @@
           <input type="text"
                  class="form-control"
                  placeholder="e.g., Product Documentation"
-                 data-tools-config-target="vectorStoreName">
+                 data-playground-file-search-target="vectorStoreName">
           <div class="form-text">A descriptive name for your vector store.</div>
         </div>
         <div class="mb-3">
@@ -28,30 +28,29 @@
                  class="form-control"
                  multiple
                  accept=".txt,.md,.pdf,.docx,.doc,.html,.json,.csv"
-                 data-tools-config-target="vectorStoreFiles">
+                 data-playground-file-search-target="vectorStoreFiles">
           <div class="form-text">
             Upload files to include in the vector store. Supported: TXT, MD, PDF, DOCX, HTML, JSON, CSV.
           </div>
         </div>
-        <div class="alert alert-info py-2 d-none" data-tools-config-target="createVectorStoreStatus">
+        <div class="alert alert-info py-2 d-none" data-playground-file-search-target="createVectorStoreStatus">
           <i class="bi bi-hourglass-split me-1"></i>
-          <span data-tools-config-target="createVectorStoreStatusText">Creating...</span>
+          <span data-playground-file-search-target="createVectorStoreStatusText">Creating...</span>
         </div>
-        <div class="alert alert-danger py-2 d-none" data-tools-config-target="createVectorStoreError">
+        <div class="alert alert-danger py-2 d-none" data-playground-file-search-target="createVectorStoreError">
           <i class="bi bi-exclamation-triangle me-1"></i>
-          <span data-tools-config-target="createVectorStoreErrorText"></span>
+          <span data-playground-file-search-target="createVectorStoreErrorText"></span>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button"
                 class="btn btn-primary"
-                data-action="click->tools-config#createVectorStore"
-                data-tools-config-target="createVectorStoreButton">
+                data-action="click->playground-file-search#createVectorStore"
+                data-playground-file-search-target="createVectorStoreButton">
           <i class="bi bi-cloud-upload me-1"></i>Create & Upload
         </button>
       </div>
     </div>
   </div>
 </div>
-
