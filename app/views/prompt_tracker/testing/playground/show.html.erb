@@ -1,13 +1,13 @@
 <%
   # Compute URLs for conversation panel
   if @prompt_version
-    execute_url = execute_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
+    conversation_url = run_conversation_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
     reset_url = reset_conversation_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
   elsif @prompt
-    execute_url = execute_testing_prompt_playground_path(@prompt)
+    conversation_url = run_conversation_testing_prompt_playground_path(@prompt)
     reset_url = reset_conversation_testing_prompt_playground_path(@prompt)
   else
-    execute_url = execute_testing_playground_path
+    conversation_url = run_conversation_testing_playground_path
     reset_url = reset_conversation_testing_playground_path
   end
 
@@ -41,7 +41,7 @@
 <div id="playground-container"
      class="container-fluid mt-4"
      data-controller="playground-preview playground-save playground-sync playground-response-schema playground-ui playground-generate-prompt"
-     data-playground-ui-conversation-outlet="#conversation-panel"
+     data-playground-ui-playground-conversation-outlet="#conversation-panel"
      data-playground-ui-capabilities-value="<%= capabilities_json %>"
      data-playground-preview-playground-prompt-editor-outlet="#prompt-editor-panel"
      data-playground-preview-playground-variables-outlet="#variables-panel"
@@ -170,7 +170,7 @@
          style="<%= playground_ui.include?(:conversation) ? '' : 'display: none;' %>">
       <%= render "prompt_tracker/testing/playground/conversation_panel",
                  conversation_state: respond_to?(:conversation_state_from_session) ? conversation_state_from_session(session) : {},
-                 execute_url: execute_url,
+                 conversation_url: conversation_url,
                  reset_url: reset_url %>
     </div>
   </div>

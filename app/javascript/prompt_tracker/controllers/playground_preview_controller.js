@@ -76,16 +76,43 @@ export default class extends Controller {
     console.log('[PlaygroundPreviewController] ========== CONNECT ==========')
     console.log('[PlaygroundPreviewController] Element:', this.element)
     console.log('[PlaygroundPreviewController] Preview URL:', this.previewUrlValue)
-    console.log('[PlaygroundPreviewController] Has prompt editor outlet?', this.hasPlaygroundPromptEditorOutlet)
-    console.log('[PlaygroundPreviewController] Has variables outlet?', this.hasPlaygroundVariablesOutlet)
 
     this.debounceTimer = null
     this.debounceDelay = 500 // ms
 
-    // Initial preview
-    this.updatePreview()
+    // Defer initial preview until outlets are ready
+    // Outlets may not be connected yet when this controller connects
+    this.scheduleInitialPreview()
 
     console.log('[PlaygroundPreviewController] ========== CONNECT COMPLETE ==========')
+  }
+
+  /**
+   * Schedule initial preview with retry logic for outlet availability.
+   * Outlets may not be ready when this controller first connects due to
+   * async controller loading order.
+   *
+   * Note: hasPlaygroundPromptEditorOutlet returns true when the element exists
+   * with the data-controller attribute, but the controller instance may not
+   * have connected yet. We need to check if the controller methods are available.
+   */
+  scheduleInitialPreview(retryCount = 0) {
+    const maxRetries = 10
+    const retryDelay = 100 // ms
+
+    // Check if outlet is truly ready by verifying the controller method exists
+    const outletReady = this.hasPlaygroundPromptEditorOutlet &&
+      typeof this.playgroundPromptEditorOutlet.getSystemPrompt === 'function'
+
+    if (outletReady) {
+      console.log('[PlaygroundPreviewController] Prompt editor outlet ready, updating preview')
+      this.updatePreview()
+    } else if (retryCount < maxRetries) {
+      console.log(`[PlaygroundPreviewController] Waiting for prompt editor outlet (attempt ${retryCount + 1}/${maxRetries})`)
+      setTimeout(() => this.scheduleInitialPreview(retryCount + 1), retryDelay)
+    } else {
+      console.warn('[PlaygroundPreviewController] Prompt editor outlet not available after max retries')
+    }
   }
 
   /**

@@ -37,7 +37,7 @@ import { Controller } from "@hotwired/stimulus"
  *   Format: { provider: { api: { playground_ui: [...], tools: [...], features: [...] } } }
  *
  * @outlets
- * - conversation: Conversation testing controller
+ * - playground-conversation: Conversation testing controller
  */
 export default class extends Controller {
   static targets = [
@@ -58,7 +58,7 @@ export default class extends Controller {
     capabilities: Object
   }
 
-  static outlets = ["conversation"]
+  static outlets = ["playground-conversation"]
 
   connect() {
     console.log('[PlaygroundUIController] Connected')
@@ -276,12 +276,12 @@ export default class extends Controller {
    * Update conversation panel visibility via outlet
    */
   updateConversationVisibility(playgroundUI) {
-    if (!this.hasConversationOutlet) return
+    if (!this.hasPlaygroundConversationOutlet) return
 
     if (playgroundUI.includes('conversation')) {
-      this.conversationOutlet.show()
+      this.playgroundConversationOutlet.show()
     } else {
-      this.conversationOutlet.hide()
+      this.playgroundConversationOutlet.hide()
     }
   }
 

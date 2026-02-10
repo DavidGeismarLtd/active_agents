@@ -11,8 +11,10 @@ import { Controller } from "@hotwired/stimulus"
  * - Typing indicators
  * - Visibility toggling based on provider
  *
- * Can be used standalone or with a parent controller (via outlets) that provides
- * additional context like system_prompt, model_config, and variables.
+ * Uses outlets to specialized controllers for collecting data:
+ * - playground-prompt-editor: for system_prompt and user_prompt
+ * - playground-model-config: for model configuration
+ * - playground-variables: for template variables
  */
 export default class extends Controller {
   static targets = [
@@ -30,7 +32,11 @@ export default class extends Controller {
     visible: { type: Boolean, default: false }
   }
 
-  static outlets = ["playground"]
+  static outlets = [
+    "playground-prompt-editor",
+    "playground-model-config",
+    "playground-variables"
+  ]
 
   connect() {
     console.log("Conversation controller connected")
@@ -81,11 +87,11 @@ export default class extends Controller {
     if (!content) return
 
     // Check for unfilled variables before sending
-    if (this.hasPlaygroundOutlet) {
-      const playground = this.playgroundOutlet
-      if (typeof playground.hasUnfilledVariables === "function" && playground.hasUnfilledVariables()) {
-        const unfilled = typeof playground.getUnfilledVariables === "function"
-          ? playground.getUnfilledVariables()
+    if (this.hasPlaygroundVariablesOutlet) {
+      const variablesController = this.playgroundVariablesOutlet
+      if (typeof variablesController.hasUnfilledVariables === "function" && variablesController.hasUnfilledVariables()) {
+        const unfilled = typeof variablesController.getUnfilledVariables === "function"
+          ? variablesController.getUnfilledVariables()
           : []
         const varList = unfilled.length > 0 ? `: ${unfilled.join(", ")}` : ""
         this.showError(`Please fill in all template variables before sending a message${varList}`)
@@ -107,14 +113,21 @@ export default class extends Controller {
       // Build request body - get additional context from playground outlet if available
       const requestBody = this.buildRequestBody(content)
 
+      console.log("[PlaygroundConversationController] Sending to URL:", this.sendUrlValue)
+      console.log("[PlaygroundConversationController] Request body:", requestBody)
+
+      // Use exact same pattern as playground_save_controller.js which works
       const response = await fetch(this.sendUrlValue, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": this.getCsrfToken()
+          "X-CSRF-Token": this.getCsrfToken(),
+          "Accept": "application/json"
         },
         body: JSON.stringify(requestBody)
       })
+
+      console.log("[PlaygroundConversationController] Response status:", response.status)
 
       const data = await response.json()
       this.hideTypingIndicator()
@@ -135,35 +148,38 @@ export default class extends Controller {
     }
   }
 
-  // Build request body, getting additional context from playground outlet if available
+  // Build request body, getting context from specialized controller outlets
   buildRequestBody(content) {
     const body = { content }
 
-    // If we have a playground outlet, get additional context from it
-    if (this.hasPlaygroundOutlet) {
-      const playground = this.playgroundOutlet
-
-      // Get system prompt from playground
-      if (typeof playground.getSystemPrompt === "function") {
-        body.system_prompt = playground.getSystemPrompt()
+    // Get prompts from prompt editor controller
+    if (this.hasPlaygroundPromptEditorOutlet) {
+      const editor = this.playgroundPromptEditorOutlet
+      if (typeof editor.getSystemPrompt === "function") {
+        body.system_prompt = editor.getSystemPrompt()
       }
-
-      // Get user prompt template from playground
-      if (typeof playground.getUserPrompt === "function") {
-        body.user_prompt = playground.getUserPrompt()
-      }
-
-      // Get model config from playground
-      if (typeof playground.getModelConfig === "function") {
-        body.model_config = playground.getModelConfig()
-      }
-
-      // Get variables from playground
-      if (typeof playground.getVariables === "function") {
-        body.variables = playground.getVariables()
+      if (typeof editor.getUserPrompt === "function") {
+        body.user_prompt = editor.getUserPrompt()
       }
     }
 
+    // Get model config from model config controller
+    if (this.hasPlaygroundModelConfigOutlet) {
+      const modelConfig = this.playgroundModelConfigOutlet
+      if (typeof modelConfig.getModelConfig === "function") {
+        body.model_config = modelConfig.getModelConfig()
+      }
+    }
+
+    // Get variables from variables controller
+    if (this.hasPlaygroundVariablesOutlet) {
+      const variables = this.playgroundVariablesOutlet
+      if (typeof variables.getVariables === "function") {
+        body.variables = variables.getVariables()
+      }
+    }
+
+    console.log("[ConversationController] Built request body:", body)
     return body
   }
 
@@ -175,8 +191,10 @@ export default class extends Controller {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": this.getCsrfToken()
-        }
+          "X-CSRF-Token": this.getCsrfToken(),
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({})
       })
 
       const data = await response.json()
@@ -322,7 +340,9 @@ export default class extends Controller {
     setTimeout(() => errorDiv.remove(), 5000)
   }
 
+  // Get CSRF token - exact same as playground_save_controller.js
   getCsrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.content || ""
+    const meta = document.querySelector('meta[name="csrf-token"]')
+    return meta ? meta.content : ''
   }
 }

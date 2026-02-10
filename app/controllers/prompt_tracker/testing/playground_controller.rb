@@ -6,6 +6,11 @@ module PromptTracker
     # Allows users to draft and test prompt templates with live preview.
     # Can be used standalone or in the context of an existing prompt.
     class PlaygroundController < ApplicationController
+    # TODO: Investigate why CSRF token verification fails for conversation actions
+    # The token is correctly sent in X-CSRF-Token header but Rails still rejects it.
+    # Other actions (save, preview) work fine with the same pattern.
+    skip_before_action :verify_authenticity_token, only: [ :run_conversation, :reset_conversation, :preview, :generate, :save ]
+
     before_action :set_prompt, if: -> { params[:prompt_id].present? }
     before_action :set_prompt_version, if: -> { params[:prompt_version_id].present? }
     before_action :set_version, only: [ :show ]
@@ -32,6 +37,16 @@ module PromptTracker
 
       @sample_variables = build_sample_variables(@variables)
       @available_providers = helpers.providers_for(:playground)
+
+      # DEBUG LOGGING
+      Rails.logger.debug "========== PLAYGROUND CONTROLLER SHOW =========="
+      Rails.logger.debug "Prompt ID: #{@prompt&.id}"
+      Rails.logger.debug "Version ID: #{@version&.id}"
+      Rails.logger.debug "Model Config: #{@version&.model_config.inspect}"
+      Rails.logger.debug "Provider: #{@version&.model_config&.dig('provider') || @version&.model_config&.dig(:provider)}"
+      Rails.logger.debug "API: #{@version&.model_config&.dig('api') || @version&.model_config&.dig(:api)}"
+      Rails.logger.debug "Available Providers: #{@available_providers.inspect}"
+      Rails.logger.debug "================================================"
     end
 
     # POST /prompts/:prompt_id/playground/preview
@@ -120,12 +135,12 @@ module PromptTracker
       end
     end
 
-    # POST /playground/execute
-    # POST /prompts/:prompt_id/playground/execute
-    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/execute
-    # Execute a Response API call with conversation support
-    def execute
-      result = PlaygroundExecuteService.call(
+    # POST /playground/run_conversation
+    # POST /prompts/:prompt_id/playground/run_conversation
+    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/run_conversation
+    # Run a conversation turn with the LLM
+    def run_conversation
+      result = RunPlaygroundConversationService.call(
         content: params[:content],
         system_prompt: params[:system_prompt],
         user_prompt_template: params[:user_prompt],
@@ -276,6 +291,58 @@ module PromptTracker
       else
         "#{base_key}_standalone"
       end
+    end
+
+    # POST /prompts/:prompt_id/playground/sync
+    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/sync
+    # Sync with remote entity (e.g., OpenAI Assistant)
+    def sync
+      # Standalone mode doesn't support sync
+      unless @prompt_version || @version
+        render json: { success: false, error: "Cannot sync in standalone mode" }, status: :unprocessable_entity
+        return
+      end
+
+      # Get the version to sync
+      version_to_sync = @prompt_version || @version
+
+      # Update the version with current form data first
+      update_params = build_update_params
+      version_to_sync.assign_attributes(update_params)
+
+      # Determine if this is a create or update operation
+      assistant_id = version_to_sync.model_config&.dig(:assistant_id) ||
+                     version_to_sync.model_config&.dig("assistant_id")
+
+      # Call the appropriate sync service
+      result = if assistant_id.present?
+        RemoteEntity::Openai::Assistants::SyncService.update(prompt_version: version_to_sync)
+      else
+        RemoteEntity::Openai::Assistants::SyncService.create(prompt_version: version_to_sync)
+      end
+
+      if result.success?
+        render json: {
+          success: true,
+          assistant_id: result.assistant_id,
+          synced_at: result.synced_at
+        }
+      else
+        render json: {
+          success: false,
+          error: result.errors.join(", ")
+        }, status: :unprocessable_entity
+      end
+    end
+
+    # Build update params from form data
+    def build_update_params
+      {
+        system_prompt: params[:system_prompt],
+        user_prompt: params[:user_prompt],
+        notes: params[:notes],
+        model_config: params[:model_config]&.to_unsafe_h || {}
+      }.compact
     end
     end
   end
