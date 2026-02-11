@@ -14,7 +14,8 @@
   tool_config ||= @version&.model_config&.dig('tool_config') || {}
 %>
 
-<div class="tools-panel mt-3"
+<div id="tools-panel"
+     class="tools-panel mt-3"
      data-controller="playground-tools">
   <label class="form-label">
     <i class="bi bi-tools"></i> Tools

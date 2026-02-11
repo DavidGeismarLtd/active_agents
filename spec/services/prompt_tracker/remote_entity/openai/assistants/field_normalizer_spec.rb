@@ -44,13 +44,14 @@ module PromptTracker
               ])
             end
 
-            it "includes metadata with version information" do
+            it "includes metadata with version information as strings" do
               result = described_class.to_openai(prompt_version)
 
-              expect(result[:metadata][:prompt_id]).to eq(prompt.id)
+              # OpenAI requires all metadata values to be strings
+              expect(result[:metadata][:prompt_id]).to eq(prompt.id.to_s)
               expect(result[:metadata][:prompt_slug]).to eq("test_assistant")
-              expect(result[:metadata][:version_id]).to eq(prompt_version.id)
-              expect(result[:metadata][:version_number]).to eq(prompt_version.version_number)
+              expect(result[:metadata][:version_id]).to eq(prompt_version.id.to_s)
+              expect(result[:metadata][:version_number]).to eq(prompt_version.version_number.to_s)
               expect(result[:metadata][:managed_by]).to eq("prompt_tracker")
               expect(result[:metadata][:last_synced_at]).to be_present
             end

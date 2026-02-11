@@ -89,7 +89,15 @@ export default class extends Controller {
     versionId: String
   }
 
-  static outlets = ["playground-prompt-editor", "playground-variables", "playground-model-config", "playground-response-schema"]
+  static outlets = [
+    "playground-prompt-editor",
+    "playground-variables",
+    "playground-model-config",
+    "playground-response-schema",
+    "playground-tools",
+    "playground-file-search",
+    "playground-functions"
+  ]
 
   connect() {
     console.log('[PlaygroundSaveController] ========== CONNECT ==========')
@@ -100,6 +108,9 @@ export default class extends Controller {
     console.log('[PlaygroundSaveController] Has prompt editor outlet?', this.hasPlaygroundPromptEditorOutlet)
     console.log('[PlaygroundSaveController] Has variables outlet?', this.hasPlaygroundVariablesOutlet)
     console.log('[PlaygroundSaveController] Has model-config outlet?', this.hasPlaygroundModelConfigOutlet)
+    console.log('[PlaygroundSaveController] Has tools outlet?', this.hasPlaygroundToolsOutlet)
+    console.log('[PlaygroundSaveController] Has file-search outlet?', this.hasPlaygroundFileSearchOutlet)
+    console.log('[PlaygroundSaveController] Has functions outlet?', this.hasPlaygroundFunctionsOutlet)
     console.log('[PlaygroundSaveController] ========== CONNECT COMPLETE ==========')
   }
 
@@ -170,6 +181,35 @@ export default class extends Controller {
       }
     }
 
+    // Get base model config (includes assistant_id, metadata from hidden fields)
+    const modelConfig = this.playgroundModelConfigOutlet.getModelConfig()
+
+    // Add tools data from tools controllers
+    if (this.hasPlaygroundToolsOutlet) {
+      const selectedTools = this.playgroundToolsOutlet.getSelectedTools()
+      if (selectedTools.length > 0) {
+        modelConfig.tools = selectedTools
+      }
+    }
+
+    // Build tool_config from file-search and functions controllers
+    const toolConfig = {}
+
+    if (modelConfig.tools?.includes('file_search') && this.hasPlaygroundFileSearchOutlet) {
+      toolConfig.file_search = this.playgroundFileSearchOutlet.getVectorStoreConfig()
+    }
+
+    if (modelConfig.tools?.includes('functions') && this.hasPlaygroundFunctionsOutlet) {
+      const functionsConfig = this.playgroundFunctionsOutlet.getFunctionsConfig()
+      if (functionsConfig.length > 0) {
+        toolConfig.functions = functionsConfig
+      }
+    }
+
+    if (Object.keys(toolConfig).length > 0) {
+      modelConfig.tool_config = toolConfig
+    }
+
     // Collect data - flat structure as expected by backend
     const data = {
       prompt_name: promptName,
@@ -179,7 +219,7 @@ export default class extends Controller {
       template_variables: this.hasPlaygroundVariablesOutlet
         ? this.playgroundVariablesOutlet.getVariables()
         : {},
-      model_config: this.playgroundModelConfigOutlet.getModelConfig(),
+      model_config: modelConfig,
       save_action: saveAction
     }
 

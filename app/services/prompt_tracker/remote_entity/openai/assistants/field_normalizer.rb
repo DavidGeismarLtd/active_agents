@@ -43,11 +43,12 @@ module PromptTracker
               tool_resources: format_tool_resources_for_openai(model_config[:tool_config] || model_config["tool_config"]),
               temperature: model_config[:temperature] || model_config["temperature"] || 0.7,
               top_p: model_config[:top_p] || model_config["top_p"] || 1.0,
+              # OpenAI requires all metadata values to be strings (max 512 chars each)
               metadata: {
-                prompt_id: prompt_version.prompt_id,
+                prompt_id: prompt_version.prompt_id.to_s,
                 prompt_slug: prompt_version.prompt.slug,
-                version_id: prompt_version.id,
-                version_number: prompt_version.version_number,
+                version_id: prompt_version.id.to_s,
+                version_number: prompt_version.version_number.to_s,
                 managed_by: "prompt_tracker",
                 last_synced_at: Time.current.iso8601
               }

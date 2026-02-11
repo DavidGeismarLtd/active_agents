@@ -48,30 +48,47 @@
      data-playground-save-playground-prompt-editor-outlet="#prompt-editor-panel"
      data-playground-save-playground-variables-outlet="#variables-panel"
      data-playground-save-playground-model-config-outlet="#model-config-panel"
+     data-playground-save-playground-tools-outlet="#tools-panel"
+     data-playground-save-playground-file-search-outlet="#file-search-config"
+     data-playground-save-playground-functions-outlet="#functions-config"
      data-action="playground-prompt-editor:promptChanged->playground-preview#onPromptChanged
                   playground-prompt-editor:promptChanged->playground-generate-prompt#onPromptChanged
                   playground-variables:changed->playground-preview#onVariablesChanged"
+     data-playground-sync-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-sync-playground-model-config-outlet="#model-config-panel"
      <% if @prompt_version %>
        data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
        data-playground-save-version-id-value="<%= @prompt_version.id %>"
-       data-playground-sync-version-id-value="<%= @prompt_version.id %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       <% assistant_id = @prompt_version.model_config&.dig(:assistant_id) %>
+       <% if assistant_id.present? %>
+         data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
+       <% end %>
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
      <% elsif @prompt %>
        data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_playground_path(@prompt) %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_playground_path(@prompt) %>"
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
        <% if @version %>
          data-playground-save-version-id-value="<%= @version.id %>"
-         data-playground-sync-version-id-value="<%= @version.id %>"
+         <% assistant_id = @version.model_config&.dig(:assistant_id) %>
+         <% if assistant_id.present? %>
+           data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
+         <% end %>
        <% end %>
      <% else %>
        data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
        data-playground-save-save-url-value="<%= save_testing_playground_path %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_playground_path %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_playground_path %>"
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
      <% end %>
 >

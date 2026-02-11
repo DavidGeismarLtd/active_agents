@@ -176,7 +176,98 @@ module PromptTracker
       render json: { success: true }
     end
 
+    # POST /prompts/:prompt_id/playground/push_to_remote
+    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/push_to_remote
+    # Push local changes to remote entity (e.g., OpenAI Assistant)
+    def push_to_remote
+      # Standalone mode doesn't support sync
+      unless @prompt_version || @version
+        render json: { success: false, error: "Cannot push in standalone mode" }, status: :unprocessable_entity
+        return
+      end
+
+      # Get the version to push
+      version_to_push = @prompt_version || @version
+
+      # Update the version with current form data first
+      update_params = build_update_params
+      version_to_push.assign_attributes(update_params)
+
+      # Determine if this is a create or update operation
+      assistant_id = version_to_push.model_config&.dig(:assistant_id) ||
+                     version_to_push.model_config&.dig("assistant_id")
+
+      # Call the appropriate push service
+      result = if assistant_id.present?
+        RemoteEntity::Openai::Assistants::PushService.update(prompt_version: version_to_push)
+      else
+        RemoteEntity::Openai::Assistants::PushService.create(prompt_version: version_to_push)
+      end
+
+      if result.success?
+        render json: {
+          success: true,
+          assistant_id: result.assistant_id,
+          synced_at: result.synced_at
+        }
+      else
+        render json: {
+          success: false,
+          error: result.errors.join(", ")
+        }, status: :unprocessable_entity
+      end
+    end
+
+    # POST /prompts/:prompt_id/playground/pull_from_remote
+    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/pull_from_remote
+    # Pull latest from remote entity (e.g., OpenAI Assistant) and update local PromptVersion
+    def pull_from_remote
+      # Standalone mode doesn't support sync
+      unless @prompt_version || @version
+        render json: { success: false, error: "Cannot pull in standalone mode" }, status: :unprocessable_entity
+        return
+      end
+
+      # Get the version to update
+      version_to_update = @prompt_version || @version
+
+      # Check if assistant_id exists
+      assistant_id = version_to_update.model_config&.dig(:assistant_id) ||
+                     version_to_update.model_config&.dig("assistant_id")
+
+      unless assistant_id.present?
+        render json: { success: false, error: "No remote assistant linked" }, status: :unprocessable_entity
+        return
+      end
+
+      # Call the pull service
+      result = RemoteEntity::Openai::Assistants::PullService.call(prompt_version: version_to_update)
+
+      if result.success?
+        render json: {
+          success: true,
+          synced_at: result.synced_at,
+          reload: true  # Signal frontend to reload the page
+        }
+      else
+        render json: {
+          success: false,
+          error: result.errors.join(", ")
+        }, status: :unprocessable_entity
+      end
+    end
+
     private
+
+    # Build update params from form data for push_to_remote
+    def build_update_params
+      {
+        system_prompt: params[:system_prompt],
+        user_prompt: params[:user_prompt],
+        notes: params[:notes],
+        model_config: params[:model_config]&.to_unsafe_h || {}
+      }.compact
+    end
 
     def set_prompt
       @prompt = Prompt.find(params[:prompt_id])
@@ -291,58 +382,6 @@ module PromptTracker
       else
         "#{base_key}_standalone"
       end
-    end
-
-    # POST /prompts/:prompt_id/playground/sync
-    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/sync
-    # Sync with remote entity (e.g., OpenAI Assistant)
-    def sync
-      # Standalone mode doesn't support sync
-      unless @prompt_version || @version
-        render json: { success: false, error: "Cannot sync in standalone mode" }, status: :unprocessable_entity
-        return
-      end
-
-      # Get the version to sync
-      version_to_sync = @prompt_version || @version
-
-      # Update the version with current form data first
-      update_params = build_update_params
-      version_to_sync.assign_attributes(update_params)
-
-      # Determine if this is a create or update operation
-      assistant_id = version_to_sync.model_config&.dig(:assistant_id) ||
-                     version_to_sync.model_config&.dig("assistant_id")
-
-      # Call the appropriate sync service
-      result = if assistant_id.present?
-        RemoteEntity::Openai::Assistants::SyncService.update(prompt_version: version_to_sync)
-      else
-        RemoteEntity::Openai::Assistants::SyncService.create(prompt_version: version_to_sync)
-      end
-
-      if result.success?
-        render json: {
-          success: true,
-          assistant_id: result.assistant_id,
-          synced_at: result.synced_at
-        }
-      else
-        render json: {
-          success: false,
-          error: result.errors.join(", ")
-        }, status: :unprocessable_entity
-      end
-    end
-
-    # Build update params from form data
-    def build_update_params
-      {
-        system_prompt: params[:system_prompt],
-        user_prompt: params[:user_prompt],
-        notes: params[:notes],
-        model_config: params[:model_config]&.to_unsafe_h || {}
-      }.compact
     end
     end
   end

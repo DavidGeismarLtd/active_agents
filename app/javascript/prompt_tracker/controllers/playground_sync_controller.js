@@ -4,89 +4,164 @@ import { Controller } from "@hotwired/stimulus"
  * Playground Sync Stimulus Controller
  *
  * @description
- * Manages synchronization with remote entities (e.g., OpenAI Assistants) by fetching the latest
- * configuration from the remote API and updating the local prompt version. Only appears for APIs
- * with the :remote_entity_linked capability.
+ * Manages bidirectional synchronization with remote entities (e.g., OpenAI Assistants).
+ * Provides Push (local → remote) and Pull (remote → local) operations.
  *
  * @responsibilities
- * - Trigger manual sync with remote entity (OpenAI Assistant, etc.)
- * - Show loading state during sync operation
+ * - Push local changes to remote entity (OpenAI Assistant, etc.)
+ * - Pull latest from remote entity and update local PromptVersion
+ * - Show loading state during sync operations
  * - Display sync errors with user-friendly messages
- * - Update last synced timestamp after successful sync
- * - Reload page after sync to show updated data
+ * - Reload page after pull to show updated data
  *
  * @targets
- * - syncBtn: Manual sync button
+ * - pushBtn: Push to remote button
+ * - pullBtn: Pull from remote button
  * - syncStatus: Sync status indicator
  * - lastSyncedAt: Last synced timestamp display
  * - syncError: Sync error message container
  *
  * @values
- * - syncUrl (String): Server endpoint for sync operation
+ * - pushUrl (String): Server endpoint for push operation
+ * - pullUrl (String): Server endpoint for pull operation
  * - remoteEntityId (String): ID of remote entity (e.g., OpenAI Assistant ID)
  * - provider (String): Provider name (openai, anthropic, etc.)
  * - api (String): API name (assistants, etc.)
  *
  * @outlets
- * None - sync is independent operation
+ * - playground-prompt-editor: For collecting current form data during push
+ * - playground-model-config: For collecting model config during push
  *
  * @events_dispatched
- * None - sync triggers page reload on success
+ * None - sync triggers page reload on success (for pull)
  *
  * @events_listened_to
- * - click (syncBtn): Trigger sync operation
+ * - click (pushBtn): Trigger push operation
+ * - click (pullBtn): Trigger pull operation
  *
  * @communication_pattern
- * Independent controller that communicates directly with server. On successful sync, reloads
- * the page to show updated data. Does not interact with other playground controllers.
+ * Independent controller that communicates directly with server. On successful pull, reloads
+ * the page to show updated data. Push updates sync status without reload.
  *
  * @public_methods
- * None - all methods are internal
+ * - pushToRemote(): Push local changes to remote entity
+ * - pullFromRemote(): Pull latest from remote entity
  *
  * @example
  * // In view (only shown for APIs with :remote_entity_linked capability):
  * <div data-controller="playground-sync"
- *      data-playground-sync-sync-url-value="/sync/:id"
- *      data-playground-sync-remote-entity-id-value="asst_123"
- *      data-playground-sync-provider-value="openai"
- *      data-playground-sync-api-value="assistants">
- *   <button data-playground-sync-target="syncBtn"
- *           data-action="click->playground-sync#syncRemoteEntity">Sync Now</button>
+ *      data-playground-sync-push-url-value="/push_to_remote"
+ *      data-playground-sync-pull-url-value="/pull_from_remote"
+ *      data-playground-sync-remote-entity-id-value="asst_123">
+ *   <button data-playground-sync-target="pushBtn"
+ *           data-action="click->playground-sync#pushToRemote">Push</button>
+ *   <button data-playground-sync-target="pullBtn"
+ *           data-action="click->playground-sync#pullFromRemote">Pull</button>
  * </div>
  */
 export default class extends Controller {
   static targets = [
-    "syncBtn",
+    "pushBtn",
+    "pullBtn",
     "syncStatus",
     "lastSyncedAt",
     "syncError"
   ]
 
   static values = {
-    syncUrl: String,
+    pushUrl: String,
+    pullUrl: String,
     remoteEntityId: String,
     provider: String,
     api: String
   }
 
+  static outlets = [
+    "playground-prompt-editor",
+    "playground-model-config"
+  ]
+
   connect() {
-    console.log('[PlaygroundSyncController] ========== CONNECT ==========')
-    console.log('[PlaygroundSyncController] Element:', this.element)
-    console.log('[PlaygroundSyncController] Sync URL:', this.syncUrlValue)
+    console.log('[PlaygroundSyncController] Connected')
+    console.log('[PlaygroundSyncController] Push URL:', this.pushUrlValue)
+    console.log('[PlaygroundSyncController] Pull URL:', this.pullUrlValue)
     console.log('[PlaygroundSyncController] Remote Entity ID:', this.remoteEntityIdValue)
-    console.log('[PlaygroundSyncController] Provider:', this.providerValue)
-    console.log('[PlaygroundSyncController] API:', this.apiValue)
-    console.log('[PlaygroundSyncController] ========== CONNECT COMPLETE ==========')
   }
 
-  // Action: Sync with remote entity
-  async syncRemoteEntity(event) {
-    console.log('[PlaygroundSyncController] ========== SYNC REMOTE ENTITY ==========')
+  // Action: Push local changes to remote entity
+  async pushToRemote(event) {
+    console.log('[PlaygroundSyncController] ========== PUSH TO REMOTE ==========')
     event.preventDefault()
 
-    if (!this.syncUrlValue) {
-      console.error('[PlaygroundSyncController] No sync URL configured')
-      this.showSyncError('Sync URL not configured')
+    if (!this.pushUrlValue) {
+      console.error('[PlaygroundSyncController] No push URL configured')
+      this.showSyncError('Push URL not configured')
+      return
+    }
+
+    console.log('[PlaygroundSyncController] Starting push...')
+    this.showPushLoading(true)
+    this.hideSyncError()
+
+    try {
+      // Collect current form data
+      const formData = this.collectFormData()
+      console.log('[PlaygroundSyncController] Form data:', formData)
+
+      const response = await fetch(this.pushUrlValue, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCsrfToken(),
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      })
+
+      console.log('[PlaygroundSyncController] Response status:', response.status)
+
+      if (!response.ok) {
+        const text = await response.text()
+        console.error('[PlaygroundSyncController] Server error response:', text)
+        this.showSyncError(`Server error (${response.status}): ${response.statusText}`)
+        this.showPushLoading(false)
+        return
+      }
+
+      const result = await response.json()
+      console.log('[PlaygroundSyncController] Push result:', result)
+
+      if (result.success) {
+        console.log('[PlaygroundSyncController] Push successful!')
+        this.showPushSuccess()
+
+        // Update last synced timestamp
+        if (this.hasLastSyncedAtTarget && result.synced_at) {
+          this.lastSyncedAtTarget.textContent = result.synced_at
+        }
+      } else {
+        console.error('[PlaygroundSyncController] Push failed:', result.error)
+        this.showSyncError(result.error || 'Push failed')
+      }
+
+      this.showPushLoading(false)
+    } catch (error) {
+      console.error('[PlaygroundSyncController] Network error:', error)
+      this.showSyncError(`Network error: ${error.message}`)
+      this.showPushLoading(false)
+    }
+
+    console.log('[PlaygroundSyncController] ========== PUSH COMPLETE ==========')
+  }
+
+  // Action: Pull latest from remote entity
+  async pullFromRemote(event) {
+    console.log('[PlaygroundSyncController] ========== PULL FROM REMOTE ==========')
+    event.preventDefault()
+
+    if (!this.pullUrlValue) {
+      console.error('[PlaygroundSyncController] No pull URL configured')
+      this.showSyncError('Pull URL not configured')
       return
     }
 
@@ -96,15 +171,17 @@ export default class extends Controller {
       return
     }
 
-    console.log('[PlaygroundSyncController] Starting sync...')
-    this.showSyncLoading(true)
+    // Confirm before pulling (will overwrite local changes)
+    if (!confirm('This will overwrite your local changes with the remote version. Continue?')) {
+      return
+    }
+
+    console.log('[PlaygroundSyncController] Starting pull...')
+    this.showPullLoading(true)
     this.hideSyncError()
 
     try {
-      const url = this.buildSyncUrl()
-      console.log('[PlaygroundSyncController] Sync URL:', url)
-
-      const response = await fetch(url, {
+      const response = await fetch(this.pullUrlValue, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,9 +189,7 @@ export default class extends Controller {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          remote_entity_id: this.remoteEntityIdValue,
-          provider: this.providerValue,
-          api: this.apiValue
+          remote_entity_id: this.remoteEntityIdValue
         })
       })
 
@@ -124,21 +199,15 @@ export default class extends Controller {
         const text = await response.text()
         console.error('[PlaygroundSyncController] Server error response:', text)
         this.showSyncError(`Server error (${response.status}): ${response.statusText}`)
-        this.showSyncLoading(false)
+        this.showPullLoading(false)
         return
       }
 
       const result = await response.json()
-      console.log('[PlaygroundSyncController] Sync result:', result)
+      console.log('[PlaygroundSyncController] Pull result:', result)
 
       if (result.success) {
-        console.log('[PlaygroundSyncController] Sync successful!')
-
-        // Update last synced timestamp
-        if (this.hasLastSyncedAtTarget && result.synced_at) {
-          this.lastSyncedAtTarget.textContent = result.synced_at
-          console.log('[PlaygroundSyncController] Updated last synced at:', result.synced_at)
-        }
+        console.log('[PlaygroundSyncController] Pull successful!')
 
         // Reload page to show updated data
         if (result.reload) {
@@ -148,43 +217,87 @@ export default class extends Controller {
           }, 500)
         }
       } else {
-        console.error('[PlaygroundSyncController] Sync failed:', result.errors)
-        this.showSyncError(result.errors?.join(', ') || 'Sync failed')
+        console.error('[PlaygroundSyncController] Pull failed:', result.error)
+        this.showSyncError(result.error || 'Pull failed')
       }
 
-      this.showSyncLoading(false)
+      this.showPullLoading(false)
     } catch (error) {
       console.error('[PlaygroundSyncController] Network error:', error)
       this.showSyncError(`Network error: ${error.message}`)
-      this.showSyncLoading(false)
+      this.showPullLoading(false)
     }
 
-    console.log('[PlaygroundSyncController] ========== SYNC COMPLETE ==========')
+    console.log('[PlaygroundSyncController] ========== PULL COMPLETE ==========')
   }
 
-  // Build sync URL
-  buildSyncUrl() {
-    // Replace :id placeholder if present
-    return this.syncUrlValue.replace(':id', this.remoteEntityIdValue)
+  // Collect form data from outlets
+  collectFormData() {
+    const data = {}
+
+    // Get prompts from editor outlet
+    if (this.hasPlaygroundPromptEditorOutlet) {
+      const editor = this.playgroundPromptEditorOutlet
+      data.system_prompt = editor.getSystemPrompt?.() || ''
+      data.user_prompt = editor.getUserPrompt?.() || ''
+    }
+
+    // Get model config from model-config outlet
+    if (this.hasPlaygroundModelConfigOutlet) {
+      const modelConfig = this.playgroundModelConfigOutlet
+      data.model_config = modelConfig.getModelConfig?.() || {}
+    }
+
+    return data
   }
 
-  // Show sync loading state
-  showSyncLoading(isLoading) {
-    console.log('[PlaygroundSyncController] Loading state:', isLoading)
-
-    if (this.hasSyncBtnTarget) {
-      this.syncBtnTarget.disabled = isLoading
+  // Show push loading state
+  showPushLoading(isLoading) {
+    if (this.hasPushBtnTarget) {
+      this.pushBtnTarget.disabled = isLoading
 
       if (isLoading) {
-        this.syncBtnTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Syncing...'
+        this.pushBtnTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Pushing...'
       } else {
-        this.syncBtnTarget.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync from Remote'
+        this.pushBtnTarget.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Push'
       }
     }
 
     if (this.hasSyncStatusTarget) {
       if (isLoading) {
-        this.syncStatusTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Syncing with remote entity...'
+        this.syncStatusTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Pushing to remote...'
+        this.syncStatusTarget.style.display = ''
+      } else {
+        this.syncStatusTarget.style.display = 'none'
+      }
+    }
+  }
+
+  // Show push success state
+  showPushSuccess() {
+    if (this.hasPushBtnTarget) {
+      this.pushBtnTarget.innerHTML = '<i class="bi bi-check-circle"></i> Pushed!'
+      setTimeout(() => {
+        this.pushBtnTarget.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Push'
+      }, 2000)
+    }
+  }
+
+  // Show pull loading state
+  showPullLoading(isLoading) {
+    if (this.hasPullBtnTarget) {
+      this.pullBtnTarget.disabled = isLoading
+
+      if (isLoading) {
+        this.pullBtnTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Pulling...'
+      } else {
+        this.pullBtnTarget.innerHTML = '<i class="bi bi-cloud-arrow-down"></i> Pull'
+      }
+    }
+
+    if (this.hasSyncStatusTarget) {
+      if (isLoading) {
+        this.syncStatusTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Pulling from remote...'
         this.syncStatusTarget.style.display = ''
       } else {
         this.syncStatusTarget.style.display = 'none'
@@ -198,7 +311,7 @@ export default class extends Controller {
 
     if (this.hasSyncErrorTarget) {
       this.syncErrorTarget.innerHTML = `
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show mt-2" role="alert">
           <strong>Sync Error:</strong> ${message}
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -209,8 +322,6 @@ export default class extends Controller {
 
   // Hide sync error
   hideSyncError() {
-    console.log('[PlaygroundSyncController] Hiding sync error')
-
     if (this.hasSyncErrorTarget) {
       this.syncErrorTarget.style.display = 'none'
       this.syncErrorTarget.innerHTML = ''

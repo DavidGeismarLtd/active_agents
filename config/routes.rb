@@ -13,8 +13,10 @@ PromptTracker::Engine.routes.draw do
       post :preview, on: :member
       post :save, on: :member
       post :generate, on: :member
-      post :execute, on: :member           # Execute Response API call
+      post :run_conversation, on: :member   # Run a conversation turn with the LLM
       post :reset_conversation, on: :member # Reset conversation state
+      post :push_to_remote, on: :member     # Push local changes to remote entity
+      post :pull_from_remote, on: :member   # Pull latest from remote entity
     end
 
     # Prompt versions (for testing)
@@ -24,8 +26,10 @@ PromptTracker::Engine.routes.draw do
         post :preview, on: :member
         post :save, on: :member
         post :generate, on: :member
-        post :execute, on: :member           # Execute Response API call
+        post :run_conversation, on: :member   # Run a conversation turn with the LLM
         post :reset_conversation, on: :member # Reset conversation state
+        post :push_to_remote, on: :member     # Push local changes to remote entity
+        post :pull_from_remote, on: :member   # Pull latest from remote entity
       end
 
       resources :prompt_versions, only: [ :show ], path: "versions" do
@@ -39,8 +43,10 @@ PromptTracker::Engine.routes.draw do
           post :preview, on: :member
           post :save, on: :member
           post :generate, on: :member
-          post :execute, on: :member           # Execute Response API call
+          post :run_conversation, on: :member   # Run a conversation turn with the LLM
           post :reset_conversation, on: :member # Reset conversation state
+          post :push_to_remote, on: :member     # Push local changes to remote entity
+          post :pull_from_remote, on: :member   # Pull latest from remote entity
         end
 
         # Datasets nested under prompt versions

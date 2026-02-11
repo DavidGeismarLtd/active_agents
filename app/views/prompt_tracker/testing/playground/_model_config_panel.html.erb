@@ -9,6 +9,22 @@
   <div class="card-body">
     <% config_data = playground_model_config_data(@version) %>
 
+    <%# Hidden fields to preserve assistant sync data %>
+    <% assistant_id = @version&.model_config&.dig("assistant_id") %>
+    <% metadata = @version&.model_config&.dig("metadata") %>
+
+    <% if assistant_id.present? %>
+      <input type="hidden"
+             data-playground-model-config-target="assistantId"
+             value="<%= assistant_id %>">
+    <% end %>
+
+    <% if metadata.present? %>
+      <input type="hidden"
+             data-playground-model-config-target="metadata"
+             value="<%= metadata.to_json %>">
+    <% end %>
+
     <%# Provider Selection %>
     <%= render "prompt_tracker/testing/playground/model_settings/provider_selection",
                config_data: config_data %>
