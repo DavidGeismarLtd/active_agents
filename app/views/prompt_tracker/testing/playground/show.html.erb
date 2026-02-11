@@ -36,28 +36,35 @@
 
   # Serialize capabilities matrix for JavaScript
   capabilities_json = PromptTracker::ApiCapabilities.to_h.to_json
+
+  # Determine which controllers to load based on capabilities
+  # playground-preview is only needed when :preview is in playground_ui
+  controllers = ["playground-save", "playground-sync", "playground-response-schema", "playground-ui", "playground-generate-prompt"]
+  controllers.unshift("playground-preview") if playground_ui.include?(:preview)
 %>
 
 <div id="playground-container"
      class="container-fluid mt-4"
-     data-controller="playground-preview playground-save playground-sync playground-response-schema playground-ui playground-generate-prompt"
+     data-controller="<%= controllers.join(' ') %>"
      data-playground-ui-playground-conversation-outlet="#conversation-panel"
      data-playground-ui-capabilities-value="<%= capabilities_json %>"
-     data-playground-preview-playground-prompt-editor-outlet="#prompt-editor-panel"
-     data-playground-preview-playground-variables-outlet="#variables-panel"
+     <% if playground_ui.include?(:preview) %>
+       data-playground-preview-playground-prompt-editor-outlet="#prompt-editor-panel"
+       data-playground-preview-playground-variables-outlet="#variables-panel"
+     <% end %>
      data-playground-save-playground-prompt-editor-outlet="#prompt-editor-panel"
      data-playground-save-playground-variables-outlet="#variables-panel"
      data-playground-save-playground-model-config-outlet="#model-config-panel"
      data-playground-save-playground-tools-outlet="#tools-panel"
      data-playground-save-playground-file-search-outlet="#file-search-config"
      data-playground-save-playground-functions-outlet="#functions-config"
-     data-action="playground-prompt-editor:promptChanged->playground-preview#onPromptChanged
-                  playground-prompt-editor:promptChanged->playground-generate-prompt#onPromptChanged
-                  playground-variables:changed->playground-preview#onVariablesChanged"
+     data-action="<%= playground_ui.include?(:preview) ? 'playground-prompt-editor:promptChanged->playground-preview#onPromptChanged ' : '' %>playground-prompt-editor:promptChanged->playground-generate-prompt#onPromptChanged<%= playground_ui.include?(:preview) ? ' playground-variables:changed->playground-preview#onVariablesChanged' : '' %>"
      data-playground-sync-playground-prompt-editor-outlet="#prompt-editor-panel"
      data-playground-sync-playground-model-config-outlet="#model-config-panel"
      <% if @prompt_version %>
-       data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       <% end %>
        data-playground-save-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
@@ -70,7 +77,9 @@
        <% end %>
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
      <% elsif @prompt %>
-       data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
+       <% end %>
        data-playground-save-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
@@ -85,7 +94,9 @@
          <% end %>
        <% end %>
      <% else %>
-       data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
+       <% end %>
        data-playground-save-save-url-value="<%= save_testing_playground_path %>"
        data-playground-sync-push-url-value="<%= push_to_remote_testing_playground_path %>"
        data-playground-sync-pull-url-value="<%= pull_from_remote_testing_playground_path %>"
@@ -170,7 +181,7 @@
 
       <!-- Variables and Preview Section -->
       <div data-playground-ui-target="variablesPreviewSection"
-           style="<%= (playground_ui.include?(:variables) || playground_ui.include?(:preview)) ? '' : 'display: none;' %>">
+           style="<%= show_variables_preview?(playground_ui) ? '' : 'display: none;' %>">
 
         <!-- Variable Definition Panel -->
         <%= render "prompt_tracker/testing/playground/variable_definition_panel",

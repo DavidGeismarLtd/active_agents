@@ -4,6 +4,24 @@ module PromptTracker
   # Helper methods for the Playground views.
   # Provides provider detection and tool availability methods.
   module PlaygroundHelper
+    # Check if the playground UI should show prompt editing capabilities.
+    # Returns true if either system_prompt or user_prompt_template is supported.
+    #
+    # @param playground_ui [Array<Symbol>] the playground UI capabilities array
+    # @return [Boolean] true if prompt editing should be shown
+    def show_prompt_editing?(playground_ui)
+      playground_ui.include?(:system_prompt) || playground_ui.include?(:user_prompt_template)
+    end
+
+    # Check if the playground UI should show variables and preview section.
+    # Returns true if either variables or preview is supported.
+    #
+    # @param playground_ui [Array<Symbol>] the playground UI capabilities array
+    # @return [Boolean] true if variables/preview section should be shown
+    def show_variables_preview?(playground_ui)
+      playground_ui.include?(:variables) || playground_ui.include?(:preview)
+    end
+
     # Get available tools for the current provider and API.
     # Reads from configuration based on API capabilities.
     #

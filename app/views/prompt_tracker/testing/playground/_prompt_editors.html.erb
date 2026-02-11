@@ -3,7 +3,7 @@
      class="col-lg-6 mb-4"
      data-controller="playground-prompt-editor"
      data-playground-ui-target="promptEditorsSection"
-     style="<%= (playground_ui.include?(:system_prompt) || playground_ui.include?(:user_prompt_template)) ? '' : 'display: none;' %>">
+     style="<%= show_prompt_editing?(playground_ui) ? '' : 'display: none;' %>">
   <div class="card h-100">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">
@@ -11,7 +11,7 @@
         Prompt
       </h5>
       <div data-playground-ui-target="promptTemplateSection"
-           style="<%= playground_ui.include?(:user_prompt_template) ? '' : 'display: none;' %>">
+           style="<%= show_prompt_editing?(playground_ui) ? '' : 'display: none;' %>">
         <button type="button"
                 class="btn btn-sm btn-outline-primary me-2"
                 data-action="click->playground-generate-prompt#openModal"
