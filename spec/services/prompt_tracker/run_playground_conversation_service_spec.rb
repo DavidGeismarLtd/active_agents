@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe PromptTracker::PlaygroundExecuteService do
+RSpec.describe PromptTracker::RunPlaygroundConversationService do
   describe ".call" do
     let(:content) { "Hello, how are you?" }
     let(:system_prompt) { "You are a helpful assistant." }
@@ -31,8 +31,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           content: content,
           system_prompt: system_prompt,
           model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
+          conversation_state: conversation_state
         )
 
         expect(result.success?).to be true
@@ -40,13 +39,12 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
         expect(result.error).to be_nil
       end
 
-      it "returns conversation state with messages" do
+      it "uses ConversationStateBuilder for state management" do
         result = described_class.call(
           content: content,
           system_prompt: system_prompt,
           model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
+          conversation_state: conversation_state
         )
 
         expect(result.conversation_state[:messages].size).to eq(2)
@@ -55,16 +53,14 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
         expect(result.conversation_state[:previous_response_id]).to eq("resp_123")
       end
 
-      it "calls OpenaiResponseService.call with system_prompt as instructions for first message" do
+      it "passes system_prompt separately for first message" do
         described_class.call(
           content: content,
           system_prompt: system_prompt,
           model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
+          conversation_state: conversation_state
         )
 
-        # system_prompt becomes the instructions when no user_prompt_template is provided
         expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
           model: "gpt-4o",
           user_prompt: content,
@@ -76,59 +72,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
       end
     end
 
-    context "with user_prompt_template" do
-      let(:user_prompt_template) { "Please respond to: {{message}}" }
-      let(:variables) { { message: "test input" } }
-
-      it "combines system_prompt and rendered user_prompt_template into instructions" do
-        described_class.call(
-          content: content,
-          system_prompt: system_prompt,
-          user_prompt_template: user_prompt_template,
-          model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
-        )
-
-        expected_instructions = "You are a helpful assistant.\n\nPlease respond to: test input"
-        expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
-          model: "gpt-4o",
-          user_prompt: content,
-          system_prompt: expected_instructions,
-          tools: [],
-          tool_config: nil,
-          temperature: 0.7
-        )
-      end
-    end
-
-    context "with only user_prompt_template (no system_prompt)" do
-      let(:system_prompt) { nil }
-      let(:user_prompt_template) { "Analyze this: {{topic}}" }
-      let(:variables) { { topic: "Ruby on Rails" } }
-
-      it "uses rendered user_prompt_template as instructions" do
-        described_class.call(
-          content: content,
-          system_prompt: system_prompt,
-          user_prompt_template: user_prompt_template,
-          model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
-        )
-
-        expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
-          model: "gpt-4o",
-          user_prompt: content,
-          system_prompt: "Analyze this: Ruby on Rails",
-          tools: [],
-          tool_config: nil,
-          temperature: 0.7
-        )
-      end
-    end
-
-    context "with existing conversation" do
+    context "with existing conversation (follow-up turn)" do
       let(:conversation_state) do
         {
           messages: [
@@ -145,8 +89,7 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           content: content,
           system_prompt: system_prompt,
           model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
+          conversation_state: conversation_state
         )
 
         expect(PromptTracker::OpenaiResponseService).to have_received(:call_with_context).with(
@@ -164,16 +107,15 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
           content: content,
           system_prompt: system_prompt,
           model_config: model_config,
-          conversation_state: conversation_state,
-          variables: variables
+          conversation_state: conversation_state
         )
 
         expect(result.conversation_state[:messages].size).to eq(4)
       end
     end
 
-    context "with blank content" do
-      it "returns an error result" do
+    context "validation errors" do
+      it "returns error when content is blank" do
         result = described_class.call(
           content: "",
           system_prompt: system_prompt,
@@ -182,6 +124,26 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
 
         expect(result.success?).to be false
         expect(result.error).to eq("Message content is required")
+      end
+
+      it "returns error when provider is missing" do
+        result = described_class.call(
+          content: content,
+          model_config: { api: "responses", model: "gpt-4o" }
+        )
+
+        expect(result.success?).to be false
+        expect(result.error).to eq("Provider is required")
+      end
+
+      it "returns error when api is missing" do
+        result = described_class.call(
+          content: content,
+          model_config: { provider: "openai", model: "gpt-4o" }
+        )
+
+        expect(result.success?).to be false
+        expect(result.error).to eq("API is required")
       end
     end
 
@@ -205,3 +167,4 @@ RSpec.describe PromptTracker::PlaygroundExecuteService do
     end
   end
 end
+
