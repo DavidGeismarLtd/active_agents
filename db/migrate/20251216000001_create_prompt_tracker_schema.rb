@@ -65,6 +65,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.jsonb :response_schema  # JSON Schema for structured output (OpenAI Structured Outputs)
       t.text :notes
       t.string :created_by
+      t.datetime :archived_at  # Soft delete timestamp
       t.timestamps
     end
 
@@ -72,6 +73,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_versions, [ :prompt_id, :status ], name: "index_prompt_versions_on_prompt_and_status"
     add_index :prompt_tracker_prompt_versions, [ :prompt_id, :version_number ], unique: true, name: "index_prompt_versions_on_prompt_and_version_number"
     add_index :prompt_tracker_prompt_versions, :status
+    add_index :prompt_tracker_prompt_versions, :archived_at
 
     # ============================================================================
     # TABLE 3: llm_responses
