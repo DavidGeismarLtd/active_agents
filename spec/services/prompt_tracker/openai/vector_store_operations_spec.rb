@@ -59,6 +59,44 @@ module PromptTracker
         end
       end
 
+      describe ".retrieve_vector_store" do
+        it "returns vector store data" do
+          allow(mock_vector_stores).to receive(:retrieve).with(id: "vs_123").and_return({
+            "id" => "vs_123",
+            "name" => "My Documents",
+            "status" => "completed",
+            "file_counts" => { "total" => 10 },
+            "created_at" => 1234567890
+          })
+
+          result = described_class.retrieve_vector_store(id: "vs_123")
+
+          expect(result).to eq({
+            id: "vs_123",
+            name: "My Documents",
+            status: "completed",
+            file_counts: { "total" => 10 },
+            created_at: Time.at(1234567890)
+          })
+        end
+
+        it "handles nil created_at" do
+          allow(mock_vector_stores).to receive(:retrieve).with(id: "vs_123").and_return({
+            "id" => "vs_123",
+            "name" => "My Documents",
+            "status" => "completed",
+            "file_counts" => nil,
+            "created_at" => nil
+          })
+
+          result = described_class.retrieve_vector_store(id: "vs_123")
+
+          expect(result[:id]).to eq("vs_123")
+          expect(result[:name]).to eq("My Documents")
+          expect(result[:created_at]).to be_nil
+        end
+      end
+
       describe ".create_vector_store" do
         it "creates vector store without file_ids" do
           allow(mock_vector_stores).to receive(:create).with(

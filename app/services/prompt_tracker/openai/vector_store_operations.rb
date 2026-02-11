@@ -32,6 +32,22 @@ module PromptTracker
           end
         end
 
+        # Retrieve a single vector store by ID
+        #
+        # @param id [String] the vector store ID
+        # @return [Hash] vector store data with id, name, status, file_counts, created_at
+        def retrieve_vector_store(id:)
+          response = client.vector_stores.retrieve(id: id)
+
+          {
+            id: response["id"],
+            name: response["name"],
+            status: response["status"],
+            file_counts: response["file_counts"],
+            created_at: response["created_at"] ? Time.at(response["created_at"]) : nil
+          }
+        end
+
         # Create a new vector store
         #
         # @param name [String] vector store name
