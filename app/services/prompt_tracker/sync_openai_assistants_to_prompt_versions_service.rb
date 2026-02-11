@@ -12,6 +12,9 @@ module PromptTracker
   #
   # This creates a 1:1:1 relationship: Assistant → Prompt → PromptVersion
   #
+  # Delegates to RemoteEntity::Openai::Assistants::CreateAsPromptVersionService
+  # for the actual creation of each Prompt and PromptVersion.
+  #
   # @example Sync all assistants
   #   result = SyncOpenaiAssistantsToPromptVersionsService.new.call
   #   result[:created_count]  # => 5
@@ -69,73 +72,22 @@ module PromptTracker
 
     # Create a Prompt and PromptVersion from assistant data
     #
+    # Delegates to CreateAsPromptVersionService for the actual creation.
+    #
     # @param assistant_data [Hash] assistant data from OpenAI API
     def create_prompt_and_version_from_assistant(assistant_data)
-      assistant_id = assistant_data["id"]
-      # Ensure we always have a valid name (fallback to assistant_id if name is blank)
-      assistant_name = assistant_data["name"].presence || "Assistant #{assistant_id}"
+      assistant_name = assistant_data["name"].presence || "Assistant #{assistant_data['id']}"
 
-      # Create the Prompt
-      prompt = Prompt.create!(
-        name: assistant_name,
-        slug: generate_slug(assistant_id),
-        description: assistant_data["description"] || "Synced from OpenAI Assistant",
-        category: "assistant"
+      result = RemoteEntity::Openai::Assistants::CreateAsPromptVersionService.call(
+        assistant_data: assistant_data
       )
 
-      # Create the PromptVersion
-      version = prompt.prompt_versions.create!(
-        system_prompt: assistant_data["instructions"] || "",
-        user_prompt: "{{user_message}}",  # Default template for assistant conversations
-        version_number: 1,
-        status: "draft",
-        model_config: build_model_config(assistant_data),
-        notes: "Synced from OpenAI Assistant: #{assistant_name}"
-      )
-
-      @created_prompts << prompt
-      @created_versions << version
-    rescue => e
-      @errors << "Failed to create prompt/version for #{assistant_name}: #{e.message}"
-    end
-
-    # Build model_config hash from assistant data
-    #
-    # Uses ModelConfigNormalizer to ensure tools are in the correct format
-    # (string array instead of OpenAI's hash format)
-    #
-    # @param assistant_data [Hash] assistant data from OpenAI API
-    # @return [Hash] normalized model_config hash
-    def build_model_config(assistant_data)
-      Openai::Assistants::ModelConfigNormalizer.normalize(assistant_data)
-    end
-
-    # Generate a unique slug for the assistant
-    #
-    # @param assistant_id [String] the OpenAI assistant ID (e.g., "asst_abc123")
-    # @return [String] slug for the prompt (e.g., "assistant_asst_abc123")
-    def generate_slug(assistant_id)
-      # Sanitize assistant_id to ensure it only contains valid characters
-      # Replace hyphens with underscores, remove other invalid chars
-      sanitized_id = assistant_id.to_s
-                                  .downcase
-                                  .gsub(/[^a-z0-9_]+/, "_")  # Replace invalid chars with underscore
-                                  .gsub(/^_+|_+$/, "")        # Remove leading/trailing underscores
-                                  .gsub(/_+/, "_")            # Collapse multiple underscores
-
-      # Use sanitized assistant_id as base for slug
-      # "asst_abc123" → "assistant_asst_abc123"
-      base_slug = "assistant_#{sanitized_id}"
-
-      # Ensure uniqueness by appending a counter if needed
-      slug = base_slug
-      counter = 1
-      while Prompt.exists?(slug: slug)
-        slug = "#{base_slug}_#{counter}"
-        counter += 1
+      if result.success?
+        @created_prompts << result.prompt
+        @created_versions << result.prompt_version
+      else
+        @errors << "Failed to create prompt/version for #{assistant_name}: #{result.errors.join(', ')}"
       end
-
-      slug
     end
 
     # Build OpenAI client
