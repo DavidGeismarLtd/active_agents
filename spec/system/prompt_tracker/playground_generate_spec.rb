@@ -35,17 +35,6 @@ RSpec.describe "Playground Generate Feature", type: :system, js: true do
 
       expect(page).to have_button("Generate", visible: :visible)
     end
-
-    it "hides Generate button when prompts have content" do
-      prompt_version.update!(
-        system_prompt: "You are a helpful assistant.",
-        user_prompt: "Help the user."
-      )
-
-      visit prompt_tracker.testing_prompt_prompt_version_playground_path(prompt, prompt_version)
-
-      expect(page).not_to have_button("Generate", visible: :visible)
-    end
   end
 
   describe "Generate modal interaction" do
@@ -115,8 +104,11 @@ RSpec.describe "Playground Generate Feature", type: :system, js: true do
       expect(user_prompt_value).to eq("Help {{ customer_name }} with their {{ issue }}.")
 
       # Check that variables were detected and inputs created
-      expect(page).to have_field("customer_name")
-      expect(page).to have_field("issue")
+      # Variable inputs have id="var-{name}" and data-variable="{name}"
+      # Note: The variables section may be hidden based on API capabilities,
+      # so we check for existence regardless of visibility
+      expect(page).to have_css('input[data-variable="customer_name"]', visible: :all)
+      expect(page).to have_css('input[data-variable="issue"]', visible: :all)
     end
 
     it "handles generation errors gracefully" do

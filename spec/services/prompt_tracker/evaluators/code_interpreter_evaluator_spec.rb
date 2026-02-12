@@ -290,9 +290,10 @@ module PromptTracker
       end
 
       describe "#evaluate" do
-        let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant) }
-        let(:test_run) { create(:test_run, :for_assistant, test: test) }
+        let(:prompt) { create(:prompt) }
+        let(:prompt_version) { create(:prompt_version, :with_assistants, prompt: prompt) }
+        let(:test) { create(:test, testable: prompt_version) }
+        let(:test_run) { create(:test_run, :for_prompt_version, test: test) }
         let(:evaluator_with_test_run) do
           described_class.new(conversation_data, config.merge(test_run: test_run))
         end
