@@ -32,8 +32,9 @@ FactoryBot.define do
     end
 
     after(:build) do |dataset, evaluator|
-      # Auto-detect dataset_type based on testable type if not explicitly set
-      if dataset.testable.is_a?(PromptTracker::Openai::Assistant) && dataset.single_turn?
+      # Auto-detect dataset_type based on api type if not explicitly set
+      # Assistants API uses conversational datasets by default
+      if dataset.testable&.api_type == :openai_assistants && dataset.single_turn?
         dataset.dataset_type = :conversational
       end
 
@@ -52,8 +53,9 @@ FactoryBot.define do
     end
 
     # Trait for assistant datasets (conversational by default)
+    # Uses a prompt_version with assistants api config
     trait :for_assistant do
-      association :testable, factory: :openai_assistant
+      association :testable, factory: [ :prompt_version, :with_assistants ]
       dataset_type { :conversational }
     end
 
