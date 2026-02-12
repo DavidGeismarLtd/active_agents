@@ -95,7 +95,7 @@ module PromptTracker
           def client
             require "openai"
 
-            api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+            api_key = PromptTracker.configuration.api_key_for(:openai)
             raise PullError, "OpenAI API key not configured" if api_key.blank?
 
             OpenAI::Client.new(access_token: api_key)

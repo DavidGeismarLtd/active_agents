@@ -333,6 +333,7 @@ module PromptTracker
         expect(mock_responses).to receive(:create) do |params|
           expect(params[:parameters]).to include(previous_response_id: previous_response_id)
           expect(params[:parameters]).to have_key(:tools)
+          # strict is only included if explicitly set in the function definition
           expect(params[:parameters][:tools]).to eq([
             { type: "web_search_preview" },
             {
@@ -345,8 +346,7 @@ module PromptTracker
                   "location" => { "type" => "string" }
                 },
                 "required" => [ "location" ]
-              },
-              strict: false
+              }
             }
           ])
           expect(params[:parameters]).not_to have_key(:temperature)

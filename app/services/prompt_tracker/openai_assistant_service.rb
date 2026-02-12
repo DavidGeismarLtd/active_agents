@@ -61,7 +61,7 @@ module PromptTracker
       require "openai"
 
       # Use configuration API key, fallback to ENV for backward compatibility
-      api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+      api_key = PromptTracker.configuration.api_key_for(:openai)
       raise AssistantError, "OpenAI API key not configured" if api_key.blank?
 
       OpenAI::Client.new(access_token: api_key)
