@@ -36,6 +36,9 @@ module PromptTracker
     end
 
     before do
+      # Reset cached client in VectorStoreOperations to prevent mock leaks between tests
+      PromptTracker::Openai::VectorStoreOperations.instance_variable_set(:@client, nil)
+
       # Stub configuration
       allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test_api_key")
 
@@ -175,11 +178,12 @@ module PromptTracker
         expect(version.model_config["tools"]).to eq([ "code_interpreter" ])
       end
 
-      it "stores tool_resources in model_config" do
+      it "stores tool_config in model_config (converted from tool_resources)" do
         result = described_class.new.call
 
         version = result[:created_versions].first
-        expect(version.model_config["tool_resources"]).to eq({ "code_interpreter" => { "file_ids" => [] } })
+        # FieldNormalizer converts tool_resources to tool_config format
+        expect(version.model_config["tool_config"]).to eq({ "code_interpreter" => { "file_ids" => [] } })
       end
 
       it "stores assistant metadata in model_config" do
@@ -221,26 +225,39 @@ module PromptTracker
           }
         end
 
+        let(:mock_vector_stores) { double("vector_stores") }
+
         before do
           allow(mock_assistants).to receive(:list).and_return({
             "data" => [ assistant_with_file_search ]
           })
+
+          # Mock vector_stores API for fetching vector store names
+          allow(mock_client).to receive(:vector_stores).and_return(mock_vector_stores)
+          allow(mock_vector_stores).to receive(:retrieve).with(id: "vs_123").and_return({ "name" => "Research Documents" })
+          allow(mock_vector_stores).to receive(:retrieve).with(id: "vs_456").and_return({ "name" => "Knowledge Base" })
         end
 
         it "normalizes tools from hash format to string array" do
           result = described_class.new.call
 
           version = result[:created_versions].first
+          # FieldNormalizer converts tools to symbols, but JSON serialization converts them back to strings
           expect(version.model_config["tools"]).to eq([ "file_search", "code_interpreter" ])
         end
 
-        it "preserves tool_resources with vector store configuration" do
+        it "preserves tool_config with vector store configuration" do
           result = described_class.new.call
 
           version = result[:created_versions].first
-          expect(version.model_config["tool_resources"]).to eq({
+          # FieldNormalizer converts tool_resources to tool_config format with vector store names
+          expect(version.model_config["tool_config"]).to eq({
             "file_search" => {
-              "vector_store_ids" => [ "vs_123", "vs_456" ]
+              "vector_store_ids" => [ "vs_123", "vs_456" ],
+              "vector_stores" => [
+                { "id" => "vs_123", "name" => "Research Documents" },
+                { "id" => "vs_456", "name" => "Knowledge Base" }
+              ]
             }
           })
         end
