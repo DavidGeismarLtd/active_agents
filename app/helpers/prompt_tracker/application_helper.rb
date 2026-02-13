@@ -5,6 +5,7 @@ module PromptTracker
   module ApplicationHelper
     include ModelConfigHelper
     include PlaygroundHelper
+    include EvaluatorConfigsHelper
     # Format USD amount with dollar sign
     #
     # @param amount [Float, nil] the amount in USD

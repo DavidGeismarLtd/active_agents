@@ -49,14 +49,17 @@
 <div class="mb-3">
   <label class="form-label">Expected Files</label>
   <% if vector_store_files.any? %>
-    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+    <%# Use data-config-checkbox-group to tell the controller to collect checked values as an array %>
+    <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;"
+         data-config-checkbox-group="expected_files">
       <% vector_store_files.each do |file| %>
         <div class="form-check">
-          <input class="form-check-input file-search-file-checkbox"
+          <input class="form-check-input"
                  type="checkbox"
                  value="<%= file[:filename] %>"
                  id="file_<%= file[:id] %>"
                  data-file-id="<%= file[:id] %>"
+                 data-action="change->evaluator-configs#syncCheckboxGroup"
                  <%= 'checked' if expected_files.include?(file[:filename]) %>>
           <label class="form-check-label" for="file_<%= file[:id] %>">
             <i class="bi bi-file-earmark"></i> <%= file[:filename] %>
@@ -65,36 +68,9 @@
         </div>
       <% end %>
     </div>
-    <input type="hidden"
-           name="config[expected_files]"
-           id="<%= evaluator_key %>_expected_files"
-           value="<%= expected_files.join("\n") %>"
-           data-evaluator-key="<%= evaluator_key %>">
     <small class="form-text text-muted">
       Select the files the assistant should search during the conversation.
     </small>
-    <script>
-      // Update hidden field when checkboxes change and trigger Stimulus sync
-      document.addEventListener('DOMContentLoaded', function() {
-        const checkboxes = document.querySelectorAll('.file-search-file-checkbox');
-        const hiddenField = document.getElementById('<%= evaluator_key %>_expected_files');
-
-        if (!hiddenField) return;
-
-        checkboxes.forEach(function(checkbox) {
-          checkbox.addEventListener('change', function() {
-            const selectedFiles = [];
-            document.querySelectorAll('.file-search-file-checkbox:checked').forEach(function(cb) {
-              selectedFiles.push(cb.value);
-            });
-            hiddenField.value = selectedFiles.join('\n');
-
-            // Trigger change event so Stimulus controller picks it up
-            hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
-          });
-        });
-      });
-    </script>
   <% else %>
     <div class="alert alert-warning mb-0">
       <i class="bi bi-exclamation-triangle"></i> No files found in the vector store.
