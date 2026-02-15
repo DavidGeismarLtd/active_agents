@@ -69,7 +69,15 @@ module PromptTracker
             end
           end
         else
-          render :new, status: :unprocessable_entity
+          respond_to do |format|
+            format.html do
+              redirect_to testable_path,
+                          alert: "Failed to create test: #{@test.errors.full_messages.join(', ')}"
+            end
+            format.turbo_stream do
+              render :create, status: :unprocessable_entity
+            end
+          end
         end
       end
 

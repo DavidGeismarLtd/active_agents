@@ -1,0 +1,5 @@
+<%# Re-render the form with validation errors inside the modal %>
+<%= turbo_stream.update "new-test-modal-body" do %>
+  <%= render @testable.test_form_partial, test: @test, in_modal: true %>
+<% end %>
+
