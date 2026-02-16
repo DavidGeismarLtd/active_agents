@@ -1,0 +1,49 @@
+<%#
+  Add or Create Vector Store
+  Controls for selecting existing vector stores or creating new ones
+
+  No local variables needed - uses Stimulus controller targets
+%>
+
+<label class="form-label">
+  Vector Stores
+  (<span data-playground-file-search-target="vectorStoreCount">0</span>/2)
+</label>
+<div class="d-flex gap-2 mb-2">
+  <select class="form-select form-select-sm"
+          id="vector-store-select"
+          data-playground-file-search-target="vectorStoreSelect">
+    <option value="">Select a vector store...</option>
+  </select>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          data-action="click->playground-file-search#loadVectorStores"
+          title="Refresh list">
+    <i class="bi bi-arrow-clockwise"></i>
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-primary"
+          data-action="click->playground-file-search#addVectorStore"
+          data-playground-file-search-target="vectorStoreAddButton"
+          title="Add selected store">
+    <i class="bi bi-plus"></i> Add
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-success"
+          data-action="click->playground-file-search#showCreateVectorStoreModal"
+          title="Create new vector store">
+    <i class="bi bi-cloud-upload"></i> New
+  </button>
+</div>
+<!-- Error message area -->
+<div class="alert alert-warning alert-dismissible fade show d-none mb-2"
+     role="alert"
+     data-playground-file-search-target="vectorStoreError">
+  <i class="bi bi-exclamation-triangle-fill me-1"></i>
+  <span></span>
+  <button type="button"
+          class="btn-close"
+          data-action="click->playground-file-search#hideVectorStoreError"
+          aria-label="Close"></button>
+</div>
+

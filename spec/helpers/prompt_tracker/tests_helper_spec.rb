@@ -17,13 +17,14 @@ module PromptTracker
         end
       end
 
-      context "when test belongs to an Assistant" do
-        let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant) }
+      context "when test belongs to a PromptVersion with Assistants API" do
+        let(:prompt) { create(:prompt) }
+        let(:version) { create(:prompt_version, :with_assistants, prompt: prompt) }
+        let(:test) { create(:test, testable: version) }
 
         it "returns the correct path" do
           expected_path = PromptTracker::Engine.routes.url_helpers
-            .run_testing_openai_assistant_test_path(assistant, test)
+            .run_testing_prompt_version_test_path(version, test)
           expect(helper.run_test_path(test)).to eq(expected_path)
         end
       end
@@ -50,13 +51,14 @@ module PromptTracker
         end
       end
 
-      context "when testable is an Assistant" do
-        let(:assistant) { create(:openai_assistant) }
+      context "when testable is a PromptVersion with Assistants API" do
+        let(:prompt) { create(:prompt) }
+        let(:version) { create(:prompt_version, :with_assistants, prompt: prompt) }
 
         it "returns the correct path" do
           expected_path = PromptTracker::Engine.routes.url_helpers
-            .testing_openai_assistant_datasets_path(assistant)
-          expect(helper.datasets_path_for_testable(assistant)).to eq(expected_path)
+            .testing_prompt_prompt_version_datasets_path(prompt, version)
+          expect(helper.datasets_path_for_testable(version)).to eq(expected_path)
         end
       end
 
@@ -81,13 +83,14 @@ module PromptTracker
         end
       end
 
-      context "when test belongs to an Assistant" do
-        let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant) }
+      context "when test belongs to a PromptVersion with Assistants API" do
+        let(:prompt) { create(:prompt) }
+        let(:version) { create(:prompt_version, :with_assistants, prompt: prompt) }
+        let(:test) { create(:test, testable: version) }
 
         it "returns the correct path with pagination params" do
           expected_path = PromptTracker::Engine.routes.url_helpers
-            .load_more_runs_testing_openai_assistant_test_path(assistant, test, offset: 0, limit: 10)
+            .load_more_runs_testing_prompt_version_test_path(version, test, offset: 0, limit: 10)
           expect(helper.load_more_runs_path_for_test(test, offset: 0, limit: 10)).to eq(expected_path)
         end
       end

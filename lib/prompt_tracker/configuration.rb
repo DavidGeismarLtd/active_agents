@@ -56,9 +56,7 @@ module PromptTracker
     # @return [Hash] hash of provider symbol => array of model hashes
     attr_accessor :models
 
-    # OpenAI Assistants configuration (separate from chat completions).
-    # @return [Hash] hash with :api_key and :available_models keys
-    attr_accessor :openai_assistants
+
 
     # Context-specific model restrictions.
     # @return [Hash] hash of context symbol => restrictions hash
@@ -67,6 +65,10 @@ module PromptTracker
     # Default model selections for each context.
     # @return [Hash] hash of setting name => value
     attr_accessor :defaults
+
+    # Enable OpenAI Assistant sync button in Testing Dashboard.
+    # @return [Boolean] true if the sync button should be shown
+    attr_accessor :enable_openai_assistant_sync
 
     # Built-in tools metadata (for Response API and Assistants API).
     # Maps tool capability symbols to display information.
@@ -89,10 +91,10 @@ module PromptTracker
       @api_keys = {}
       @providers = {}
       @models = {}
-      @openai_assistants = { api_key: nil, available_models: [] }
       @contexts = {}
       @defaults = {}
       @builtin_tools = default_builtin_tools
+      @enable_openai_assistant_sync = false
     end
 
     # Check if basic authentication is enabled.
@@ -204,7 +206,7 @@ module PromptTracker
           key: api_key,
           name: api_config[:name] || api_key.to_s.titleize,
           default: api_config[:default] || false,
-          capabilities: api_config[:capabilities] || [],
+          capabilities: ApiCapabilities.features_for(provider, api_key),
           description: api_config[:description]
         }
       end
@@ -275,24 +277,6 @@ module PromptTracker
           }
         end
       end
-    end
-
-    # Check if OpenAI Assistants API is configured.
-    # @return [Boolean] true if configured with an API key
-    def openai_assistants_configured?
-      openai_assistants[:api_key].present?
-    end
-
-    # Get available models for OpenAI Assistants.
-    # @return [Array<Hash>] list of model hashes
-    def openai_assistants_models
-      openai_assistants[:available_models] || []
-    end
-
-    # Get the API key for OpenAI Assistants.
-    # @return [String, nil] the API key
-    def openai_assistants_api_key
-      openai_assistants[:api_key]
     end
 
     # =========================================================================
@@ -378,22 +362,23 @@ module PromptTracker
     end
 
     # Get available tools for a specific provider and API combination.
-    # Returns tool metadata for capabilities defined in the API config.
+    # Returns tool metadata for a provider/API combination.
+    # Delegates to ApiCapabilities for capability detection, then enriches with metadata.
     #
     # @param provider [Symbol] the provider key
     # @param api [Symbol] the API key
     # @return [Array<Hash>] array of tool hashes with :id, :name, :description, :icon, :configurable
     def tools_for_api(provider, api)
-      api_config = providers.dig(provider.to_sym, :apis, api.to_sym)
-      return [] unless api_config
+      # Get tools from ApiCapabilities (single source of truth)
+      tool_symbols = ApiCapabilities.tools_for(provider, api)
 
-      capabilities = api_config[:capabilities] || []
-      capabilities.map do |capability|
-        tool_metadata = builtin_tools[capability.to_sym]
+      # Enrich with metadata from builtin_tools
+      tool_symbols.map do |tool_symbol|
+        tool_metadata = builtin_tools[tool_symbol]
         next unless tool_metadata
 
         {
-          id: capability.to_s,
+          id: tool_symbol.to_s,
           name: tool_metadata[:name],
           description: tool_metadata[:description],
           icon: tool_metadata[:icon],

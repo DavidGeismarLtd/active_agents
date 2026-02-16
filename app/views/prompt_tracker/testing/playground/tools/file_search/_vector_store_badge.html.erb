@@ -1,0 +1,20 @@
+<%#
+  Vector Store Badge
+  Renders a single vector store badge with remove button
+
+  Local variables:
+    - vector_store: Hash with :id and :name keys
+%>
+
+<span class="badge bg-primary d-flex align-items-center gap-1"
+      data-vector-store-id="<%= vector_store[:id] %>"
+      data-vector-store-name="<%= vector_store[:name] %>"
+      style="cursor: pointer;"
+      data-action="click->playground-file-search#showVectorStoreFiles"
+      title="Click to view files">
+  <span class="vector-store-name"><%= vector_store[:name].truncate(20) %></span>
+  <button type="button" class="btn-close btn-close-white" style="font-size: 0.6rem;"
+          data-action="click->playground-file-search#removeVectorStore"
+          onclick="event.stopPropagation()"></button>
+</span>
+

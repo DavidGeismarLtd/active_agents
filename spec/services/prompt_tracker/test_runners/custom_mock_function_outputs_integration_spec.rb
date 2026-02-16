@@ -40,12 +40,16 @@ module PromptTracker
       let(:test) { create(:test, testable: version_with_functions) }
 
       describe "with dataset row containing custom mock_function_outputs" do
-        let(:dataset) { create(:dataset, testable: version_with_functions) }
+        let(:dataset) do
+          create(:dataset, testable: version_with_functions)
+        end
         let(:dataset_row) do
           create(:dataset_row,
                  dataset: dataset,
                  row_data: {
                    "user_query" => "What's the weather in San Francisco?",
+                   "interlocutor_simulation_prompt" => "You are testing the weather function.",
+                   "max_turns" => 1,
                    "mock_function_outputs" => {
                      "get_weather" => '{"location":"San Francisco, CA","temperature":68,"condition":"Foggy","humidity":75}'
                    }
@@ -72,7 +76,7 @@ module PromptTracker
           )
 
           # Mock the API to return a function call
-          allow_any_instance_of(TestRunners::Openai::ResponseApiHandler)
+          allow_any_instance_of(TestRunners::Openai::Responses::SimulatedConversationRunner)
             .to receive(:call_response_api).and_return(
               {
                 text: "",
@@ -140,7 +144,7 @@ module PromptTracker
           )
 
           # Mock the API to return a function call
-          allow_any_instance_of(TestRunners::Openai::ResponseApiHandler)
+          allow_any_instance_of(TestRunners::Openai::Responses::SimulatedConversationRunner)
             .to receive(:call_response_api).and_return(
               {
                 text: "",
@@ -189,7 +193,7 @@ module PromptTracker
 
         it "falls back to generic mock response" do
           # Mock the API to return a function call
-          allow_any_instance_of(TestRunners::Openai::ResponseApiHandler)
+          allow_any_instance_of(TestRunners::Openai::Responses::SimulatedConversationRunner)
             .to receive(:call_response_api).and_return(
               {
                 text: "",
@@ -230,11 +234,16 @@ module PromptTracker
       end
 
       describe "integration with FunctionCallEvaluator" do
+        let(:evaluator_dataset) do
+          create(:dataset, testable: version_with_functions)
+        end
         let(:dataset_row_with_evaluator) do
           create(:dataset_row,
-                 dataset: create(:dataset, testable: version_with_functions),
+                 dataset: evaluator_dataset,
                  row_data: {
                    "user_query" => "What's the weather?",
+                   "interlocutor_simulation_prompt" => "You are testing the weather function.",
+                   "max_turns" => 1,
                    "mock_function_outputs" => {
                      "get_weather" => {
                        "temperature" => 72,
@@ -276,7 +285,7 @@ module PromptTracker
           )
 
           # Mock the API to return a function call
-          allow_any_instance_of(TestRunners::Openai::ResponseApiHandler)
+          allow_any_instance_of(TestRunners::Openai::Responses::SimulatedConversationRunner)
             .to receive(:call_response_api).and_return(
               {
                 text: "",

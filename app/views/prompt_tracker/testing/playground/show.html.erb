@@ -1,41 +1,106 @@
 <%
   # Compute URLs for conversation panel
   if @prompt_version
-    execute_url = execute_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
+    conversation_url = run_conversation_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
     reset_url = reset_conversation_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version)
   elsif @prompt
-    execute_url = execute_testing_prompt_playground_path(@prompt)
+    conversation_url = run_conversation_testing_prompt_playground_path(@prompt)
     reset_url = reset_conversation_testing_prompt_playground_path(@prompt)
   else
-    execute_url = execute_testing_playground_path
+    conversation_url = run_conversation_testing_playground_path
     reset_url = reset_conversation_testing_playground_path
   end
+
+  # Determine current provider/API
+  current_provider = @version&.model_config&.dig('provider') || default_provider_for(:playground)&.to_s
+  current_api = @version&.model_config&.dig('api') || default_api_for(:playground)&.to_s
+
+  # Get UI panels to show for current API
+  playground_ui = PromptTracker::ApiCapabilities.playground_ui_for(
+    current_provider&.to_sym,
+    current_api&.to_sym
+  )
+
+  # Determine if current API requires remote entity sync
+  is_remote_entity_linked = PromptTracker::ApiCapabilities.supports_feature?(
+    current_provider&.to_sym,
+    current_api&.to_sym,
+    :remote_entity_linked
+  )
+
+  # Get sync status from model_config
+  sync_status = @version&.model_config&.dig('metadata', 'sync_status') ||
+                @version&.model_config&.dig(:metadata, :sync_status)
+  synced_at = @version&.model_config&.dig('metadata', 'synced_at') ||
+              @version&.model_config&.dig(:metadata, :synced_at)
+
+  # Serialize capabilities matrix for JavaScript
+  capabilities_json = PromptTracker::ApiCapabilities.to_h.to_json
+
+  # Determine which controllers to load based on capabilities
+  # playground-preview is only needed when :preview is in playground_ui
+  controllers = ["playground-save", "playground-sync", "playground-response-schema", "playground-ui", "playground-generate-prompt"]
+  controllers.unshift("playground-preview") if playground_ui.include?(:preview)
 %>
+
 <div id="playground-container"
      class="container-fluid mt-4"
-     data-controller="playground"
-     data-playground-generate-prompt-outlet="#generate-prompt-controller"
-     data-playground-conversation-outlet="#conversation-panel"
+     data-controller="<%= controllers.join(' ') %>"
+     data-playground-ui-playground-conversation-outlet="#conversation-panel"
+     data-playground-ui-capabilities-value="<%= capabilities_json %>"
+     <% if playground_ui.include?(:preview) %>
+       data-playground-preview-playground-prompt-editor-outlet="#prompt-editor-panel"
+       data-playground-preview-playground-variables-outlet="#variables-panel"
+     <% end %>
+     data-playground-save-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-save-playground-variables-outlet="#variables-panel"
+     data-playground-save-playground-model-config-outlet="#model-config-panel"
+     data-playground-save-playground-tools-outlet="#tools-panel"
+     data-playground-save-playground-file-search-outlet="#file-search-config"
+     data-playground-save-playground-functions-outlet="#functions-config"
+     data-action="<%= playground_ui.include?(:preview) ? 'playground-prompt-editor:promptChanged->playground-preview#onPromptChanged ' : '' %>playground-prompt-editor:promptChanged->playground-generate-prompt#onPromptChanged<%= playground_ui.include?(:preview) ? ' playground-variables:changed->playground-preview#onVariablesChanged' : '' %>"
+     data-playground-sync-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-sync-playground-model-config-outlet="#model-config-panel"
      <% if @prompt_version %>
-       data-playground-prompt-id-value="<%= @prompt.id %>"
-       data-playground-version-id-value="<%= @prompt_version.id %>"
-       data-playground-version-has-responses-value="<%= @prompt_version.has_responses? %>"
-       data-playground-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       data-playground-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       data-playground-is-standalone-value="false"
-     <% elsif @prompt %>
-       data-playground-prompt-id-value="<%= @prompt.id %>"
-       <% if @version %>
-         data-playground-version-id-value="<%= @version.id %>"
-         data-playground-version-has-responses-value="<%= @version.has_responses? %>"
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        <% end %>
-       data-playground-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
-       data-playground-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
-       data-playground-is-standalone-value="false"
+       data-playground-save-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       data-playground-save-prompt-id-value="<%= @prompt.id %>"
+       data-playground-save-prompt-name-value="<%= @prompt.name %>"
+       data-playground-save-version-id-value="<%= @prompt_version.id %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       <% assistant_id = @prompt_version.model_config&.dig(:assistant_id) %>
+       <% if assistant_id.present? %>
+         data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
+       <% end %>
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+     <% elsif @prompt %>
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
+       <% end %>
+       data-playground-save-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
+       data-playground-save-prompt-id-value="<%= @prompt.id %>"
+       data-playground-save-prompt-name-value="<%= @prompt.name %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_playground_path(@prompt) %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_playground_path(@prompt) %>"
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
+       <% if @version %>
+         data-playground-save-version-id-value="<%= @version.id %>"
+         <% assistant_id = @version.model_config&.dig(:assistant_id) %>
+         <% if assistant_id.present? %>
+           data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
+         <% end %>
+       <% end %>
      <% else %>
-       data-playground-preview-url-value="<%= preview_testing_playground_path %>"
-       data-playground-save-url-value="<%= save_testing_playground_path %>"
-       data-playground-is-standalone-value="true"
+       <% if playground_ui.include?(:preview) %>
+         data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
+       <% end %>
+       data-playground-save-save-url-value="<%= save_testing_playground_path %>"
+       data-playground-sync-push-url-value="<%= push_to_remote_testing_playground_path %>"
+       data-playground-sync-pull-url-value="<%= pull_from_remote_testing_playground_path %>"
+       data-playground-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
      <% end %>
 >
   <div class="row mb-3">
@@ -88,8 +153,8 @@
        class="alert alert-dismissible fade"
        role="alert"
        style="display: none;"
-       data-playground-target="alertContainer">
-    <span id="playground-alert-message" data-playground-target="alertMessage"></span>
+       data-playground-save-target="alertContainer">
+    <span id="playground-alert-message"></span>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
 
@@ -104,348 +169,50 @@
   <!-- Split pane layout -->
   <div class="row">
     <!-- Left pane: Prompt editors -->
+    <%= render "prompt_tracker/testing/playground/prompt_editors",
+               playground_ui: playground_ui,
+               version: @version %>
+
+    <!-- Right pane: Model config, Variables, and Preview -->
     <div class="col-lg-6 mb-4">
-      <div class="card h-100">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i class="bi bi-code-square"></i>
-            Prompt
-          </h5>
-          <div>
-            <button type="button"
-                    class="btn btn-sm btn-outline-primary me-2"
-                    data-action="click->playground#openGenerateModal"
-                    data-playground-target="aiButton"
-                    data-bs-toggle="tooltip"
-                    data-bs-placement="top"
-                    title="Generate a new prompt from description">
-              <i class="bi bi-stars" data-playground-target="aiButtonIcon"></i>
-              <span data-playground-target="aiButtonText">Generate</span>
-            </button>
-            <span class="badge bg-secondary me-2" id="template-engine-badge" data-playground-target="engineBadge">Auto-detect</span>
-            <span class="badge bg-info" id="char-count" data-playground-target="charCount">0 chars</span>
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- System Prompt (optional) -->
-          <div class="mb-3">
-            <label for="system-prompt-editor" class="form-label">
-              System Prompt
-              <span class="badge bg-secondary">Optional</span>
-            </label>
-            <div class="highlighted-editor-wrapper" data-controller="syntax-highlighter">
-              <div class="highlight-layer" data-syntax-highlighter-target="highlight"></div>
-              <textarea
-                id="system-prompt-editor"
-                class="form-control font-monospace"
-                rows="4"
-                placeholder="Set the AI's role, behavior, and constraints...&#10;&#10;Example: You are a helpful customer support agent. Be professional, empathetic, and concise."
-                data-playground-target="systemPromptEditor"
-                data-syntax-highlighter-target="textarea"
-                data-action="input->playground#onSystemPromptInput input->syntax-highlighter#onInput"
-              ><%= @version&.system_prompt %></textarea>
-            </div>
-            <div class="form-text">
-              Defines the AI's role and behavior. This is sent to the LLM as the system message.
-            </div>
-          </div>
 
-          <!-- User Prompt Template (required) -->
-          <div class="mb-3">
-            <label for="user-prompt-editor" class="form-label">
-              User Prompt Template
-              <span class="badge bg-danger">Required</span>
-            </label>
-            <div class="highlighted-editor-wrapper" data-controller="syntax-highlighter">
-              <div class="highlight-layer" data-syntax-highlighter-target="highlight"></div>
-              <textarea
-                id="user-prompt-editor"
-                class="form-control font-monospace"
-                rows="10"
-                placeholder="Enter your user prompt template here...&#10;&#10;Examples:&#10;  Variable: Hello {{ name }}!&#10;  Filter: Hello {{ name | capitalize }}!&#10;  Conditional: {% if premium %}Premium user{% endif %}"
-                data-playground-target="userPromptEditor"
-                data-syntax-highlighter-target="textarea"
-                data-action="input->playground#onUserPromptInput input->syntax-highlighter#onInput"
-              ><%= @version&.user_prompt %></textarea>
-            </div>
-            <div class="form-text">
-              Use Liquid syntax: <code>{{ variable }}</code> for substitution, filters, conditionals, and loops.
-              <br>Use sections like <code>#role</code>, <code>#goal</code>, <code>#context</code> to structure your prompt.
-            </div>
-          </div>
+      <!-- Model Configuration Panel -->
+      <%= render "prompt_tracker/testing/playground/model_config_panel" %>
 
-          <!-- Liquid syntax help -->
-          <div class="accordion" id="syntaxHelp">
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#liquidHelp">
-                  <i class="bi bi-question-circle me-2"></i>
-                  Liquid Syntax Help
-                </button>
-              </h2>
-              <div id="liquidHelp" class="accordion-collapse collapse" data-bs-parent="#syntaxHelp">
-                <div class="accordion-body">
-                  <h6>Filters</h6>
-                  <code>{{ name | upcase }}</code> - Convert to uppercase<br>
-                  <code>{{ name | downcase }}</code> - Convert to lowercase<br>
-                  <code>{{ name | capitalize }}</code> - Capitalize first letter<br>
-                  <code>{{ text | truncate: 100 }}</code> - Truncate to 100 chars<br>
+      <!-- Variables and Preview Section -->
+      <div data-playground-ui-target="variablesPreviewSection"
+           style="<%= show_variables_preview?(playground_ui) ? '' : 'display: none;' %>">
 
-                  <h6 class="mt-3">Conditionals</h6>
-                  <code>{% if premium %}Premium{% else %}Basic{% endif %}</code><br>
+        <!-- Variable Definition Panel -->
+        <%= render "prompt_tracker/testing/playground/variable_definition_panel",
+                   sample_variables: @sample_variables %>
 
-                  <h6 class="mt-3">Loops</h6>
-                  <code>{% for item in items %}{{ item }}{% endfor %}</code><br>
-
-                  <a href="https://shopify.github.io/liquid/" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                    Full Liquid Documentation
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sections help -->
-            <div class="accordion-item">
-              <h2 class="accordion-header">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sectionsHelp">
-                  <i class="bi bi-hash me-2"></i>
-                  Prompt Sections
-                </button>
-              </h2>
-              <div id="sectionsHelp" class="accordion-collapse collapse" data-bs-parent="#syntaxHelp">
-                <div class="accordion-body">
-                  <p class="small text-muted mb-3">Structure your prompts using these sections (use the ones that are relevant):</p>
-
-                  <h6><code>#role</code></h6>
-                  <p class="small">Define the AI persona, expertise, and capabilities</p>
-
-                  <h6><code>#goal</code></h6>
-                  <p class="small">Specify the main objective or task</p>
-
-                  <h6><code>#context</code></h6>
-                  <p class="small">Provide background information</p>
-
-                  <h6><code>#format</code></h6>
-                  <p class="small">Specify output format and structure</p>
-
-                  <h6><code>#example</code></h6>
-                  <p class="small">Show what good output looks like</p>
-
-                  <h6><code>#audience</code></h6>
-                  <p class="small">Describe who will read the output</p>
-
-                  <h6><code>#step by step instructions</code></h6>
-                  <p class="small">Guide with step-by-step instructions</p>
-
-                  <h6><code>#reasoning approach</code></h6>
-                  <p class="small">Suggest a reasoning or analytical approach</p>
-
-                  <h6><code>#tone and style</code></h6>
-                  <p class="small">Suggest appropriate tone or style</p>
-
-                  <h6><code>#what to prioritise</code></h6>
-                  <p class="small">Highlight key aspects to focus on in the response</p>
-
-                  <h6><code>#out of scope</code></h6>
-                  <p class="small">Define the scope and limits of the response</p>
-
-                  <h6><code>#resources</code></h6>
-                  <p class="small">Mention any resources that could be used</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Preview Panel -->
+        <%= render "prompt_tracker/testing/playground/preview_panel" %>
       </div>
     </div>
 
-    <!-- Right pane: Variables and preview -->
-    <div class="col-lg-6 mb-4">
-      <!-- Variables section -->
-      <div class="card mb-3">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="bi bi-input-cursor-text"></i>
-            Variables
-          </h5>
-        </div>
-        <div class="card-body">
-          <div id="variables-container" data-playground-target="variablesContainer">
-            <% if @sample_variables.any? %>
-              <% @sample_variables.each do |name, value| %>
-                <div class="mb-2">
-                  <label for="var-<%= name %>" class="form-label"><code><%= name %></code></label>
-                  <input
-                    type="text"
-                    class="form-control variable-input"
-                    id="var-<%= name %>"
-                    data-variable-name="<%= name %>"
-                    value="<%= value %>"
-                    placeholder="Enter value for <%= name %>"
-                    data-action="input->playground#onVariableInput"
-                  >
-                </div>
-              <% end %>
-            <% else %>
-              <p class="text-muted">No variables detected. Start typing in the template editor.</p>
-            <% end %>
-          </div>
-        </div>
-      </div>
-
-      <!-- Model Configuration section -->
-      <%= render "prompt_tracker/testing/playground/model_config_form" %>
-
-      <!-- Preview section -->
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i class="bi bi-eye"></i>
-            Live Preview
-            <span id="preview-status" class="badge bg-secondary ms-2" style="display: none;" data-playground-target="previewStatus">
-              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-              Updating...
-            </span>
-          </h5>
-          <button id="refresh-preview-btn"
-                  class="btn btn-sm btn-outline-primary"
-                  data-playground-target="refreshBtn"
-                  data-action="click->playground#refreshPreview">
-            <i class="bi bi-arrow-clockwise"></i>
-            Refresh
-          </button>
-        </div>
-        <div class="card-body">
-          <div id="preview-container"
-               class="border rounded p-3 bg-light"
-               style="min-height: 200px; white-space: pre-wrap; font-family: inherit;"
-               data-playground-target="previewContainer">
-            <p class="text-muted">Preview will appear here...</p>
-          </div>
-          <div id="preview-error"
-               class="alert alert-danger mt-3"
-               style="display: none;"
-               data-playground-target="previewError"></div>
-          <div class="mt-2">
-            <small class="text-muted">
-              <i class="bi bi-info-circle"></i>
-              Preview updates automatically as you type (500ms delay)
-            </small>
-          </div>
-        </div>
-      </div>
-
-      <!-- Conversation Panel (for Response API) -->
+    <!-- Conversation Panel (shown for all APIs that support it) -->
+    <div class="col-lg-12 mb-4"
+         data-playground-ui-target="conversationSection"
+         style="<%= playground_ui.include?(:conversation) ? '' : 'display: none;' %>">
       <%= render "prompt_tracker/testing/playground/conversation_panel",
                  conversation_state: respond_to?(:conversation_state_from_session) ? conversation_state_from_session(session) : {},
-                 execute_url: execute_url,
+                 conversation_url: conversation_url,
                  reset_url: reset_url %>
     </div>
   </div>
 
   <!-- Action buttons -->
-  <div class="row mt-3">
-    <div class="col">
-      <% unless @prompt %>
-        <!-- Prompt name and slug inputs for standalone mode -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label for="prompt-name-input" class="form-label">Prompt Name</label>
-            <input
-              type="text"
-              class="form-control"
-              id="prompt-name-input"
-              placeholder="e.g., Customer Support Greeting"
-              required
-              data-playground-target="promptNameInput"
-              data-action="input->playground#onPromptNameInput"
-            >
-            <div class="form-text">Human-friendly name for display</div>
-          </div>
-          <div class="col-md-6">
-            <label for="prompt-slug-input" class="form-label">
-              Slug
-              <span class="badge bg-secondary">Auto-generated</span>
-            </label>
-            <input
-              type="text"
-              class="form-control font-monospace"
-              id="prompt-slug-input"
-              placeholder="customer_support_greeting"
-              data-playground-target="promptSlugInput"
-            >
-            <div class="form-text">Used in code (lowercase, numbers, underscores only)</div>
-          </div>
-        </div>
-      <% end %>
-
-      <% if @prompt %>
-        <% if @version && !@version.has_responses? %>
-          <!-- Dropdown button for versions without responses -->
-          <div class="btn-group" role="group">
-            <button id="save-update-btn"
-                    type="button"
-                    class="btn btn-primary"
-                    data-playground-target="saveUpdateBtn"
-                    data-action="click->playground#saveDraft"
-                    data-playground-action-param="update">
-              <i class="bi bi-save"></i> Update This Version
-            </button>
-            <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-              <span class="visually-hidden">Toggle Dropdown</span>
-            </button>
-            <ul class="dropdown-menu">
-              <li>
-                <button id="save-new-version-btn"
-                        class="dropdown-item"
-                        type="button"
-                        data-playground-target="saveNewVersionBtn"
-                        data-action="click->playground#saveDraft"
-                        data-playground-action-param="new_version">
-                  <i class="bi bi-plus-circle"></i> Save as New Version
-                </button>
-              </li>
-            </ul>
-          </div>
-        <% else %>
-          <!-- Single button for versions with responses or no version -->
-          <button id="save-draft-btn"
-                  class="btn btn-primary"
-                  data-playground-target="saveDraftBtn"
-                  data-action="click->playground#saveDraft"
-                  data-playground-action-param="new_version">
-            <i class="bi bi-save"></i> Save as Draft Version
-          </button>
-        <% end %>
-      <% else %>
-        <!-- Standalone mode -->
-        <button id="save-draft-btn"
-                class="btn btn-primary"
-                data-playground-target="saveDraftBtn"
-                data-action="click->playground#saveDraft"
-                data-playground-action-param="new_version">
-          <i class="bi bi-save"></i> Create Prompt
-        </button>
-        <a href="<%= testing_root_path %>" class="btn btn-outline-secondary">
-          <i class="bi bi-x-circle"></i>
-          Cancel
-        </a>
-      <% end %>
-    </div>
-  </div>
+  <%= render "prompt_tracker/testing/playground/action_buttons",
+             prompt: @prompt,
+             version: @version,
+             is_remote_entity_linked: is_remote_entity_linked,
+             sync_status: sync_status,
+             synced_at: synced_at %>
 
   <!-- Modals (inside playground controller scope) -->
-  <div data-controller="modal-fix generate-prompt"
-       id="generate-prompt-controller"
-       data-generate-prompt-playground-outlet="[data-controller~='playground']"
-       <% if @prompt_version %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       <% elsif @prompt %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
-       <% else %>
-         data-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
-       <% end %>
-  >
+  <div data-controller="modal-fix">
     <%= render "prompt_tracker/testing/playground/keyboard_shortcuts_modal" %>
     <%= render "prompt_tracker/testing/playground/template_examples_modal" %>
     <%= render "prompt_tracker/testing/playground/generate_prompt_modal" %>

@@ -1,0 +1,20 @@
+<%#
+  Selected Vector Stores
+  Displays the list of currently selected vector stores as badges
+
+  Local variables:
+    - file_search_config: Hash with file search configuration
+%>
+
+<div id="selected-vector-stores"
+     class="d-flex flex-wrap gap-2 mb-2"
+     data-playground-file-search-target="selectedVectorStores">
+  <% extract_vector_stores(file_search_config).each do |vector_store| %>
+    <%= render 'prompt_tracker/testing/playground/tools/file_search/vector_store_badge',
+               vector_store: vector_store %>
+  <% end %>
+</div>
+<div class="form-text">
+  Select existing vector stores or create a new one with uploaded files.
+  <strong>Note:</strong> OpenAI Responses API supports a maximum of 2 vector stores per request.
+</div>

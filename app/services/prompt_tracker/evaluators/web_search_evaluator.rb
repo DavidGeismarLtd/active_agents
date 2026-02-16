@@ -20,7 +20,7 @@ module PromptTracker
     #     require_all_queries: false
     #   })
     #
-    class WebSearchEvaluator < BaseNormalizedEvaluator
+    class WebSearchEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         require_web_search: true,       # Must use web search at least once

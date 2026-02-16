@@ -1,0 +1,57 @@
+<%#
+  Tools Panel
+  Shown when any API supports tools (Chat Completions, Responses, Assistants, etc.)
+
+  Local variables:
+    - available_tools: Array of tool hashes from Configuration#tools_for_api
+    - enabled_tools: Hash with tool configs (e.g., {"web_search" => true, "file_search" => {"vector_store_ids" => [...]}})
+    - tool_config: Hash with detailed tool configuration (file_search vector_store_ids, functions array)
+%>
+
+<%
+  available_tools ||= []
+  enabled_tools_hash = enabled_tools_hash_for(enabled_tools)
+  tool_config ||= @version&.model_config&.dig('tool_config') || {}
+%>
+
+<div id="tools-panel"
+     class="tools-panel mt-3"
+     data-controller="playground-tools">
+  <label class="form-label">
+    <i class="bi bi-tools"></i> Tools
+    <span class="badge bg-info ms-1">Beta</span>
+  </label>
+  <div class="form-text mb-2">
+    Enable tools for this API. These tools allow the model to search the web,
+    analyze files, execute code, and call custom functions.
+  </div>
+
+  <div class="row g-2">
+    <% available_tools.each do |tool| %>
+      <%= render 'prompt_tracker/testing/playground/tools/tool_card',
+                 tool: tool,
+                 enabled_tools_hash: enabled_tools_hash %>
+    <% end %>
+  </div>
+
+  <%# File Search Configuration Panel (includes modals inside its scope) %>
+  <% file_search_config = tool_config.dig('file_search') || {} %>
+  <%= render 'prompt_tracker/testing/playground/tools/file_search_configuration_panel',
+             file_search_config: file_search_config,
+             enabled_tools_hash: enabled_tools_hash,
+             tool_config: tool_config %>
+
+  <%# Functions Configuration Panel %>
+  <% functions_config = tool_config.dig('functions') || [] %>
+  <%= render 'prompt_tracker/testing/playground/tools/functions_configuration_panel',
+             functions_config: functions_config,
+             enabled_tools_hash: enabled_tools_hash,
+             tool_config: tool_config %>
+
+  <% if available_tools.empty? %>
+    <div class="alert alert-secondary py-2">
+      <i class="bi bi-info-circle"></i>
+      No tools available for this API.
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,101 @@
+<%# Action Buttons for Playground %>
+<%# Local variables:
+    - prompt: The prompt being edited (optional)
+    - version: The version being edited (optional)
+    - is_remote_entity_linked: Whether the API supports remote entity sync
+    - sync_status: Current sync status
+    - synced_at: Last sync timestamp
+%>
+
+<div class="row mt-3">
+  <div class="col">
+    <% unless prompt %>
+      <!-- Prompt name and slug inputs for standalone mode -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label for="prompt-name-input" class="form-label">Prompt Name</label>
+          <input
+            type="text"
+            class="form-control"
+            id="prompt-name-input"
+            placeholder="e.g., Customer Support Greeting"
+            required
+            data-playground-save-target="promptName"
+            data-action="input->playground-save#onPromptNameInput"
+          >
+          <div class="form-text">Human-friendly name for display</div>
+        </div>
+        <div class="col-md-6">
+          <label for="prompt-slug-input" class="form-label">
+            Slug
+            <span class="badge bg-secondary">Auto-generated</span>
+          </label>
+          <input
+            type="text"
+            class="form-control font-monospace"
+            id="prompt-slug-input"
+            placeholder="customer_support_greeting"
+            data-playground-save-target="promptSlug"
+          >
+          <div class="form-text">Used in code (lowercase, numbers, underscores only)</div>
+        </div>
+      </div>
+    <% end %>
+
+    <% if prompt %>
+      <% if version && !version.has_responses? %>
+        <!-- Dropdown button for versions without responses -->
+        <div class="btn-group" role="group">
+          <button id="save-update-btn"
+                  type="button"
+                  class="btn btn-primary"
+                  data-playground-save-target="saveUpdateBtn"
+                  data-action="click->playground-save#saveUpdate">
+            <i class="bi bi-save"></i> Update This Version
+          </button>
+          <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="visually-hidden">Toggle Dropdown</span>
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <button id="save-new-version-btn"
+                      class="dropdown-item"
+                      type="button"
+                      data-playground-save-target="saveNewVersionBtn"
+                      data-action="click->playground-save#saveNewVersion">
+                <i class="bi bi-plus-circle"></i> Save as New Version
+              </button>
+            </li>
+          </ul>
+        </div>
+      <% else %>
+        <!-- Single button for versions with responses or no version -->
+        <button id="save-draft-btn"
+                class="btn btn-primary"
+                data-playground-save-target="saveDraftBtn"
+                data-action="click->playground-save#saveDraft">
+          <i class="bi bi-save"></i> Save as Draft Version
+        </button>
+      <% end %>
+    <% else %>
+      <!-- Standalone mode -->
+      <button id="save-draft-btn"
+              class="btn btn-primary"
+              data-playground-save-target="saveDraftBtn"
+              data-action="click->playground-save#saveDraft">
+        <i class="bi bi-save"></i> Create Prompt
+      </button>
+      <a href="<%= testing_root_path %>" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle"></i>
+        Cancel
+      </a>
+    <% end %>
+
+    <!-- Sync buttons (Push/Pull) for remote entity linked APIs -->
+    <%= render "prompt_tracker/testing/playground/sync_buttons",
+               version: version,
+               is_remote_entity_linked: is_remote_entity_linked,
+               sync_status: sync_status,
+               synced_at: synced_at %>
+  </div>
+</div>

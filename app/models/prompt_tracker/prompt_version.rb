@@ -4,6 +4,7 @@
 #
 # Table name: prompt_tracker_prompt_versions
 #
+#  archived_at      :datetime
 #  created_at       :datetime         not null
 #  created_by       :string
 #  id               :bigint           not null, primary key
@@ -86,6 +87,7 @@ module PromptTracker
     validate :user_prompt_immutable_if_responses_exist, on: :update
     validate :variables_schema_must_be_array
     validate :model_config_must_be_hash
+    validate :model_config_tool_config_structure
     validate :response_schema_must_be_valid_json_schema
 
     # Callbacks
@@ -101,6 +103,14 @@ module PromptTracker
     # Returns only deprecated versions
     # @return [ActiveRecord::Relation<PromptVersion>]
     scope :deprecated, -> { where(status: "deprecated") }
+
+    # Returns only non-archived versions (default scope behavior)
+    # @return [ActiveRecord::Relation<PromptVersion>]
+    scope :not_archived, -> { where(archived_at: nil) }
+
+    # Returns only archived versions
+    # @return [ActiveRecord::Relation<PromptVersion>]
+    scope :archived, -> { where.not(archived_at: nil) }
 
     # Returns only draft versions
     # @return [ActiveRecord::Relation<PromptVersion>]
@@ -161,6 +171,28 @@ module PromptTracker
     # @return [Boolean] true if status is "active"
     def active?
       status == "active"
+    end
+
+    # Archives this version (soft delete).
+    # Does NOT delete remote entities (e.g., OpenAI Assistants).
+    #
+    # @return [Boolean] true if successful
+    def archive!
+      update!(archived_at: Time.current)
+    end
+
+    # Unarchives this version.
+    #
+    # @return [Boolean] true if successful
+    def unarchive!
+      update!(archived_at: nil)
+    end
+
+    # Checks if this version is archived.
+    #
+    # @return [Boolean] true if archived
+    def archived?
+      archived_at.present?
     end
 
     # Checks if this version is deprecated.
@@ -387,6 +419,56 @@ module PromptTracker
       return if model_config.nil? || model_config.is_a?(Hash)
 
       errors.add(:model_config, "must be a hash")
+    end
+
+    # Validates that model_config has proper tool_config structure when tools are present
+    #
+    # Ensures that:
+    # 1. tool_config is a hash if present (can be empty for tools that don't need config)
+    # 2. tool_config structure is valid (file_search has vector_store_ids array, etc.)
+    #
+    # Note: Not all tools require configuration (e.g., code_interpreter has no config),
+    # so an empty tool_config hash is valid even when tools array is populated.
+    def model_config_tool_config_structure
+      return if model_config.blank?
+
+      tool_config = model_config["tool_config"]
+
+      # If tool_config is present, validate its structure
+      if tool_config.present?
+        unless tool_config.is_a?(Hash)
+          errors.add(:model_config, "tool_config must be a hash")
+          return
+        end
+
+        # Validate file_search configuration if present
+        validate_file_search_config(tool_config["file_search"]) if tool_config["file_search"].present?
+
+        # Validate functions configuration if present
+        validate_functions_config(tool_config["functions"]) if tool_config["functions"].present?
+      end
+    end
+
+    # Validates file_search configuration structure
+    def validate_file_search_config(file_search_config)
+      unless file_search_config.is_a?(Hash)
+        errors.add(:model_config, "tool_config.file_search must be a hash")
+        return
+      end
+
+      # vector_store_ids should be an array if present
+      if file_search_config["vector_store_ids"].present?
+        unless file_search_config["vector_store_ids"].is_a?(Array)
+          errors.add(:model_config, "tool_config.file_search.vector_store_ids must be an array")
+        end
+      end
+    end
+
+    # Validates functions configuration structure
+    def validate_functions_config(functions_config)
+      unless functions_config.is_a?(Array)
+        errors.add(:model_config, "tool_config.functions must be an array")
+      end
     end
 
     # Validates that response_schema is a valid JSON Schema structure.

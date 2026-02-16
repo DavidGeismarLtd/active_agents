@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_16_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_12_185358) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -179,18 +179,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_000001) do
     t.index [ "user_id" ], name: "index_prompt_tracker_llm_responses_on_user_id"
   end
 
-  create_table "prompt_tracker_openai_assistants", force: :cascade do |t|
-    t.string "assistant_id", null: false
-    t.string "name", null: false
-    t.text "description"
-    t.string "category"
-    t.jsonb "metadata", default: {}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index [ "assistant_id" ], name: "index_prompt_tracker_openai_assistants_on_assistant_id", unique: true
-    t.index [ "category" ], name: "index_prompt_tracker_openai_assistants_on_category"
-  end
-
   create_table "prompt_tracker_prompt_test_suite_runs", force: :cascade do |t|
     t.bigint "prompt_test_suite_id", null: false
     t.string "status", default: "pending", null: false
@@ -237,8 +225,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_16_000001) do
     t.jsonb "response_schema"
     t.text "notes"
     t.string "created_by"
+    t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index [ "archived_at" ], name: "index_prompt_tracker_prompt_versions_on_archived_at"
     t.index [ "prompt_id", "status" ], name: "index_prompt_versions_on_prompt_and_status"
     t.index [ "prompt_id", "version_number" ], name: "index_prompt_versions_on_prompt_and_version_number", unique: true
     t.index [ "prompt_id" ], name: "index_prompt_tracker_prompt_versions_on_prompt_id"

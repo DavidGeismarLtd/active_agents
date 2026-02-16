@@ -36,8 +36,11 @@ module PromptTracker
     SOURCES = %w[manual llm_generated imported].freeze
 
     # Reserved fields that can exist in row_data but are not part of the dataset schema
-    # These fields have special purposes and should not be validated against the schema
-    RESERVED_FIELDS = %w[mock_function_outputs].freeze
+    # These fields have special purposes for test execution and should not be validated against the schema:
+    # - mock_function_outputs: Mock responses for function calls during tests
+    # - interlocutor_simulation_prompt: Prompt for simulating user in conversation tests
+    # - max_turns: Maximum conversation turns for conversation tests
+    RESERVED_FIELDS = %w[mock_function_outputs interlocutor_simulation_prompt max_turns].freeze
 
     # Associations
     belongs_to :dataset,

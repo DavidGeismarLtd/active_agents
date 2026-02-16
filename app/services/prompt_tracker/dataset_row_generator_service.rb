@@ -171,12 +171,6 @@ module PromptTracker
         context_parts << "User Prompt Template:"
         context_parts << testable.user_prompt
         context_parts << ""
-      elsif testable.is_a?(Openai::Assistant)
-        # Handle Assistant testables
-        context_parts << "You are generating test data for the following OpenAI Assistant:\n"
-        context_parts << "Assistant Name: #{testable.name}"
-        context_parts << "Description: #{testable.description}" if testable.description.present?
-        context_parts << ""
       end
 
       context_parts.join("\n")

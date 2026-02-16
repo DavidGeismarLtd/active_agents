@@ -22,3 +22,4 @@
 # Environment variables
 .env
 .env.local
+dump.rdb

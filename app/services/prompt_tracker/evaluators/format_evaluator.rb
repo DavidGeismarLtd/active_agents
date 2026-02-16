@@ -21,7 +21,7 @@ module PromptTracker
     #     require_headers: true
     #   })
     #
-    class FormatEvaluator < BaseNormalizedEvaluator
+    class FormatEvaluator < BaseEvaluator
       # Supported formats
       FORMATS = %i[json markdown plain_text].freeze
 

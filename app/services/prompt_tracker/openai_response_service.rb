@@ -107,11 +107,22 @@ module PromptTracker
 
       normalize_response(response)
     rescue Faraday::BadRequestError => e
-      # Extract error details from the response body
+      # Extract detailed error information from the response body
       error_body = JSON.parse(e.response[:body]) rescue {}
       error_message = error_body.dig("error", "message") || e.message
+      error_type = error_body.dig("error", "type")
+      error_code = error_body.dig("error", "code")
+      error_param = error_body.dig("error", "param")
 
-      raise ResponseApiError, "OpenAI Responses API error: #{error_message}\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
+      # Build detailed error message
+      detailed_error = "OpenAI Responses API error (#{e.response[:status]}): #{error_message}"
+      detailed_error += "\nError Type: #{error_type}" if error_type
+      detailed_error += "\nError Code: #{error_code}" if error_code
+      detailed_error += "\nError Param: #{error_param}" if error_param
+      detailed_error += "\n\nFull error body: #{error_body.inspect}"
+      detailed_error += "\n\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
+
+      raise ResponseApiError, detailed_error
     end
 
     private
@@ -122,7 +133,7 @@ module PromptTracker
     def client
       @client ||= begin
         require "openai"
-        api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+        api_key = PromptTracker.configuration.api_key_for(:openai)
         raise ResponseApiError, "OpenAI API key not configured" if api_key.blank?
 
         OpenAI::Client.new(access_token: api_key)
@@ -226,6 +237,10 @@ module PromptTracker
       file_search_config = tool_config["file_search"] || {}
       vector_store_ids = file_search_config["vector_store_ids"] || []
 
+      # OpenAI Responses API has a hard limit of 2 vector stores
+      # Enforce this limit as a fallback for backward compatibility
+      vector_store_ids = vector_store_ids.first(2) if vector_store_ids.length > 2
+
       tool_hash = { type: "file_search" }
       tool_hash[:vector_store_ids] = vector_store_ids if vector_store_ids.any?
       tool_hash
@@ -240,93 +255,31 @@ module PromptTracker
       functions = tool_config["functions"] || []
 
       functions.map do |func|
-        {
+        tool_hash = {
           type: "function",
           name: func["name"],
           description: func["description"] || "",
-          parameters: func["parameters"] || {},
-          strict: func["strict"] || false
+          parameters: func["parameters"] || {}
         }
+
+        # Handle strict mode:
+        # - If strict is explicitly true, include it (requires additionalProperties: false in schema)
+        # - If strict is explicitly false, include it to opt out of auto-normalization
+        # - If strict is nil/omitted, don't include it (Responses API will auto-normalize to strict mode)
+        if func["strict"] == true || func["strict"] == false
+          tool_hash[:strict] = func["strict"]
+        end
+
+        tool_hash
       end
     end
 
-    # Normalize Response API response to standard format using ResponseApiNormalizer
-    #
-    # This delegates to ResponseApiNormalizer to ensure consistent normalization
-    # across the application and proper extraction of tool results (web_search_results,
-    # code_interpreter_results, file_search_results).
+    # Normalize Response API response to NormalizedResponse format
     #
     # @param response [Hash] raw API response
-    # @return [Hash] normalized response with:
-    #   - :text [String] extracted text content
-    #   - :response_id [String] the response ID for conversation continuity
-    #   - :usage [Hash] token usage information
-    #   - :model [String] the model used
-    #   - :tool_calls [Array<Hash>] all tool calls (mixed types)
-    #   - :web_search_results [Array<Hash>] web search tool calls
-    #   - :code_interpreter_results [Array<Hash>] code interpreter tool calls
-    #   - :file_search_results [Array<Hash>] file search tool calls
-    #   - :raw [Hash] the original API response
+    # @return [NormalizedResponse] normalized response
     def normalize_response(response)
-      # Use ResponseApiNormalizer to extract tool results properly
-      normalizer = Evaluators::Normalizers::ResponseApiNormalizer.new
-      normalized = normalizer.normalize_single_response(response)
-
-      # Extract usage information (not handled by normalizer)
-      usage = extract_usage(response)
-
-      # Combine normalizer output with additional fields needed by executors
-      {
-        text: normalized[:text],
-        response_id: response["id"],
-        usage: usage,
-        model: response["model"],
-        tool_calls: normalized[:tool_calls],
-        web_search_results: extract_web_search_results(response),
-        code_interpreter_results: extract_code_interpreter_results(response),
-        file_search_results: extract_file_search_results(response),
-        raw: response
-      }
-    end
-
-    # Extract usage information
-    #
-    # @param response [Hash] raw API response
-    # @return [Hash] usage hash with token counts
-    def extract_usage(response)
-      usage = response["usage"] || {}
-      {
-        prompt_tokens: usage["input_tokens"] || 0,
-        completion_tokens: usage["output_tokens"] || 0,
-        total_tokens: (usage["input_tokens"] || 0) + (usage["output_tokens"] || 0)
-      }
-    end
-
-    # Extract web search results from response output
-    #
-    # @param response [Hash] raw API response
-    # @return [Array<Hash>] web search results
-    def extract_web_search_results(response)
-      normalizer = Evaluators::Normalizers::ResponseApiNormalizer.new
-      normalizer.send(:extract_web_search_results, response["output"] || [])
-    end
-
-    # Extract code interpreter results from response output
-    #
-    # @param response [Hash] raw API response
-    # @return [Array<Hash>] code interpreter results
-    def extract_code_interpreter_results(response)
-      normalizer = Evaluators::Normalizers::ResponseApiNormalizer.new
-      normalizer.send(:extract_code_interpreter_results, response["output"] || [])
-    end
-
-    # Extract file search results from response output
-    #
-    # @param response [Hash] raw API response
-    # @return [Array<Hash>] file search results
-    def extract_file_search_results(response)
-      normalizer = Evaluators::Normalizers::ResponseApiNormalizer.new
-      normalizer.send(:extract_file_search_results, response["output"] || [])
+      LlmResponseNormalizers::Openai::Responses.normalize(response)
     end
 
     # Redact sensitive fields from parameters before logging

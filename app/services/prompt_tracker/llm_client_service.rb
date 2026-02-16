@@ -39,6 +39,15 @@ module PromptTracker
   #     tools: [:web_search]
   #   )
   #
+  # @example Call OpenAI Assistants API
+  #   response = LlmClientService.call(
+  #     provider: "openai",
+  #     api: "assistants",
+  #     model: "gpt-4o",
+  #     prompt: "What's the weather?",
+  #     assistant_id: "asst_abc123"
+  #   )
+  #
   # @example Call with structured output
   #   schema = LlmJudgeSchema.for_criteria(criteria: ["clarity"], score_min: 0, score_max: 100)
   #   response = LlmClientService.call_with_schema(
@@ -59,37 +68,27 @@ module PromptTracker
     #
     # @param provider [String] the LLM provider (e.g., "openai", "anthropic")
     # @param api [String, nil] the API type (e.g., "chat_completions", "responses", "assistants")
-    # @param model [String] the model name or assistant ID
+    # @param model [String] the model name
     # @param prompt [String] the prompt text
     # @param temperature [Float] the temperature (0.0-2.0)
     # @param max_tokens [Integer] maximum tokens to generate
     # @param response_schema [Hash, nil] optional JSON Schema for structured output
-    # @param options [Hash] additional provider-specific options
+    # @param options [Hash] additional provider-specific options (e.g., assistant_id for Assistants API)
     # @return [Hash] response with :text, :usage, :model, :raw keys
     # @raise [ApiError] if API call fails
     def self.call(provider:, api:, model:, prompt:, temperature: 0.7, max_tokens: nil, response_schema: nil, **options)
       # Determine the API type using ApiTypes module
       api_type = ApiTypes.from_config(provider, api)
 
-      # Route to OpenAI Responses API
-      if api_type == :openai_responses
-        return OpenaiResponseService.call(
+      # Route to specialized services for OpenAI Responses/Assistants APIs
+      if api_type == :openai_responses || api_type == :openai_assistants
+        return route_to_specialized_service(
+          api_type: api_type,
           model: model,
-          user_prompt: prompt,
-          system_prompt: options[:system_prompt],
-          tools: options[:tools] || [],
+          prompt: prompt,
           temperature: temperature,
           max_tokens: max_tokens,
-          **options.except(:system_prompt, :tools)
-        )
-      end
-
-      # Route to OpenAI Assistants API
-      if api_type == :openai_assistants
-        return OpenaiAssistantService.call(
-          assistant_id: model,
-          prompt: prompt,
-          timeout: options[:timeout] || 60
+          **options
         )
       end
 
@@ -168,6 +167,36 @@ module PromptTracker
 
     private
 
+    # Route to specialized OpenAI services (Responses API or Assistants API)
+    #
+    # @param api_type [Symbol] the API type (:openai_responses or :openai_assistants)
+    # @param model [String] the model name
+    # @param prompt [String] the prompt text
+    # @param temperature [Float] the temperature
+    # @param max_tokens [Integer] maximum tokens to generate
+    # @param options [Hash] additional options
+    # @return [Hash] response from specialized service
+    def self.route_to_specialized_service(api_type:, model:, prompt:, temperature:, max_tokens:, **options)
+      case api_type
+      when :openai_responses
+        OpenaiResponseService.call(
+          model: model,
+          user_prompt: prompt,
+          system_prompt: options[:system_prompt],
+          tools: options[:tools] || [],
+          temperature: temperature,
+          max_tokens: max_tokens,
+          **options.except(:system_prompt, :tools)
+        )
+      when :openai_assistants
+        OpenaiAssistantService.call(
+          assistant_id: options[:assistant_id],
+          user_message: prompt,
+          timeout: options[:timeout] || 60
+        )
+      end
+    end
+
     # Build a RubyLLM chat instance with configured parameters
     #
     # @return [RubyLLM::Chat] configured chat instance
@@ -188,42 +217,34 @@ module PromptTracker
       chat
     end
 
-    # Normalize RubyLLM response to our standard format
+    # Normalize RubyLLM response to NormalizedResponse format
     #
     # @param response [RubyLLM::Message] the RubyLLM message object
-    # @return [Hash] normalized response
+    # @return [NormalizedResponse] normalized response
     def normalize_response(response)
-      {
-        text: response.content,
-        usage: extract_usage(response),
-        model: response.model_id,
-        raw: response
-      }
+      LlmResponseNormalizers::Openai::ChatCompletions.normalize(response)
     end
 
-    # Normalize RubyLLM schema response to our standard format
+    # Normalize RubyLLM schema response to NormalizedResponse format
     #
     # @param response [RubyLLM::Message] the RubyLLM message object with structured content
-    # @return [Hash] normalized response with JSON text
+    # @return [NormalizedResponse] normalized response with JSON text
     def normalize_schema_response(response)
-      {
+      NormalizedResponse.new(
         text: response.content.to_json,  # Convert structured hash to JSON string
-        usage: extract_usage(response),
+        usage: {
+          prompt_tokens: response.input_tokens || 0,
+          completion_tokens: response.output_tokens || 0,
+          total_tokens: (response.input_tokens || 0) + (response.output_tokens || 0)
+        },
         model: response.model_id,
-        raw: response
-      }
-    end
-
-    # Extract usage information from RubyLLM response
-    #
-    # @param response [RubyLLM::Message] the RubyLLM message object
-    # @return [Hash] usage hash with token counts
-    def extract_usage(response)
-      {
-        prompt_tokens: response.input_tokens || 0,
-        completion_tokens: response.output_tokens || 0,
-        total_tokens: (response.input_tokens || 0) + (response.output_tokens || 0)
-      }
+        tool_calls: [],
+        file_search_results: [],
+        web_search_results: [],
+        code_interpreter_results: [],
+        api_metadata: {},
+        raw_response: response
+      )
     end
   end
 end

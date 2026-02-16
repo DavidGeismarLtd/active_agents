@@ -1,0 +1,62 @@
+/* Tools Panel Styles */
+
+.tool-card {
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  border: 2px solid transparent;
+}
+
+.tool-card:hover {
+  border-color: var(--bs-primary);
+  background-color: var(--bs-light);
+}
+
+.tool-card.active {
+  border-color: var(--bs-primary);
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.tool-card .tool-icon {
+  font-size: 1.25rem;
+  opacity: 0.6;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.tool-card.active .tool-icon {
+  opacity: 1;
+  color: var(--bs-primary);
+}
+
+.tool-card .check-indicator {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  opacity: 0;
+  color: var(--bs-primary);
+  transition: opacity 0.15s ease-in-out;
+}
+
+.tool-card.active .check-indicator {
+  opacity: 1;
+}
+
+.tool-config-panel {
+  display: none;
+  animation: slideDown 0.2s ease-out;
+}
+
+.tool-config-panel.show {
+  display: block;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

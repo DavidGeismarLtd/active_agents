@@ -1,0 +1,42 @@
+<%# Sync Buttons for Remote Entity (Push/Pull) %>
+<%# Local variables:
+    - version: The PromptVersion being edited
+    - is_remote_entity_linked: Whether the API supports remote entity sync
+    - sync_status: Current sync status ('synced', 'pending', 'failed')
+    - synced_at: Last sync timestamp
+%>
+<% if is_remote_entity_linked && version %>
+  <% assistant_id = version.model_config&.dig("assistant_id") %>
+
+  <div class="btn-group ms-2" role="group" aria-label="Remote sync actions">
+    <!-- Push to Remote (local → remote) -->
+    <button type="button"
+            class="btn btn-outline-primary"
+            data-playground-sync-target="pushBtn"
+            data-action="click->playground-sync#pushToRemote"
+            title="Push local changes to OpenAI Assistant">
+      <i class="bi bi-cloud-arrow-up"></i> Push
+      <% if sync_status == 'synced' && synced_at %>
+        <span class="badge bg-success ms-1" title="Last synced: <%= synced_at %>">✓</span>
+      <% elsif sync_status == 'failed' %>
+        <span class="badge bg-danger ms-1">✗</span>
+      <% elsif sync_status == 'pending' %>
+        <span class="badge bg-warning ms-1">⚠</span>
+      <% end %>
+    </button>
+    <!-- Pull from Remote (remote → local) - only if assistant exists -->
+    <% if assistant_id.present? %>
+      <button type="button"
+              class="btn btn-outline-secondary"
+              data-playground-sync-target="pullBtn"
+              data-action="click->playground-sync#pullFromRemote"
+              title="Pull latest from OpenAI Assistant">
+        <i class="bi bi-cloud-arrow-down"></i> Pull
+      </button>
+    <% end %>
+  </div>
+
+  <!-- Sync status/error container -->
+  <div data-playground-sync-target="syncStatus" class="ms-2" style="display: none;"></div>
+  <div data-playground-sync-target="syncError" style="display: none;"></div>
+<% end %>

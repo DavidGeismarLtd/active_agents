@@ -1,0 +1,38 @@
+<%#
+  Functions Configuration Panel
+
+  Local variables:
+    - functions_config: Array of function configurations
+    - enabled_tools_hash: Hash of enabled tools
+    - tool_config: Hash with detailed tool configuration
+%>
+
+<div id="functions-config"
+     class="tool-config-panel mt-3 p-3 border rounded bg-light <%= 'show' if enabled_tools_hash['functions'].present? %>"
+     data-controller="playground-functions"
+     data-playground-tools-target="functionsPanel">
+  <h6 class="mb-3 d-flex justify-content-between align-items-center">
+    <span>
+      <i class="bi bi-braces-asterisk me-1"></i>
+      Custom Functions
+    </span>
+    <button type="button"
+            class="btn btn-sm btn-primary"
+            data-action="click->playground-functions#addFunction">
+      <i class="bi bi-plus"></i> Add Function
+    </button>
+  </h6>
+
+  <div id="functions-list" data-playground-functions-target="functionsList">
+    <% if functions_config.empty? %>
+      <div class="text-muted text-center py-3" data-playground-functions-target="noFunctionsMessage">
+        <i class="bi bi-info-circle"></i>
+        No functions defined. Click "Add Function" to create one.
+      </div>
+    <% else %>
+      <% functions_config.each_with_index do |func, idx| %>
+        <%= render 'prompt_tracker/testing/playground/function_item', function: func, index: idx %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

@@ -87,8 +87,6 @@ module PromptTracker
         case testable
         when PromptVersion
           testing_prompt_prompt_version_path(testable.prompt, testable)
-        when PromptTracker::Openai::Assistant
-          testing_openai_assistant_path(testable)
         else
           testing_runs_path
         end

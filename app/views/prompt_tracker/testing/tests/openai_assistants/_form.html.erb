@@ -1,7 +1,0 @@
-<% test ||= @test %>
-<% assistant ||= test.testable %>
-<% in_modal ||= false %>
-
-<% form_url = test.new_record? ? testing_openai_assistant_tests_path(assistant) : testing_openai_assistant_test_path(assistant, test) %>
-
-<%= render "prompt_tracker/testing/tests/form", test: test, in_modal: in_modal, form_url: form_url %>

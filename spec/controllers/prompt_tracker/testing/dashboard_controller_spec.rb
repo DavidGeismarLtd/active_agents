@@ -24,21 +24,20 @@ module PromptTracker
         end
 
         context "when filter is 'all'" do
-          it "loads both prompts and assistants" do
+          it "loads prompts" do
             prompt = create(:prompt)
-            assistant = create(:openai_assistant)
 
             get :index, params: { filter: "all" }
 
             expect(assigns(:prompts)).to include(prompt)
-            expect(assigns(:assistants)).to include(assistant)
+            # Assistants are now PromptVersions with api: "assistants", not a separate model
+            expect(assigns(:assistants)).to be_empty
           end
         end
 
         context "when filter is 'prompts'" do
           it "loads only prompts" do
             prompt = create(:prompt)
-            assistant = create(:openai_assistant)
 
             get :index, params: { filter: "prompts" }
 
@@ -48,14 +47,14 @@ module PromptTracker
         end
 
         context "when filter is 'assistants'" do
-          it "loads only assistants" do
+          it "returns empty prompts and assistants" do
             prompt = create(:prompt)
-            assistant = create(:openai_assistant)
 
             get :index, params: { filter: "assistants" }
 
+            # Assistants are now PromptVersions, so both are empty when filtering by assistants
             expect(assigns(:prompts)).to be_empty
-            expect(assigns(:assistants)).to include(assistant)
+            expect(assigns(:assistants)).to be_empty
           end
         end
 
@@ -73,36 +72,56 @@ module PromptTracker
       describe "POST #sync_openai_assistants" do
         let(:service_result) do
           {
-            created: 3,
-            updated: 2,
-            total: 5,
-            assistants: []
+            success: true,
+            created_count: 3,
+            created_prompts: [],
+            created_versions: [],
+            errors: []
           }
         end
 
+        let(:service_instance) { instance_double(SyncOpenaiAssistantsToPromptVersionsService, call: service_result) }
+
         before do
-          allow(SyncOpenaiAssistantsService).to receive(:call).and_return(service_result)
+          allow(SyncOpenaiAssistantsToPromptVersionsService).to receive(:new).and_return(service_instance)
         end
 
-        it "calls SyncOpenaiAssistantsService" do
-          expect(SyncOpenaiAssistantsService).to receive(:call)
+        it "calls SyncOpenaiAssistantsToPromptVersionsService" do
+          expect(service_instance).to receive(:call)
           post :sync_openai_assistants
-        end
-
-        it "redirects to testing root with assistants filter" do
-          post :sync_openai_assistants
-          expect(response).to redirect_to(testing_root_path(filter: "assistants"))
         end
 
         it "sets success flash notice with sync details" do
           post :sync_openai_assistants
-          expect(flash[:notice]).to eq("Synced 5 assistants from OpenAI (3 created, 2 updated).")
+          expect(flash[:notice]).to eq("Synced 3 assistants from OpenAI.")
         end
 
-        context "when sync fails" do
+        context "when sync fails with errors" do
+          let(:service_result) do
+            {
+              success: false,
+              created_count: 0,
+              created_prompts: [],
+              created_versions: [],
+              errors: [ "Failed to create prompt" ]
+            }
+          end
+
+          it "redirects to testing root" do
+            post :sync_openai_assistants
+            expect(response).to redirect_to(testing_root_path)
+          end
+
+          it "sets error flash alert" do
+            post :sync_openai_assistants
+            expect(flash[:alert]).to eq("Failed to sync assistants: Failed to create prompt")
+          end
+        end
+
+        context "when sync raises SyncError" do
           before do
-            allow(SyncOpenaiAssistantsService).to receive(:call)
-              .and_raise(SyncOpenaiAssistantsService::SyncError, "API key not set")
+            allow(service_instance).to receive(:call)
+              .and_raise(SyncOpenaiAssistantsToPromptVersionsService::SyncError, "API key not set")
           end
 
           it "redirects to testing root" do

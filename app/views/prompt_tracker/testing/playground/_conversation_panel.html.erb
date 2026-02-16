@@ -3,41 +3,43 @@
   Shows multi-turn conversation history and input
 
   This partial uses the dedicated conversation controller, which communicates
-  with the playground controller via an outlet to get system_prompt, model_config, and variables.
+  with specialized playground controllers via outlets to get system_prompt, model_config, and variables.
 
   Local variables:
     - conversation_state: Hash with messages array and metadata
-    - execute_url: URL for sending messages (required)
+    - conversation_url: URL for sending messages (required)
     - reset_url: URL for resetting conversation (required)
 %>
 
 <%
   conversation_state ||= { messages: [], previous_response_id: nil, started_at: nil }
   messages = conversation_state[:messages] || []
-  execute_url ||= defined?(prompt_tracker.prompt_playground_execute_path) ? prompt_tracker.prompt_playground_execute_path : '#'
+  conversation_url ||= defined?(prompt_tracker.prompt_playground_run_conversation_path) ? prompt_tracker.prompt_playground_run_conversation_path : '#'
   reset_url ||= defined?(prompt_tracker.prompt_playground_reset_conversation_path) ? prompt_tracker.prompt_playground_reset_conversation_path : '#'
 %>
 
 <div id="conversation-panel"
-     data-controller="conversation"
-     data-conversation-send-url-value="<%= execute_url %>"
-     data-conversation-reset-url-value="<%= reset_url %>"
-     data-conversation-visible-value="false"
-     data-conversation-playground-outlet="#playground-container">
+     data-controller="playground-conversation"
+     data-playground-conversation-send-url-value="<%= conversation_url %>"
+     data-playground-conversation-reset-url-value="<%= reset_url %>"
+     data-playground-conversation-visible-value="false"
+     data-playground-conversation-playground-prompt-editor-outlet="#prompt-editor-panel"
+     data-playground-conversation-playground-model-config-outlet="#model-config-panel"
+     data-playground-conversation-playground-variables-outlet="#variables-panel">
 
-  <div class="card mb-3" data-conversation-target="panel" style="display: none;">
+  <div class="card mb-3" data-playground-conversation-target="panel" style="display: none;">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">
         <i class="bi bi-chat-dots"></i>
         Conversation
-        <span class="badge bg-info ms-1" data-conversation-target="messageCount">
+        <span class="badge bg-info ms-1" data-playground-conversation-target="messageCount">
           <%= messages.size %> messages
         </span>
       </h5>
       <div>
         <button type="button"
                 class="btn btn-sm btn-outline-danger"
-                data-action="click->conversation#reset"
+                data-action="click->playground-conversation#reset"
                 title="Clear conversation and start fresh">
           <i class="bi bi-arrow-counterclockwise"></i>
           Reset
@@ -48,7 +50,7 @@
     <div class="card-body">
       <!-- Conversation history -->
       <div class="conversation-messages mb-3"
-           data-conversation-target="messagesContainer"
+           data-playground-conversation-target="messagesContainer"
            style="max-height: 400px; overflow-y: auto;">
         <% if messages.empty? %>
           <div class="text-center text-muted py-5 empty-state">
@@ -91,7 +93,7 @@
       </div>
 
       <!-- Typing indicator (hidden by default) -->
-      <div class="message assistant-message" data-conversation-target="typingIndicator" style="display: none;">
+      <div class="message assistant-message" data-playground-conversation-target="typingIndicator" style="display: none;">
         <div class="message-avatar">
           <i class="bi bi-robot"></i>
         </div>
@@ -110,11 +112,11 @@
           <textarea class="form-control"
                     rows="2"
                     placeholder="Type your message... (Ctrl/Cmd+Enter to send)"
-                    data-conversation-target="messageInput"></textarea>
+                    data-playground-conversation-target="messageInput"></textarea>
           <button type="button"
                   class="btn btn-primary"
-                  data-action="click->conversation#submit"
-                  data-conversation-target="sendButton">
+                  data-action="click->playground-conversation#submit"
+                  data-playground-conversation-target="sendButton">
             <i class="bi bi-send"></i>
           </button>
         </div>

@@ -145,19 +145,19 @@ module PromptTracker
 
         # Generate a mock response
         #
-        # @return [Hash] mock API response
+        # @return [NormalizedLlmResponse] mock API response
         def mock_response
-          {
+          NormalizedLlmResponse.new(
             text: "Mock response after function call",
-            response_id: "resp_mock_#{SecureRandom.hex(8)}",
             usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
             model: @model,
             tool_calls: [],
+            file_search_results: [],
             web_search_results: [],
             code_interpreter_results: [],
-            file_search_results: [],
-            raw: {}
-          }
+            api_metadata: { response_id: "resp_mock_#{SecureRandom.hex(8)}" },
+            raw_response: {}
+          )
         end
 
         # Log warning if iteration limit was reached

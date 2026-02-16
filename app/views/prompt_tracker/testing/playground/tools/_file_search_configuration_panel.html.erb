@@ -1,0 +1,28 @@
+<%#
+  File Search Configuration Panel
+
+  Local variables:
+    - file_search_config: Hash with file search configuration
+    - enabled_tools_hash: Hash of enabled tools
+    - tool_config: Hash with detailed tool configuration
+%>
+
+<div id="file-search-config"
+     class="tool-config-panel mt-3 p-3 border rounded bg-light <%= 'show' if enabled_tools_hash['file_search'].present? %>"
+     data-controller="playground-file-search"
+     data-playground-tools-target="fileSearchPanel">
+  <h6 class="mb-3">
+    <i class="bi bi-file-earmark-search me-1"></i>
+    File Search Configuration
+  </h6>
+
+  <div class="mb-3">
+    <%= render 'prompt_tracker/testing/playground/tools/file_search/add_or_create_vector_store' %>
+    <%= render 'prompt_tracker/testing/playground/tools/file_search/selected_vector_stores',
+               file_search_config: file_search_config %>
+  </div>
+
+  <%# Modals must be inside the controller scope to be found as targets %>
+  <%= render 'prompt_tracker/testing/playground/tools/create_vector_store_modal' %>
+  <%= render 'prompt_tracker/testing/playground/tools/vector_store_files_modal' %>
+</div>

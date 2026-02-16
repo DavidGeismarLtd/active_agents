@@ -14,7 +14,7 @@ module PromptTracker
   # @example Call an assistant
   #   response = OpenaiAssistantService.call(
   #     assistant_id: "asst_abc123",
-  #     prompt: "What's the weather in Berlin?"
+  #     user_message: "What's the weather in Berlin?"
   #   )
   #   response[:text]  # => "The current weather in Berlin is..."
   #
@@ -24,28 +24,33 @@ module PromptTracker
     # Call an OpenAI Assistant
     #
     # @param assistant_id [String] the assistant ID (starts with "asst_")
-    # @param prompt [String] the user message
+    # @param user_message [String] the user message to send to the assistant
+    # @param thread_id [String, nil] existing thread ID to continue conversation (optional)
     # @param timeout [Integer] maximum seconds to wait for completion (default: 60)
-    # @return [Hash] response with :text, :usage, :model, :raw keys
+    # @return [Hash] response with :text, :usage, :model, :thread_id, :raw keys
     # @raise [AssistantError] if API call fails or times out
-    def self.call(assistant_id:, prompt:, timeout: 60)
-      new(assistant_id: assistant_id, prompt: prompt, timeout: timeout).call
+    def self.call(assistant_id:, user_message:, thread_id: nil, timeout: 60)
+      new(assistant_id: assistant_id, user_message: user_message, thread_id: thread_id, timeout: timeout).call
     end
 
-    attr_reader :assistant_id, :prompt, :timeout, :client
+    attr_reader :assistant_id, :user_message, :existing_thread_id, :timeout, :client
 
-    def initialize(assistant_id:, prompt:, timeout: 60)
+    def initialize(assistant_id:, user_message:, thread_id: nil, timeout: 60)
       @assistant_id = assistant_id
-      @prompt = prompt
+      @user_message = user_message
+      @existing_thread_id = thread_id
       @timeout = timeout
       @client = build_client
     end
 
     # Execute the assistant API call
     #
-    # @return [Hash] response with :text, :usage, :model, :raw keys
+    # @return [Hash] response with :text, :usage, :model, :thread_id, :raw keys
     def call
-      thread_id = create_thread
+      # Reuse existing thread or create a new one
+      thread_id = existing_thread_id || create_thread
+      Rails.logger.info "[OpenaiAssistantService] Using thread_id: #{thread_id} (existing: #{existing_thread_id.present?})"
+
       add_message(thread_id)
       run_id = run_assistant(thread_id)
       wait_for_completion(thread_id, run_id)
@@ -61,7 +66,7 @@ module PromptTracker
       require "openai"
 
       # Use configuration API key, fallback to ENV for backward compatibility
-      api_key = PromptTracker.configuration.api_key_for(:openai) || ENV["OPENAI_API_KEY"]
+      api_key = PromptTracker.configuration.api_key_for(:openai)
       raise AssistantError, "OpenAI API key not configured" if api_key.blank?
 
       OpenAI::Client.new(access_token: api_key)
@@ -86,11 +91,9 @@ module PromptTracker
         thread_id: thread_id,
         parameters: {
           role: "user",
-          content: prompt
+          content: user_message
         }
       )
-    rescue => e
-      raise AssistantError, "Failed to add message: #{e.message}"
     end
 
     # Run the assistant on the thread
@@ -105,8 +108,6 @@ module PromptTracker
         }
       )
       response["id"]
-    rescue => e
-      raise AssistantError, "Failed to run assistant: #{e.message}"
     end
 
     # Wait for the assistant run to complete
@@ -154,7 +155,7 @@ module PromptTracker
     #
     # @param thread_id [String] the thread ID
     # @param run_id [String] the run ID
-    # @return [Hash] normalized response
+    # @return [NormalizedResponse] normalized response
     def retrieve_response(thread_id, run_id)
       # Get the latest message (assistant's response)
       messages_response = client.messages.list(
@@ -162,29 +163,39 @@ module PromptTracker
         parameters: { order: "desc", limit: 1 }
       )
 
+      Rails.logger.info "[OpenaiAssistantService] Messages response: #{messages_response.inspect}"
+
       assistant_message = messages_response["data"].first
-      content = assistant_message.dig("content", 0, "text", "value")
+      Rails.logger.info "[OpenaiAssistantService] Assistant message: #{assistant_message.inspect}"
+
+      # Extract text content - may have annotations from file_search
+      content_block = assistant_message.dig("content", 0)
+      Rails.logger.info "[OpenaiAssistantService] Content block: #{content_block.inspect}"
+
+      content = content_block&.dig("text", "value")
+      annotations = content_block&.dig("text", "annotations") || []
+      Rails.logger.info "[OpenaiAssistantService] Annotations: #{annotations.inspect}"
 
       # Get usage from the run
       run = client.runs.retrieve(thread_id: thread_id, id: run_id)
+      Rails.logger.info "[OpenaiAssistantService] Run: #{run.inspect}"
+
       usage = run["usage"] || {}
 
-      # Return in standard format matching LlmClientService
-      {
-        text: content,
-        usage: {
-          prompt_tokens: usage["prompt_tokens"] || 0,
-          completion_tokens: usage["completion_tokens"] || 0,
-          total_tokens: usage["total_tokens"] || 0
-        },
-        model: assistant_id,
-        raw: {
-          thread_id: thread_id,
-          run_id: run_id,
-          assistant_message: assistant_message,
-          run: run
-        }
-      }
+      # Extract results from run steps
+      run_steps = client.run_steps.list(thread_id: thread_id, run_id: run_id, parameters: { order: "asc" })
+      Rails.logger.info "[OpenaiAssistantService] Run steps: #{run_steps.inspect}"
+
+      # Use normalizer to build the response
+      LlmResponseNormalizers::Openai::Assistants.normalize({
+        content: content,
+        usage: usage,
+        assistant_id: assistant_id,
+        run_steps: run_steps,
+        thread_id: thread_id,
+        run_id: run_id,
+        annotations: annotations
+      })
     rescue => e
       raise AssistantError, "Failed to retrieve response: #{e.message}"
     end

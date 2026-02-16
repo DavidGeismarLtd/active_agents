@@ -23,7 +23,7 @@ module PromptTracker
     #   #    - score: 85 (average of all message scores)
     #   #    - metadata: { message_scores: [90, 80, 85], ... }
     #
-    class ConversationJudgeEvaluator < BaseNormalizedEvaluator
+    class ConversationJudgeEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         judge_model: "gpt-4o",

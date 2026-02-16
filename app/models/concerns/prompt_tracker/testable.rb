@@ -119,23 +119,18 @@ module PromptTracker
     #
     # Examples:
     #   PromptTracker::PromptVersion -> prompt_tracker/testing/tests/prompt_versions/test_row
-    #   PromptTracker::Openai::Assistant -> prompt_tracker/testing/tests/openai_assistants/test_row
 
     # Returns the partial path segment for this testable type
     # This is the single source of truth for deriving partial paths
     #
-    # @return [String] the partial path segment (e.g., "prompt_versions", "openai_assistants")
+    # @return [String] the partial path segment (e.g., "prompt_versions")
     #
     # @example PromptVersion
     #   testable.partial_path_segment # => "prompt_versions"
     #
-    # @example Assistant
-    #   testable.partial_path_segment # => "openai_assistants"
-    #
     def partial_path_segment
       # Remove PromptTracker:: prefix, convert to underscore, replace / with _, pluralize
       # PromptTracker::PromptVersion -> "prompt_versions"
-      # PromptTracker::Openai::Assistant -> "openai_assistants"
       self.class.name.gsub("PromptTracker::", "").underscore.gsub("/", "_").pluralize
     end
 

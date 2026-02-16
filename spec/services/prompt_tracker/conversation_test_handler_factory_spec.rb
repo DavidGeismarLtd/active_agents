@@ -14,13 +14,13 @@ module PromptTracker
           }
         end
 
-        it "returns ResponseApiHandler" do
+        it "returns Responses::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ResponseApiHandler)
+          expect(handler).to be_a(TestRunners::Openai::Responses::SimulatedConversationRunner)
         end
 
         it "passes model_config to handler" do
@@ -53,13 +53,44 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletionHandler" do
+        it "returns ChatCompletions::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
+        end
+      end
+
+      context "with OpenAI Assistants API" do
+        let(:model_config) do
+          {
+            provider: "openai",
+            api: "assistants",
+            model: "gpt-4o",
+            assistant_id: "asst_abc123"
+          }
+        end
+
+        it "returns Assistants::SimulatedConversationRunner" do
+          handler = described_class.build(
+            model_config: model_config,
+            use_real_llm: false
+          )
+
+          expect(handler).to be_a(TestRunners::Openai::Assistants::SimulatedConversationRunner)
+        end
+
+        it "passes model_config to handler" do
+          handler = described_class.build(
+            model_config: model_config,
+            use_real_llm: false
+          )
+
+          expect(handler.model_config[:provider]).to eq("openai")
+          expect(handler.model_config[:api]).to eq("assistants")
+          expect(handler.model_config[:assistant_id]).to eq("asst_abc123")
         end
       end
 
@@ -72,13 +103,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletionHandler" do
+        it "returns ChatCompletions::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
         end
       end
 
@@ -91,13 +122,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletionHandler" do
+        it "returns ChatCompletions::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
         end
       end
 
@@ -110,13 +141,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletionHandler as fallback" do
+        it "returns ChatCompletions::SimulatedConversationRunner as fallback" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletionHandler)
+          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
         end
       end
 

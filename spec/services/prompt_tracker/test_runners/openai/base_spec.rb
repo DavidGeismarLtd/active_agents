@@ -45,9 +45,9 @@ module PromptTracker
 
         describe "#variables" do
           context "with dataset_row" do
-            let(:dataset) { create(:dataset, testable: testable) }
+            let(:dataset) { create(:dataset, :conversational, testable: testable) }
             let(:dataset_row) do
-              # Use valid row_data that matches the dataset schema
+              # Conversational dataset includes interlocutor_simulation_prompt in schema
               create(:dataset_row, dataset: dataset)
             end
             let(:test_run) do
@@ -56,7 +56,7 @@ module PromptTracker
 
             it "returns variables from dataset_row" do
               vars = runner.send(:variables)
-              # The factory creates valid row_data with interlocutor_simulation_prompt
+              # Conversational dataset rows include interlocutor_simulation_prompt
               expect(vars).to be_a(HashWithIndifferentAccess)
               expect(vars[:interlocutor_simulation_prompt]).to be_present
             end

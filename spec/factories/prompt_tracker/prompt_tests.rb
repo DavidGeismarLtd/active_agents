@@ -33,8 +33,9 @@ FactoryBot.define do
     end
 
     # Trait for assistant tests
+    # Uses a prompt_version with assistants api config
     trait :for_assistant do
-      association :testable, factory: :openai_assistant
+      association :testable, factory: [ :prompt_version, :with_assistants ]
     end
 
     # Trait with evaluator configs

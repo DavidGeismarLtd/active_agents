@@ -8,21 +8,26 @@ module PromptTracker
     # - Creates Evaluation records (single responsibility)
     # - Defines the evaluator interface
     # - Provides parameter schema processing
+    # - Provides conversation data accessors (messages, tool usage, etc.)
     #
-    # Do NOT inherit from this class directly. Instead, inherit from:
-    # - SingleResponse::BaseSingleResponseEvaluator (for single-turn text evaluations)
-    # - Conversational::BaseConversationalEvaluator (for multi-turn conversation evaluations)
-    # - Conversational::BaseAssistantsApiEvaluator (for Assistants API-specific evaluations)
-    #
-    # Legacy aliases are available for backward compatibility:
-    # - BaseChatCompletionEvaluator -> SingleResponse::BaseSingleResponseEvaluator
-    # - BaseConversationalEvaluator -> Conversational::BaseConversationalEvaluator
-    # - BaseAssistantsApiEvaluator -> Conversational::BaseAssistantsApiEvaluator
+    # Normalized Data Format:
+    #   {
+    #     messages: [                          # Array of messages (1 for single-turn, N for multi-turn)
+    #       { role: "user", content: "...", tool_calls: [...], turn: 1 },
+    #       { role: "assistant", content: "...", tool_calls: [...], turn: 2 }
+    #     ],
+    #     tool_usage: [...],                   # Aggregated tool usage across messages
+    #     web_search_results: [...],           # Web search results (Response API)
+    #     code_interpreter_results: [...],     # Code interpreter results (Response API)
+    #     file_search_results: [...],          # File search results (any API)
+    #     run_steps: [...],                    # Assistants API run steps (optional, nil for other APIs)
+    #     metadata: { model: "...", ... }      # Response metadata
+    #   }
     #
     # Subclasses must implement:
     # - #evaluate_score: Calculate the numeric score (0-100)
-    # - .api_type: Class method returning :chat_completion, :conversational, or :assistants_api
-    # - .metadata: Class method providing evaluator metadata
+    # - .compatible_with_apis: Class method returning array of API types
+    # - .compatible_with: Class method returning array of testable classes
     #
     # Subclasses can optionally override:
     # - #generate_feedback: Generate feedback text
@@ -30,7 +35,10 @@ module PromptTracker
     # - #passed?: Custom pass/fail logic
     #
     class BaseEvaluator
-      attr_reader :config
+      include Concerns::ConversationDataAccessors
+
+      attr_reader :config, :data
+      alias_method :conversation_data, :data
 
       # Class Methods for Parameter Schema
 
@@ -157,7 +165,7 @@ module PromptTracker
       #     [:all]
       #   end
       def self.compatible_with_apis
-        raise NotImplementedError, "Subclasses must implement .compatible_with_apis"
+        [ :all ]
       end
 
       # Check if evaluator is compatible with a specific API type
@@ -177,7 +185,7 @@ module PromptTracker
       #
       # @return [Array<Class>] array of compatible testable classes
       def self.compatible_with
-        raise NotImplementedError, "Subclasses must implement .compatible_with"
+        [ PromptTracker::PromptVersion ]
       end
 
       # Check if this evaluator is compatible with a given testable
@@ -191,11 +199,13 @@ module PromptTracker
 
       # Instance Methods
 
-      # Initialize the evaluator
-      # Subclasses should call super(config) after setting their own instance variables
+      # Initialize the evaluator with normalized data
       #
+      # @param data [Hash, String] the normalized data or a simple string response
       # @param config [Hash] configuration for the evaluator
-      def initialize(config = {})
+      def initialize(data, config = {})
+        @raw_data = data
+        @data = normalize_input(data)
         @config = config
       end
 

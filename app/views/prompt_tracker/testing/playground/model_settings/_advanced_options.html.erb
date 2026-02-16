@@ -1,0 +1,58 @@
+<%# Advanced Options Accordion %>
+<div class="accordion-item">
+  <h2 class="accordion-header">
+    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedOptions">
+      <i class="bi bi-sliders me-2"></i>
+      Advanced Options
+    </button>
+  </h2>
+  <div id="advancedOptions" class="accordion-collapse collapse" data-bs-parent="#advancedModelConfig">
+    <div class="accordion-body">
+      <div class="mb-3">
+        <label for="model-top-p" class="form-label">Top P (Optional)</label>
+        <input
+          type="number"
+          id="model-top-p"
+          class="form-control"
+          placeholder="e.g., 0.9"
+          step="0.1"
+          min="0"
+          max="1"
+          value="<%= version&.model_config&.dig('top_p') %>"
+        >
+        <div class="form-text">Nucleus sampling parameter</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="model-frequency-penalty" class="form-label">Frequency Penalty (Optional)</label>
+        <input
+          type="number"
+          id="model-frequency-penalty"
+          class="form-control"
+          placeholder="e.g., 0.5"
+          step="0.1"
+          min="-2"
+          max="2"
+          value="<%= version&.model_config&.dig('frequency_penalty') %>"
+        >
+        <div class="form-text">Penalize repeated tokens</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="model-presence-penalty" class="form-label">Presence Penalty (Optional)</label>
+        <input
+          type="number"
+          id="model-presence-penalty"
+          class="form-control"
+          placeholder="e.g., 0.5"
+          step="0.1"
+          min="-2"
+          max="2"
+          value="<%= version&.model_config&.dig('presence_penalty') %>"
+        >
+        <div class="form-text">Penalize new topics</div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -5,23 +5,13 @@ require "rails_helper"
 module PromptTracker
   module Evaluators
     RSpec.describe FileSearchEvaluator, type: :service do
-      let(:run_steps_with_file_search) do
+      # File search results in the new normalized format (top-level, not nested in run_steps)
+      let(:file_search_results) do
         [
           {
-            id: "step-1",
-            run_id: "run-123",
-            turn: 1,
-            type: "tool_calls",
-            status: "completed",
-            file_search_results: [
-              {
-                id: "call-1",
-                results: [
-                  { "file_id" => "file-abc", "file_name" => "policy.pdf", "score" => 0.95 },
-                  { "file_id" => "file-def", "file_name" => "guidelines.txt", "score" => 0.87 }
-                ]
-              }
-            ]
+            query: "policies",
+            files: [ "policy.pdf", "guidelines.txt" ],
+            scores: [ 0.95, 0.87 ]
           }
         ]
       end
@@ -30,9 +20,10 @@ module PromptTracker
         {
           "messages" => [
             { "role" => "user", "content" => "What are the policies?", "turn" => 1 },
-            { "role" => "assistant", "content" => "Based on the policy document...", "turn" => 1 }
+            { "role" => "assistant", "content" => "Based on the policy document...", "turn" => 1,
+              "file_search_results" => file_search_results }
           ],
-          "run_steps" => run_steps_with_file_search
+          "file_search_results" => file_search_results
         }
       end
 
@@ -208,9 +199,10 @@ module PromptTracker
       end
 
       describe "#evaluate" do
-        let(:assistant) { create(:openai_assistant) }
-        let(:test) { create(:test, testable: assistant) }
-        let(:test_run) { create(:test_run, :for_assistant, test: test) }
+        let(:prompt) { create(:prompt) }
+        let(:prompt_version) { create(:prompt_version, :with_assistants, prompt: prompt) }
+        let(:test) { create(:test, testable: prompt_version) }
+        let(:test_run) { create(:test_run, :for_prompt_version, test: test) }
         let(:evaluator_with_test_run) do
           described_class.new(conversation_data, config.merge(test_run: test_run))
         end
@@ -234,22 +226,13 @@ module PromptTracker
       end
 
       describe "file matching" do
-        let(:run_steps_with_file_search) do
+        # Override file_search_results for pattern matching tests
+        let(:file_search_results) do
           [
             {
-              id: "step-1",
-              run_id: "run-123",
-              turn: 1,
-              type: "tool_calls",
-              status: "completed",
-              file_search_results: [
-                {
-                  id: "call-1",
-                  results: [
-                    { "file_name" => "Company_Policy_2024.pdf" }
-                  ]
-                }
-              ]
+              query: "company policy",
+              files: [ "Company_Policy_2024.pdf" ],
+              scores: [ 0.95 ]
             }
           ]
         end

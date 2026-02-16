@@ -3,81 +3,36 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-plus-circle"></i> Create New Testable
+          <i class="bi bi-plus-circle"></i> Create New Agent
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted mb-4">
-          Choose the type of testable you want to create. <strong>Prompt</strong> is recommended for most use cases.
-        </p>
-
-        <div class="row g-3">
-          <!-- Prompt Option -->
-          <div class="col-md-6">
-            <%= link_to testing_playground_path, class: "text-decoration-none" do %>
-              <div class="card h-100 border-primary border-2" style="cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,123,255,0.15);" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,123,255,0.3)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,123,255,0.15)'">
-                <div class="card-body text-center p-4">
-                  <div class="mb-3">
-                    <i class="bi bi-chat-text" style="font-size: 3rem; color: #0d6efd;"></i>
-                  </div>
-                  <h4 class="card-title text-primary">Prompt</h4>
-                  <p class="card-text text-muted">
-                    Test LLM interactions with multi-turn conversations, tool calling, and multiple providers.
-                  </p>
-                  <ul class="list-unstyled text-start mt-3 small text-muted">
-                    <li><i class="bi bi-check-circle text-success"></i> Multi-turn conversations</li>
-                    <li><i class="bi bi-check-circle text-success"></i> Tool calling capabilities</li>
-                    <li><i class="bi bi-check-circle text-success"></i> Multiple providers (OpenAI, Anthropic, Google)</li>
-                    <li><i class="bi bi-check-circle text-success"></i> Multiple APIs (chat_completions, responses, etc.)</li>
-                    <li><i class="bi bi-check-circle text-success"></i> Template variables & evaluators</li>
-                    <li><i class="bi bi-check-circle text-success"></i> A/B testing</li>
-                  </ul>
-                  <div class="mt-3">
-                    <span class="badge bg-success me-1">Recommended</span>
-                    <span class="badge bg-primary">Most Flexible</span>
-                  </div>
+        <div class="text-center">
+          <%= link_to testing_playground_path, class: "text-decoration-none d-inline-block" do %>
+            <div class="card border-primary border-2" style="cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,123,255,0.15); max-width: 500px;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,123,255,0.3)'" onmouseout="this.style.boxShadow='0 2px 8px rgba(0,123,255,0.15)'">
+              <div class="card-body text-center p-4">
+                <div class="mb-3">
+                  <i class="bi bi-chat-text" style="font-size: 3rem; color: #0d6efd;"></i>
+                </div>
+                <h4 class="card-title text-primary">Create Agent</h4>
+                <p class="card-text text-muted">
+                  Test LLM interactions with multi-turn conversations, tool calling, and multiple providers.
+                </p>
+                <ul class="list-unstyled text-start mt-3 small text-muted">
+                  <li><i class="bi bi-check-circle text-success"></i> Multi-turn conversations</li>
+                  <li><i class="bi bi-check-circle text-success"></i> Tool calling capabilities</li>
+                  <li><i class="bi bi-check-circle text-success"></i> Multiple providers (OpenAI, Anthropic, Google)</li>
+                  <li><i class="bi bi-check-circle text-success"></i> Multiple APIs (chat_completions, responses, assistants, etc.)</li>
+                  <li><i class="bi bi-check-circle text-success"></i> Template variables & evaluators</li>
+                  <li><i class="bi bi-check-circle text-success"></i> A/B testing</li>
+                </ul>
+                <div class="mt-3">
+                  <span class="badge bg-primary">Get Started</span>
                 </div>
               </div>
-            <% end %>
-          </div>
-
-          <!-- Assistant Option -->
-          <div class="col-md-6">
-            <%= link_to testing_openai_new_assistant_playground_path, class: "text-decoration-none" do %>
-              <div class="card h-100 border-secondary" style="cursor: pointer; transition: all 0.2s; opacity: 0.75;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='0.75'">
-                <div class="card-body text-center p-4">
-                  <div class="mb-3">
-                    <i class="bi bi-robot" style="font-size: 3rem; color: #6c757d;"></i>
-                  </div>
-                  <h4 class="card-title text-secondary">
-                    OpenAI Assistant
-                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem; vertical-align: middle;">Legacy</span>
-                  </h4>
-                  <p class="card-text text-muted">
-                    <strong>Deprecated:</strong> OpenAI Assistants API support maintained for backward compatibility only.
-                  </p>
-                  <ul class="list-unstyled text-start mt-3 small text-muted">
-                    <li><i class="bi bi-info-circle text-secondary"></i> OpenAI-specific only</li>
-                    <li><i class="bi bi-info-circle text-secondary"></i> Limited to Assistants API</li>
-                    <li><i class="bi bi-info-circle text-secondary"></i> LLM-simulated users</li>
-                    <li><i class="bi bi-info-circle text-secondary"></i> Per-message scoring</li>
-                  </ul>
-                  <div class="mt-3">
-                    <span class="badge bg-secondary">Legacy Support</span>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-
-        <div class="alert alert-info mt-4 mb-0">
-          <i class="bi bi-lightbulb-fill"></i>
-          <strong>Recommendation:</strong>
-          <p class="mb-0 mt-2 small">
-            Use <strong>Prompt</strong> for all new projects. It supports everything you need including multi-turn conversations, tool calling, and works with multiple LLM providers (OpenAI, Anthropic, Google). The <strong>OpenAI Assistant</strong> option is maintained only for existing users with legacy integrations.
-          </p>
+            </div>
+          <% end %>
         </div>
       </div>
       <div class="modal-footer">

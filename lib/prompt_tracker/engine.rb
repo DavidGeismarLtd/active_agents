@@ -37,7 +37,21 @@ module PromptTracker
         prompt_tracker/controllers/tools_config_controller.js
         prompt_tracker/controllers/resizable_columns_controller.js
         prompt_tracker/controllers/lazy_edit_modal_controller.js
-
+        prompt_tracker/controllers/playground_ui_controller.js
+        prompt_tracker/controllers/playground_editor_controller.js
+        prompt_tracker/controllers/playground_model_config_controller.js
+        prompt_tracker/controllers/playground_coordinator_controller.js
+        prompt_tracker/controllers/playground_preview_controller.js
+        prompt_tracker/controllers/playground_save_controller.js
+        prompt_tracker/controllers/playground_sync_controller.js
+        prompt_tracker/controllers/playground_response_schema_controller.js
+        prompt_tracker/controllers/playground_file_search_controller.js
+        prompt_tracker/controllers/playground_functions_controller.js
+        prompt_tracker/controllers/playground_tools_controller.js
+        prompt_tracker/controllers/playground_generate_prompt_controller.js
+        prompt_tracker/controllers/playground_prompt_editor_controller.js
+        prompt_tracker/controllers/playground_variables_controller.js
+        prompt_tracker/controllers/playground_conversation_controller.js
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)

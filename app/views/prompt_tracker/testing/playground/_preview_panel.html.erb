@@ -1,0 +1,39 @@
+<%# Preview Panel %>
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i class="bi bi-eye"></i>
+      Live Preview
+      <span id="preview-status" class="badge bg-secondary ms-2" style="display: none;" data-playground-preview-target="previewStatus">
+        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        Updating...
+      </span>
+    </h5>
+    <button id="refresh-preview-btn"
+            class="btn btn-sm btn-outline-primary"
+            data-playground-preview-target="refreshBtn"
+            data-action="click->playground-preview#refreshPreview">
+      <i class="bi bi-arrow-clockwise"></i>
+      Refresh
+    </button>
+  </div>
+  <div class="card-body">
+    <div id="preview-container"
+         class="border rounded p-3 bg-light"
+         style="min-height: 200px; white-space: pre-wrap; font-family: inherit;"
+         data-playground-preview-target="previewContainer">
+      <p class="text-muted">Preview will appear here...</p>
+    </div>
+    <div id="preview-error"
+         class="alert alert-danger mt-3"
+         style="display: none;"
+         data-playground-preview-target="previewError"></div>
+    <div class="mt-2">
+      <small class="text-muted">
+        <i class="bi bi-info-circle"></i>
+        Preview updates automatically as you type (500ms delay)
+      </small>
+    </div>
+  </div>
+</div>
+

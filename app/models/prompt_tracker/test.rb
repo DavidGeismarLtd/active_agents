@@ -89,7 +89,6 @@ module PromptTracker
     scope :disabled, -> { where(enabled: false) }
     scope :recent, -> { order(created_at: :desc) }
     scope :for_prompt_versions, -> { where(testable_type: "PromptTracker::PromptVersion") }
-    scope :for_assistants, -> { where(testable_type: "PromptTracker::Openai::Assistant") }
 
     # Get recent test runs
     def recent_runs(limit = 10)

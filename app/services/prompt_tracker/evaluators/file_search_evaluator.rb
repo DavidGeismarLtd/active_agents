@@ -15,7 +15,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class FileSearchEvaluator < BaseNormalizedEvaluator
+    class FileSearchEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         expected_files: [],
@@ -145,12 +145,15 @@ module PromptTracker
 
       # Extract all searched file names from results
       #
+      # Handles the normalized format where file_search_results has:
+      #   { query: "...", files: ["file1.pdf", "file2.txt"], scores: [...] }
+      #
       # @return [Array<String>] unique file names that were searched
       def searched_file_names
         @searched_file_names ||= begin
           file_search_results.flat_map do |fs_call|
-            results = fs_call[:results] || []
-            results.map { |r| r["file_name"] || r[:file_name] }
+            # New normalized format: files array directly
+            fs_call[:files] || []
           end.compact.uniq
         end
       end

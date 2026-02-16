@@ -21,7 +21,7 @@ PromptTracker.configure do |config|
   # ===========================================================================
   # A provider is only available if its key is set.
   config.api_keys = {
-    openai: ENV["OPENAI_API_KEY"],
+    openai: ENV["OPENAI_LOUNA_API_KEY"],
     anthropic: ENV["ANTHROPIC_API_KEY"]
   }
 
@@ -45,7 +45,8 @@ PromptTracker.configure do |config|
         },
         assistants: {
           name: "Assistants",
-          description: "Full assistant features with threads and runs"
+          description: "Full assistant features with threads and runs",
+          capabilities: [ :code_interpreter, :file_search, :functions ]
         }
       }
     },
@@ -78,6 +79,12 @@ PromptTracker.configure do |config|
   # supported_apis: Array of API keys this model works with (nil = all)
   config.models = {
     openai: [
+      { id: "gpt-5.2", name: "GPT-5 (Aug 2025)", category: "Latest",
+        capabilities: [ :chat, :structured_output, :vision, :function_calling, :reasoning ],
+        supported_apis: [ :chat_completions, :responses ] },
+      { id: "gpt-4.1", name: "GTP-4.1 (Aug 2025)", category: "Latest",
+        capabilities: [ :chat, :structured_output, :vision, :function_calling, :reasoning ],
+        supported_apis: [ :chat_completions, :responses ] },
       { id: "gpt-4o", name: "GPT-4o", category: "Latest",
         capabilities: [ :chat, :structured_output, :vision, :function_calling ],
         supported_apis: [ :chat_completions, :responses, :assistants ] },
@@ -105,20 +112,6 @@ PromptTracker.configure do |config|
         capabilities: [ :chat ] },
       { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku", category: "Claude 3",
         capabilities: [ :chat ] }
-    ]
-  }
-
-  # ===========================================================================
-  # OpenAI Assistants Configuration (separate API key, optional)
-  # ===========================================================================
-  config.openai_assistants = {
-    api_key: ENV["OPENAI_LOUNA_API_KEY"],
-    available_models: [
-      { id: "gpt-4o", name: "GPT-4o" },
-      { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-      { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-      { id: "gpt-4", name: "GPT-4" },
-      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" }
     ]
   }
 
@@ -191,4 +184,12 @@ PromptTracker.configure do |config|
   #     icon: "bi-code-slash"
   #   }
   # }
+
+  # ===========================================================================
+  # Feature Flags
+  # ===========================================================================
+  # Enable OpenAI Assistant sync button in Testing Dashboard.
+  # When enabled, shows a "Sync OpenAI Assistants" button that fetches
+  # all assistants from your OpenAI account and creates agents for them.
+  config.enable_openai_assistant_sync = true
 end

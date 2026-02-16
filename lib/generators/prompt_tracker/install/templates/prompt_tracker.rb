@@ -185,15 +185,11 @@ PromptTracker.configure do |config|
   }
 
   # ===========================================================================
-  # OpenAI Assistants Configuration (Optional)
+  # Feature Flags
   # ===========================================================================
-  # Separate configuration for OpenAI Assistants API.
-  # This can use a different API key than the chat completions API.
-  # config.openai_assistants = {
-  #   api_key: ENV["OPENAI_ASSISTANTS_API_KEY"],
-  #   available_models: [
-  #     { id: "gpt-4o", name: "GPT-4o" },
-  #     { id: "gpt-4-turbo", name: "GPT-4 Turbo" }
-  #   ]
-  # }
+  # Enable OpenAI Assistant sync button in Testing Dashboard.
+  # When enabled, shows a "Sync OpenAI Assistants" button that fetches
+  # all assistants from your OpenAI account and creates agents for them.
+  # Default: false
+  config.enable_openai_assistant_sync = false
 end

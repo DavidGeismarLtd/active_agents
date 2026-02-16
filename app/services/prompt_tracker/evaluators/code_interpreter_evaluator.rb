@@ -20,7 +20,7 @@ module PromptTracker
     #     expected_language: "python"
     #   })
     #
-    class CodeInterpreterEvaluator < BaseNormalizedEvaluator
+    class CodeInterpreterEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         require_code_execution: true,      # Must execute code at least once

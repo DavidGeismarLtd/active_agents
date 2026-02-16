@@ -80,30 +80,6 @@ module PromptTracker
         registry.key?(key.to_sym)
       end
 
-      # Returns the appropriate normalizer for an API type
-      #
-      # @param api_type [Symbol] the API type from ApiTypes
-      # @return [Evaluators::Normalizers::BaseNormalizer] the normalizer instance
-      # @raise [ArgumentError] if API type is unknown
-      #
-      # @example Get normalizer for Chat Completions
-      #   normalizer = EvaluatorRegistry.normalizer_for(:openai_chat_completions)
-      #   normalized = normalizer.normalize_single_response(raw_response)
-      def normalizer_for(api_type)
-        case api_type
-        when :openai_chat_completions
-          Evaluators::Normalizers::ChatCompletionNormalizer.new
-        when :openai_responses
-          Evaluators::Normalizers::ResponseApiNormalizer.new
-        when :openai_assistants
-          Evaluators::Normalizers::AssistantsApiNormalizer.new
-        when :anthropic_messages
-          Evaluators::Normalizers::AnthropicNormalizer.new
-        else
-          raise ArgumentError, "Unknown API type: #{api_type}"
-        end
-      end
-
       # Builds an instance of an evaluator
       #
       # @param key [Symbol, String] the evaluator key

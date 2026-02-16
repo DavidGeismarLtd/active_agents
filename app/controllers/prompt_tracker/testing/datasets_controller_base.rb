@@ -9,7 +9,6 @@ module PromptTracker
     #
     # Supported testable types:
     # - PromptTracker::PromptVersion
-    # - PromptTracker::Openai::Assistant
     #
     class DatasetsControllerBase < ApplicationController
       include DatasetsHelper

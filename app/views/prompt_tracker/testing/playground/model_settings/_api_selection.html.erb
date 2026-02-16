@@ -1,0 +1,26 @@
+<%# API Selection - shown when provider has multiple APIs %>
+<% provider_apis = apis_for(config_data[:current_provider].to_sym) %>
+<div class="mb-3" id="api-select-container"
+     data-playground-ui-target="apiSelectContainer"
+     style="<%= provider_apis.size <= 1 ? 'display: none;' : '' %>">
+  <label for="model-api" class="form-label">API</label>
+  <select
+    id="model-api"
+    class="form-select"
+    data-playground-ui-target="modelApi"
+    data-playground-model-config-target="api"
+    data-action="change->playground-ui#onApiChange"
+  >
+    <% provider_apis.each do |api| %>
+      <option value="<%= api[:key] %>"
+              <%= 'selected' if config_data[:current_api] == api[:key].to_s %>
+              data-description="<%= api[:description] %>"
+              data-capabilities="<%= api[:capabilities].to_json %>">
+        <%= api[:name] %>
+      </option>
+    <% end %>
+  </select>
+  <div class="form-text" data-playground-ui-target="apiDescription">
+    <%= config_data[:current_api_config]&.dig(:description) || "Select an API endpoint" %>
+  </div>
+</div>

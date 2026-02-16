@@ -24,7 +24,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class ExactMatchEvaluator < BaseNormalizedEvaluator
+    class ExactMatchEvaluator < BaseEvaluator
       DEFAULT_CONFIG = {
         expected_text: "",      # The exact text to match
         case_sensitive: false,  # Whether matching is case-sensitive

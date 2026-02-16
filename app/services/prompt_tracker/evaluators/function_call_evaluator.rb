@@ -20,7 +20,7 @@ module PromptTracker
     #     require_all: false  # Pass if ANY function is called
     #   })
     #
-    class FunctionCallEvaluator < BaseNormalizedEvaluator
+    class FunctionCallEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         expected_functions: [],      # Array of function names that should be called

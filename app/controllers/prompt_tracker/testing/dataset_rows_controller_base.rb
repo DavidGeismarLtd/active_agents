@@ -11,7 +11,6 @@ module PromptTracker
     #
     # Supported testable types:
     # - PromptTracker::PromptVersion (via DatasetRowsController)
-    # - PromptTracker::Openai::Assistant (via Openai::DatasetRowsController)
     #
     class DatasetRowsControllerBase < ApplicationController
       include DatasetsHelper
@@ -29,9 +28,6 @@ module PromptTracker
           prompt_version = @dataset.testable
           prompt = prompt_version.prompt
           update_path = PromptTracker::Engine.routes.url_helpers.testing_prompt_prompt_version_dataset_dataset_row_path(prompt, prompt_version, @dataset, @row)
-        elsif @dataset.testable.is_a?(PromptTracker::Openai::Assistant)
-          assistant = @dataset.testable
-          update_path = PromptTracker::Engine.routes.url_helpers.testing_openai_assistant_dataset_dataset_row_path(assistant, @dataset, @row)
         end
 
         render partial: "prompt_tracker/testing/datasets/edit_row_modal",

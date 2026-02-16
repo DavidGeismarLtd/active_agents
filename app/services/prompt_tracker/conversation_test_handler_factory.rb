@@ -77,21 +77,24 @@ module PromptTracker
         case api_type
         when :openai_responses
           # OpenAI Response API has special stateful conversation handling
-          TestRunners::Openai::ResponseApiHandler
+          TestRunners::Openai::Responses::SimulatedConversationRunner
+        when :openai_assistants
+          # OpenAI Assistants API uses thread-based conversation management
+          TestRunners::Openai::Assistants::SimulatedConversationRunner
         when :openai_chat_completions
           # OpenAI Chat Completions API
-          TestRunners::Openai::ChatCompletionHandler
+          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
         when :anthropic_messages
           # Anthropic uses the same completion pattern as OpenAI
-          # For now, use the ChatCompletionHandler (could be split later if needed)
-          TestRunners::Openai::ChatCompletionHandler
+          # For now, use the ChatCompletions runner (could be split later if needed)
+          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
         when :google_gemini
           # Google Gemini uses the same completion pattern
-          TestRunners::Openai::ChatCompletionHandler
+          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
         else
-          # Fallback to ChatCompletionHandler for unknown API types
+          # Fallback to ChatCompletions runner for unknown API types
           # This handles any custom or future API types that follow the chat completion pattern
-          TestRunners::Openai::ChatCompletionHandler
+          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
         end
       end
     end

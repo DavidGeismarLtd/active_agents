@@ -1,0 +1,32 @@
+<%# System Prompt Editor Partial %>
+<div class="mb-3"
+     data-playground-ui-target="systemPromptSection"
+     style="<%= playground_ui.include?(:system_prompt) ? '' : 'display: none;' %>">
+  <label for="system-prompt-editor" class="form-label">
+    System Prompt
+    <% if playground_ui.include?(:user_prompt_template) %>
+      <span class="badge bg-secondary">Optional</span>
+    <% else %>
+      <span class="badge bg-info">Instructions</span>
+    <% end %>
+  </label>
+  <div class="highlighted-editor-wrapper" data-controller="syntax-highlighter">
+    <div class="highlight-layer" data-syntax-highlighter-target="highlight"></div>
+    <textarea
+      id="system-prompt-editor"
+      class="form-control font-monospace"
+      rows="<%= playground_ui.include?(:user_prompt_template) ? '4' : '12' %>"
+      placeholder="<% if playground_ui.include?(:user_prompt_template) %>Set the AI's role, behavior, and constraints...&#10;&#10;Example: You are a helpful customer support agent. Be professional, empathetic, and concise.<% else %>Define the assistant's instructions, role, and behavior...&#10;&#10;This is the main instruction field that guides the assistant's responses.<% end %>"
+      data-playground-prompt-editor-target="systemPromptEditor"
+      data-syntax-highlighter-target="textarea"
+      data-action="input->playground-prompt-editor#onSystemPromptInput input->syntax-highlighter#onInput"
+    ><%= version&.system_prompt %></textarea>
+  </div>
+  <div class="form-text">
+    <% if playground_ui.include?(:user_prompt_template) %>
+      Defines the AI's role and behavior. This is sent to the LLM as the system message.
+    <% else %>
+      Main instructions for the assistant. This defines how the assistant should behave and respond.
+    <% end %>
+  </div>
+</div>

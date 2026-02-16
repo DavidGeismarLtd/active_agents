@@ -91,10 +91,11 @@ module PromptTracker
           end
         end
 
-        context "with assistant testable" do
-          let(:assistant) { create(:openai_assistant) }
-          let(:assistant_test) { create(:test, testable: assistant) }
-          let(:assistant_dataset) { create(:dataset, testable: assistant) }
+        context "with assistant testable (PromptVersion with assistants API)" do
+          let(:assistant_prompt) { create(:prompt) }
+          let(:assistant_version) { create(:prompt_version, :with_assistants, prompt: assistant_prompt) }
+          let(:assistant_test) { create(:test, testable: assistant_version) }
+          let(:assistant_dataset) { create(:dataset, testable: assistant_version) }
           let(:assistant_dataset_row) { create(:dataset_row, dataset: assistant_dataset) }
           let!(:test_run) do
             create(:test_run,
@@ -109,9 +110,9 @@ module PromptTracker
                    })
           end
 
-          it "redirects to the assistant show page" do
+          it "redirects to the prompt version show page" do
             post :rerun, params: { id: test_run.id }
-            expect(response).to redirect_to(testing_openai_assistant_path(assistant))
+            expect(response).to redirect_to(testing_prompt_prompt_version_path(assistant_prompt, assistant_version))
           end
         end
       end

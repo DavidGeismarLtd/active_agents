@@ -65,6 +65,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.jsonb :response_schema  # JSON Schema for structured output (OpenAI Structured Outputs)
       t.text :notes
       t.string :created_by
+      t.datetime :archived_at  # Soft delete timestamp
       t.timestamps
     end
 
@@ -72,25 +73,10 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_versions, [ :prompt_id, :status ], name: "index_prompt_versions_on_prompt_and_status"
     add_index :prompt_tracker_prompt_versions, [ :prompt_id, :version_number ], unique: true, name: "index_prompt_versions_on_prompt_and_version_number"
     add_index :prompt_tracker_prompt_versions, :status
+    add_index :prompt_tracker_prompt_versions, :archived_at
 
     # ============================================================================
-    # TABLE 3: openai_assistants
-    # OpenAI assistants for conversation testing
-    # ============================================================================
-    create_table :prompt_tracker_openai_assistants do |t|
-      t.string :assistant_id, null: false
-      t.string :name, null: false
-      t.text :description
-      t.string :category
-      t.jsonb :metadata, default: {}, null: false
-      t.timestamps
-    end
-
-    add_index :prompt_tracker_openai_assistants, :assistant_id, unique: true
-    add_index :prompt_tracker_openai_assistants, :category
-
-    # ============================================================================
-    # TABLE 4: llm_responses
+    # TABLE 3: llm_responses
     # Responses from LLM API calls with metadata and performance metrics
     # ============================================================================
     create_table :prompt_tracker_llm_responses do |t|
@@ -154,7 +140,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_llm_responses, :previous_response_id
 
     # ============================================================================
-    # TABLE 5: evaluations
+    # TABLE 4: evaluations
     # Quality ratings for LLM responses (human, automated, or LLM-as-judge)
     # ============================================================================
     create_table :prompt_tracker_evaluations do |t|
@@ -215,7 +201,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_ab_tests, [ :prompt_id, :status ], name: "index_prompt_tracker_ab_tests_on_prompt_id_and_status"
 
     # ============================================================================
-    # TABLE 7: evaluator_configs
+    # TABLE 5: evaluator_configs
     # Configuration for automatic evaluators
     # ============================================================================
     create_table :prompt_tracker_evaluator_configs do |t|
@@ -236,7 +222,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_evaluator_configs, :depends_on
 
     # ============================================================================
-    # TABLE 8: tests (polymorphic - for prompts and assistants)
+    # TABLE 6: tests (polymorphic - for prompts and assistants)
     # Test cases for validating prompt/assistant behavior
     # ============================================================================
     create_table :prompt_tracker_tests do |t|
@@ -259,7 +245,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_tests, :tags, using: :gin
 
     # ============================================================================
-    # TABLE 9: prompt_test_suites
+    # TABLE 7: prompt_test_suites
     # Collections of related tests
     # ============================================================================
     create_table :prompt_tracker_prompt_test_suites do |t|
@@ -278,7 +264,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_test_suites, :tags, using: :gin
 
     # ============================================================================
-    # TABLE 10: test_runs
+    # TABLE 8: test_runs
     # Individual test execution results (for both prompts and assistants)
     # ============================================================================
     create_table :prompt_tracker_test_runs do |t|
@@ -311,7 +297,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_test_runs, :output_data, using: :gin
 
     # ============================================================================
-    # TABLE 11: prompt_test_suite_runs
+    # TABLE 9: prompt_test_suite_runs
     # Test suite execution results
     # ============================================================================
     create_table :prompt_tracker_prompt_test_suite_runs do |t|
@@ -335,7 +321,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_prompt_test_suite_runs, [ :prompt_test_suite_id, :created_at ], name: "idx_on_prompt_test_suite_id_created_at_00b03ff2b9"
 
     # ============================================================================
-    # TABLE 12: traces
+    # TABLE 10: traces
     # Distributed tracing for LLM calls
     # ============================================================================
     create_table :prompt_tracker_traces do |t|
@@ -358,7 +344,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_traces, [ :status, :created_at ], name: "index_prompt_tracker_traces_on_status_and_created_at"
 
     # ============================================================================
-    # TABLE 13: spans
+    # TABLE 11: spans
     # Individual spans within traces
     # ============================================================================
     create_table :prompt_tracker_spans do |t|
@@ -382,7 +368,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_spans, [ :status, :created_at ], name: "index_prompt_tracker_spans_on_status_and_created_at"
 
     # ============================================================================
-    # TABLE 14: datasets (polymorphic - for prompts and assistants)
+    # TABLE 12: datasets (polymorphic - for prompts and assistants)
     # Reusable test data collections
     # ============================================================================
     create_table :prompt_tracker_datasets do |t|
@@ -407,7 +393,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_datasets, :dataset_type
 
     # ============================================================================
-    # TABLE 15: dataset_rows
+    # TABLE 13: dataset_rows
     # Individual rows of test data
     # ============================================================================
     create_table :prompt_tracker_dataset_rows do |t|
@@ -423,7 +409,7 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_index :prompt_tracker_dataset_rows, :source
 
     # ============================================================================
-    # TABLE 16: human_evaluations
+    # TABLE 14: human_evaluations
     # Human review of evaluations or responses
     # ============================================================================
     create_table :prompt_tracker_human_evaluations do |t|

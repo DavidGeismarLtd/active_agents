@@ -1,8 +1,10 @@
 <%
   # Get the testable from the test
   testable = test.testable
-  is_assistant = testable.is_a?(PromptTracker::Openai::Assistant)
-  custom_context = is_assistant ? "Enter values for the test scenario:" : "Enter values for the prompt variables:"
+  # Check if this is a conversational API (assistants or responses)
+  api = testable.model_config&.dig(:api) || testable.model_config&.dig("api")
+  is_conversational = %w[assistants responses].include?(api)
+  custom_context = is_conversational ? "Enter values for the test scenario:" : "Enter values for the prompt variables:"
 %>
 <td data-column="actions">
   <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#edit-test-modal-<%= test.id %>">

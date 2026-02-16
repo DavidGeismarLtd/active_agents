@@ -22,7 +22,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class PatternMatchEvaluator < BaseNormalizedEvaluator
+    class PatternMatchEvaluator < BaseEvaluator
       DEFAULT_CONFIG = {
         patterns: [],      # Array of regex pattern strings (e.g., ["/Hello/", "/world/i"])
         match_all: true    # true = all must match, false = any must match

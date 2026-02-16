@@ -5,7 +5,7 @@ require 'rails_helper'
 module PromptTracker
   RSpec.describe OpenaiAssistantService do
     let(:assistant_id) { "asst_abc123" }
-    let(:prompt) { "What's the weather in Berlin?" }
+    let(:user_message) { "What's the weather in Berlin?" }
     let(:thread_id) { "thread_xyz789" }
     let(:run_id) { "run_123456" }
     let(:mock_client) { instance_double(OpenAI::Client) }
@@ -32,7 +32,7 @@ module PromptTracker
               'data' => [
                 {
                   'content' => [
-                    { 'text' => { 'value' => 'The weather in Berlin is sunny.' } }
+                    { 'text' => { 'value' => 'The weather in Berlin is sunny.', 'annotations' => [] } }
                   ]
                 }
               ]
@@ -56,9 +56,14 @@ module PromptTracker
           )
         )
 
+        # Mock run steps (for file_search extraction)
+        allow(mock_client).to receive(:run_steps).and_return(
+          double(list: { 'data' => [] })
+        )
+
         response = described_class.call(
           assistant_id: assistant_id,
-          prompt: prompt
+          user_message: user_message
         )
 
         expect(response[:text]).to eq('The weather in Berlin is sunny.')
@@ -66,15 +71,17 @@ module PromptTracker
         expect(response[:usage][:completion_tokens]).to eq(20)
         expect(response[:usage][:total_tokens]).to eq(30)
         expect(response[:model]).to eq(assistant_id)
-        expect(response[:raw][:thread_id]).to eq(thread_id)
-        expect(response[:raw][:run_id]).to eq(run_id)
+        expect(response.thread_id).to eq(thread_id)
+        expect(response.run_id).to eq(run_id)
+        expect(response[:raw_response][:thread_id]).to eq(thread_id)
+        expect(response[:raw_response][:run_id]).to eq(run_id)
       end
 
       it 'raises error when API key is missing' do
         allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return(nil)
 
         expect {
-          described_class.call(assistant_id: assistant_id, prompt: prompt)
+          described_class.call(assistant_id: assistant_id, user_message: user_message)
         }.to raise_error(OpenaiAssistantService::AssistantError, /OpenAI API key not configured/)
       end
 
@@ -99,7 +106,7 @@ module PromptTracker
         )
 
         expect {
-          described_class.call(assistant_id: assistant_id, prompt: prompt)
+          described_class.call(assistant_id: assistant_id, user_message: user_message)
         }.to raise_error(OpenaiAssistantService::AssistantError, /failed/)
       end
 
@@ -125,7 +132,7 @@ module PromptTracker
 
         # Use very short timeout for test
         expect {
-          described_class.call(assistant_id: assistant_id, prompt: prompt, timeout: 1)
+          described_class.call(assistant_id: assistant_id, user_message: user_message, timeout: 1)
         }.to raise_error(OpenaiAssistantService::AssistantError, /timed out/)
       end
 
@@ -149,7 +156,7 @@ module PromptTracker
         )
 
         expect {
-          described_class.call(assistant_id: assistant_id, prompt: prompt)
+          described_class.call(assistant_id: assistant_id, user_message: user_message)
         }.to raise_error(OpenaiAssistantService::AssistantError, /requires action/)
       end
     end

@@ -1,0 +1,31 @@
+<%# Variable Definition Panel %>
+<div id="variables-panel" class="card mb-3" data-controller="playground-variables">
+  <div class="card-header">
+    <h5 class="mb-0">
+      <i class="bi bi-input-cursor-text"></i>
+      Variables
+    </h5>
+  </div>
+  <div class="card-body">
+    <div id="variables-container" data-playground-variables-target="container">
+      <% if sample_variables.any? %>
+        <% sample_variables.each do |name, value| %>
+          <div class="mb-3">
+            <label for="var-<%= name %>" class="form-label"><code><%= name %></code></label>
+            <input
+              type="text"
+              class="form-control variable-input"
+              id="var-<%= name %>"
+              data-variable="<%= name %>"
+              value="<%= value %>"
+              placeholder="Enter value for <%= name %>"
+              data-action="input->playground-variables#onVariableInput"
+            >
+          </div>
+        <% end %>
+      <% else %>
+        <p class="text-muted">No variables detected. Use {{ variable_name }} syntax.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

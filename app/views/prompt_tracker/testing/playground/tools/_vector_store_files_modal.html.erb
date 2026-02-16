@@ -1,0 +1,46 @@
+<%#
+  Vector Store Files Modal
+  Displays files contained in a vector store
+
+  No local variables needed - uses Stimulus controller targets
+%>
+
+<div class="modal fade"
+     id="vectorStoreFilesModal"
+     tabindex="-1"
+     data-playground-file-search-target="vectorStoreFilesModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-file-earmark-text me-2"></i>
+          <span data-playground-file-search-target="vectorStoreFilesModalTitle">Vector Store Files</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Loading state -->
+        <div class="text-center py-4 d-none" data-playground-file-search-target="vectorStoreFilesLoading">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2 text-muted">Loading files...</p>
+        </div>
+
+        <!-- Error state -->
+        <div class="alert alert-danger d-none" data-playground-file-search-target="vectorStoreFilesError">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          <span data-playground-file-search-target="vectorStoreFilesErrorText"></span>
+        </div>
+
+        <!-- Files list -->
+        <div data-playground-file-search-target="vectorStoreFilesList">
+          <!-- Files will be populated here via JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

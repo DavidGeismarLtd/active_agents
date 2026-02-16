@@ -21,7 +21,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LlmJudgeEvaluator < BaseNormalizedEvaluator
+    class LlmJudgeEvaluator < BaseEvaluator
       # Default configuration
       # Note: Using gpt-4o because it supports structured outputs
       # gpt-4 (non-turbo) does NOT support structured outputs

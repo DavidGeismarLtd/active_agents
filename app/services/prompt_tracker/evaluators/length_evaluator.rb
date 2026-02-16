@@ -18,7 +18,7 @@ module PromptTracker
     #   })
     #   evaluation = evaluator.evaluate
     #
-    class LengthEvaluator < BaseNormalizedEvaluator
+    class LengthEvaluator < BaseEvaluator
       # Default configuration
       DEFAULT_CONFIG = {
         min_length: 10,      # Minimum acceptable length

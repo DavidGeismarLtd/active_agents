@@ -105,9 +105,10 @@ RSpec.describe PromptTracker::EvaluatorConfig, type: :model do
           expect(config).to be_valid
         end
 
-        it "allows Assistant evaluators for Assistant tests" do
-          assistant = create(:openai_assistant)
-          test = create(:test, testable: assistant)
+        it "allows Assistant evaluators for PromptVersion with Assistants API tests" do
+          prompt = create(:prompt)
+          assistant_version = create(:prompt_version, :with_assistants, prompt: prompt)
+          test = create(:test, testable: assistant_version)
 
           config = test.evaluator_configs.build(
             evaluator_type: "PromptTracker::Evaluators::ConversationJudgeEvaluator"
@@ -116,11 +117,12 @@ RSpec.describe PromptTracker::EvaluatorConfig, type: :model do
           expect(config).to be_valid
         end
 
-        it "allows normalized evaluators for Assistant tests" do
+        it "allows normalized evaluators for PromptVersion with Assistants API tests" do
           # After the evaluator refactoring, all BaseNormalizedEvaluator subclasses
-          # (including LengthEvaluator) are compatible with both PromptVersion and Assistant
-          assistant = create(:openai_assistant)
-          test = create(:test, testable: assistant)
+          # (including LengthEvaluator) are compatible with PromptVersion (including assistants)
+          prompt = create(:prompt)
+          assistant_version = create(:prompt_version, :with_assistants, prompt: prompt)
+          test = create(:test, testable: assistant_version)
 
           config = test.evaluator_configs.build(
             evaluator_type: "PromptTracker::Evaluators::LengthEvaluator"

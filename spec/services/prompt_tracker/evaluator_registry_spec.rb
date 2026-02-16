@@ -53,15 +53,16 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
       expect(evaluators.keys).to include(:conversation_judge)
     end
 
-    it "returns only evaluators compatible with Assistant" do
-      assistant = create(:openai_assistant)
+    it "returns only evaluators compatible with PromptVersion using Assistants API" do
+      prompt = create(:prompt)
+      assistant_version = create(:prompt_version, :with_assistants, prompt: prompt)
 
-      evaluators = described_class.for_testable(assistant)
+      evaluators = described_class.for_testable(assistant_version)
 
       expect(evaluators).to be_a(Hash)
-      # Assistants are compatible with conversational evaluators
+      # Assistants API is compatible with conversational evaluators
       expect(evaluators.keys).to include(:conversation_judge)
-      # Single-response evaluators are NOT compatible with Assistants
+      # Single-response evaluators are NOT compatible with Assistants API
       expect(evaluators.keys).not_to include(:length, :keyword, :format, :llm_judge, :exact_match, :pattern_match)
     end
 
@@ -239,36 +240,6 @@ RSpec.describe PromptTracker::EvaluatorRegistry do
 
       expect(evaluators).to be_a(Hash)
       expect(evaluators.keys).to include(:conversation_judge)
-    end
-  end
-
-  describe ".normalizer_for" do
-    it "returns ChatCompletionNormalizer for openai_chat_completions" do
-      normalizer = described_class.normalizer_for(:openai_chat_completions)
-
-      expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::ChatCompletionNormalizer)
-    end
-
-    it "returns ResponseApiNormalizer for openai_responses" do
-      normalizer = described_class.normalizer_for(:openai_responses)
-
-      expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::ResponseApiNormalizer)
-    end
-
-    it "returns AssistantsApiNormalizer for openai_assistants" do
-      normalizer = described_class.normalizer_for(:openai_assistants)
-
-      expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::AssistantsApiNormalizer)
-    end
-
-    it "returns AnthropicNormalizer for anthropic_messages" do
-      normalizer = described_class.normalizer_for(:anthropic_messages)
-
-      expect(normalizer).to be_a(PromptTracker::Evaluators::Normalizers::AnthropicNormalizer)
-    end
-
-    it "raises ArgumentError for unknown API type" do
-      expect { described_class.normalizer_for(:unknown_api) }.to raise_error(ArgumentError)
     end
   end
 end

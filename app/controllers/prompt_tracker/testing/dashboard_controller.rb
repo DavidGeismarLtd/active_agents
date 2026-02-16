@@ -27,15 +27,9 @@ module PromptTracker
           @prompts = []
         end
 
-        # Load assistants with their tests
-        if @filter.in?([ "all", "assistants" ])
-          @assistants = PromptTracker::Openai::Assistant.includes(
-            :tests,
-            { tests: :test_runs }
-          ).order(created_at: :desc)
-        else
-          @assistants = []
-        end
+        # Assistants are now PromptVersions with api: "assistants"
+        # No separate assistant list needed
+        @assistants = []
 
         # Calculate statistics
         calculate_statistics
@@ -44,11 +38,16 @@ module PromptTracker
       # POST /testing/sync_openai_assistants
       # Sync all assistants from OpenAI API
       def sync_openai_assistants
-        result = SyncOpenaiAssistantsService.call
+        result = SyncOpenaiAssistantsToPromptVersionsService.new.call
 
-        redirect_to testing_root_path(filter: "assistants"),
-                    notice: "Synced #{result[:total]} assistants from OpenAI (#{result[:created]} created, #{result[:updated]} updated)."
-      rescue SyncOpenaiAssistantsService::SyncError => e
+        if result[:success]
+          redirect_to testing_root_path,
+                      notice: "Synced #{result[:created_count]} assistants from OpenAI."
+        else
+          redirect_to testing_root_path,
+                      alert: "Failed to sync assistants: #{result[:errors].join(', ')}"
+        end
+      rescue SyncOpenaiAssistantsToPromptVersionsService::SyncError => e
         redirect_to testing_root_path,
                     alert: "Failed to sync assistants: #{e.message}"
       end
@@ -70,7 +69,7 @@ module PromptTracker
 
         # Count by testable type
         @prompt_count = Prompt.count
-        @assistant_count = PromptTracker::Openai::Assistant.count
+        @assistant_count = 0 # Assistants are now PromptVersions
       end
     end
   end

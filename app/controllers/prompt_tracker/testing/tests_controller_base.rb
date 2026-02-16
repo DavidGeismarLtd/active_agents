@@ -12,7 +12,6 @@ module PromptTracker
     #
     # Supported testable types:
     # - PromptTracker::PromptVersion
-    # - PromptTracker::Openai::Assistant
     #
     class TestsControllerBase < ApplicationController
       before_action :set_testable
@@ -70,7 +69,15 @@ module PromptTracker
             end
           end
         else
-          render :new, status: :unprocessable_entity
+          respond_to do |format|
+            format.html do
+              redirect_to testable_path,
+                          alert: "Failed to create test: #{@test.errors.full_messages.join(', ')}"
+            end
+            format.turbo_stream do
+              render :create, status: :unprocessable_entity
+            end
+          end
         end
       end
 
@@ -231,14 +238,6 @@ module PromptTracker
         # @param execution_mode [String, Symbol] "single" or "conversation"
         # @return [Array<String>] required variable names
         def required_custom_run_variables(execution_mode: "single")
-          # Assistants always operate in conversational mode and re-use dataset
-          # conversational fields for both datasets and custom runs.
-          if @testable.is_a?(PromptTracker::Openai::Assistant)
-            return Dataset::CONVERSATIONAL_FIELDS
-              .select { |v| v["required"] }
-              .map { |v| v["name"] }
-          end
-
           # PromptVersions: start from their own variables_schema
           base_required = (@testable.variables_schema || [])
             .select { |v| v["required"] }
