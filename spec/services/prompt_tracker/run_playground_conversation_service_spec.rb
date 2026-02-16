@@ -167,4 +167,3 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
     end
   end
 end
-
