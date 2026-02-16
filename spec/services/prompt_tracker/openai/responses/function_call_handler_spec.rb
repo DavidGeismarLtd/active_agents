@@ -3,8 +3,8 @@
 require "rails_helper"
 
 module PromptTracker
-  module TestRunners
-    module Helpers
+  module Openai
+    module Responses
       RSpec.describe FunctionCallHandler, type: :service do
         let(:model) { "gpt-4o" }
         let(:tools) { [ :web_search, :functions ] }
@@ -80,20 +80,26 @@ module PromptTracker
               expect(result[:all_responses].length).to eq(2)
             end
 
-            it "calls API with function outputs" do
+            it "calls API with paired function_call and function_call_output items" do
               handler.process_with_function_handling(
                 initial_response: initial_response,
                 previous_response_id: "resp_000",
                 turn: 1
               )
 
+              # The Responses API requires BOTH the original function_call AND the function_call_output
               expect(handler).to have_received(:call_api_with_function_outputs).with(
-                array_including(
+                [
+                  hash_including(
+                    type: "function_call",
+                    call_id: "call_1",
+                    name: "get_weather"
+                  ),
                   hash_including(
                     type: "function_call_output",
                     call_id: "call_1"
                   )
-                ),
+                ],
                 "resp_123"
               )
             end
@@ -127,7 +133,7 @@ module PromptTracker
               # Should have initial response + MAX_ITERATIONS additional responses
               expect(result[:all_responses].length).to eq(described_class::MAX_ITERATIONS + 1)
               expect(Rails.logger).to have_received(:warn).with(
-                /Function call iteration limit.*reached/
+                /\[FunctionCallHandler\].*Iteration limit.*reached/
               )
             end
 
@@ -183,112 +189,131 @@ module PromptTracker
           end
         end
 
-        describe "#execute_function_call" do
-          context "when custom mock_function_outputs is provided" do
-            let(:mock_function_outputs) do
-              {
-                "get_weather" => '{"location":"New York, NY","temperature":72,"condition":"Sunny","humidity":45}',
-                "search_flights" => '{"flights":[{"airline":"AA","price":299},{"airline":"UA","price":315}]}'
-              }
-            end
+        describe "delegation to FunctionInputBuilder" do
+          # These tests verify that the handler correctly integrates with FunctionInputBuilder
+          # Detailed tests for input building are in function_input_builder_spec.rb
 
-            let(:handler_with_mocks) do
-              described_class.new(
-                model: model,
-                tools: tools,
-                tool_config: tool_config,
-                use_real_llm: use_real_llm,
-                mock_function_outputs: mock_function_outputs
-              )
-            end
+          it "uses FunctionInputBuilder to build continuation input" do
+            initial_response = {
+              text: "",
+              response_id: "resp_123",
+              usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+              tool_calls: [
+                { id: "call_1", function_name: "get_weather", arguments: { location: "NYC" } }
+              ]
+            }
 
-            it "uses custom mock for configured function" do
-              tool_call = {
-                id: "call_1",
-                function_name: "get_weather",
-                arguments: { location: "NYC" }
-              }
+            allow(handler).to receive(:call_api_with_function_outputs).and_return(
+              { text: "Done", response_id: "resp_124", usage: {}, tool_calls: [] }
+            )
 
-              result = handler_with_mocks.send(:execute_function_call, tool_call)
-              parsed_result = JSON.parse(result)
+            handler.process_with_function_handling(
+              initial_response: initial_response,
+              previous_response_id: "resp_000"
+            )
 
-              expect(parsed_result["location"]).to eq("New York, NY")
-              expect(parsed_result["temperature"]).to eq(72)
-              expect(parsed_result["condition"]).to eq("Sunny")
-            end
+            # Verify the input_builder was used correctly by checking the API call
+            expect(handler).to have_received(:call_api_with_function_outputs).with(
+              array_including(
+                hash_including(type: "function_call", name: "get_weather"),
+                hash_including(type: "function_call_output", call_id: "call_1")
+              ),
+              "resp_123"
+            )
+          end
+        end
 
-            it "uses custom mock for different function" do
-              tool_call = {
-                id: "call_2",
-                function_name: "search_flights",
-                arguments: { from: "NYC", to: "LAX" }
-              }
+        describe "custom mock_function_outputs integration" do
+          # These tests verify that custom mocks are passed through to the executor
+          # Detailed tests for function execution are in function_executor_spec.rb
 
-              result = handler_with_mocks.send(:execute_function_call, tool_call)
-              parsed_result = JSON.parse(result)
-
-              expect(parsed_result["flights"]).to be_an(Array)
-              expect(parsed_result["flights"].length).to eq(2)
-              expect(parsed_result["flights"][0]["airline"]).to eq("AA")
-            end
-
-            it "falls back to generic mock for unconfigured function" do
-              tool_call = {
-                id: "call_3",
-                function_name: "unknown_function",
-                arguments: { test: "data" }
-              }
-
-              result = handler_with_mocks.send(:execute_function_call, tool_call)
-              parsed_result = JSON.parse(result)
-
-              expect(parsed_result["success"]).to eq(true)
-              expect(parsed_result["message"]).to eq("Mock result for unknown_function")
-              expect(parsed_result["data"]).to eq({ "test" => "data" })
-            end
+          let(:mock_function_outputs) do
+            {
+              "get_weather" => { temperature: 72, condition: "Sunny" }
+            }
           end
 
-          context "when mock_function_outputs is nil" do
-            it "uses generic mock response" do
-              tool_call = {
-                id: "call_1",
-                function_name: "get_weather",
-                arguments: { location: "NYC" }
-              }
-
-              result = handler.send(:execute_function_call, tool_call)
-              parsed_result = JSON.parse(result)
-
-              expect(parsed_result["success"]).to eq(true)
-              expect(parsed_result["message"]).to eq("Mock result for get_weather")
-              expect(parsed_result["data"]).to eq({ "location" => "NYC" })
-            end
+          let(:handler_with_mocks) do
+            described_class.new(
+              model: model,
+              tools: tools,
+              tool_config: tool_config,
+              use_real_llm: use_real_llm,
+              mock_function_outputs: mock_function_outputs
+            )
           end
 
-          context "when mock_function_outputs is empty hash" do
-            let(:handler_with_empty_mocks) do
-              described_class.new(
-                model: model,
-                tools: tools,
-                tool_config: tool_config,
-                use_real_llm: use_real_llm,
-                mock_function_outputs: {}
-              )
+          it "uses custom mock outputs in the continuation input" do
+            initial_response = {
+              text: "",
+              response_id: "resp_123",
+              usage: {},
+              tool_calls: [
+                { id: "call_1", function_name: "get_weather", arguments: { location: "NYC" } }
+              ]
+            }
+
+            allow(handler_with_mocks).to receive(:call_api_with_function_outputs).and_return(
+              { text: "Done", response_id: "resp_124", usage: {}, tool_calls: [] }
+            )
+
+            handler_with_mocks.process_with_function_handling(
+              initial_response: initial_response,
+              previous_response_id: "resp_000"
+            )
+
+            # Verify the custom mock was used in the output
+            expect(handler_with_mocks).to have_received(:call_api_with_function_outputs) do |input_items, _|
+              output_item = input_items.find { |item| item[:type] == "function_call_output" }
+              parsed = JSON.parse(output_item[:output])
+              expect(parsed["temperature"]).to eq(72)
+              expect(parsed["condition"]).to eq("Sunny")
             end
+          end
+        end
 
-            it "falls back to generic mock" do
-              tool_call = {
-                id: "call_1",
-                function_name: "get_weather",
-                arguments: { location: "NYC" }
-              }
+        describe "logging" do
+          let(:initial_response) do
+            {
+              text: "",
+              response_id: "resp_123",
+              usage: {},
+              tool_calls: [
+                { id: "call_1", function_name: "get_weather", arguments: { location: "NYC" } }
+              ]
+            }
+          end
 
-              result = handler_with_empty_mocks.send(:execute_function_call, tool_call)
-              parsed_result = JSON.parse(result)
+          before do
+            allow(handler).to receive(:call_api_with_function_outputs).and_return(
+              { text: "Done", response_id: "resp_124", usage: {}, tool_calls: [] }
+            )
+            allow(Rails.logger).to receive(:debug).and_yield
+          end
 
-              expect(parsed_result["success"]).to eq(true)
-              expect(parsed_result["message"]).to eq("Mock result for get_weather")
-            end
+          it "logs function calls received" do
+            expect(Rails.logger).to receive(:debug) do |&block|
+              message = block.call
+              expect(message).to include("FunctionCallHandler")
+              expect(message).to include("get_weather")
+            end.at_least(:once)
+
+            handler.process_with_function_handling(
+              initial_response: initial_response,
+              previous_response_id: "resp_000"
+            )
+          end
+
+          it "logs continuation input" do
+            expect(Rails.logger).to receive(:debug) do |&block|
+              message = block.call
+              expect(message).to include("continuation request") if message.include?("continuation")
+            end.at_least(:once)
+
+            handler.process_with_function_handling(
+              initial_response: initial_response,
+              previous_response_id: "resp_000"
+            )
           end
         end
       end

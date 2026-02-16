@@ -87,18 +87,18 @@ module PromptTracker
         # Follow-up turn: use previous_response_id for context
         OpenaiResponseService.call_with_context(
           model: model_config[:model],
-          user_prompt: content,
+          input: content,
           previous_response_id: previous_response_id,
           tools: parse_tools,
           tool_config: model_config[:tool_config],
           temperature: model_config[:temperature]
         )
       else
-        # First turn: pass system_prompt and user message
+        # First turn: pass instructions and user message
         OpenaiResponseService.call(
           model: model_config[:model],
-          user_prompt: content,
-          system_prompt: rendered_system_prompt,
+          input: content,
+          instructions: rendered_system_prompt,
           tools: parse_tools,
           tool_config: model_config[:tool_config],
           temperature: model_config[:temperature]

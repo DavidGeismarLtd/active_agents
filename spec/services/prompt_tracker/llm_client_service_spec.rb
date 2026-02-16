@@ -64,8 +64,8 @@ module PromptTracker
 
           expect(OpenaiResponseService).to have_received(:call).with(
             model: model,
-            user_prompt: prompt,
-            system_prompt: nil,
+            input: prompt,
+            instructions: nil,
             tools: [ :web_search ],
             temperature: 0.7,
             max_tokens: nil

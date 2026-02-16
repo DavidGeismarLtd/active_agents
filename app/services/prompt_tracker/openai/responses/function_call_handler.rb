@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 module PromptTracker
-  module TestRunners
-    module Helpers
-      # Handles function call loops for OpenAI Response API.
+  module Openai
+    module Responses
+      # Handles function call loops for OpenAI Responses API.
       #
-      # The Response API may return function calls that need to be executed
+      # The Responses API may return function calls that need to be executed
       # and sent back before getting a final text response. This class manages
       # that iterative loop with safeguards against infinite loops.
+      #
+      # This class delegates to:
+      # - FunctionExecutor: executes individual function calls
+      # - FunctionInputBuilder: builds the input array for API continuation
       #
       # @example Handle function calls
       #   handler = FunctionCallHandler.new(
@@ -36,7 +40,7 @@ module PromptTracker
           @tools = tools
           @tool_config = tool_config
           @use_real_llm = use_real_llm
-          @mock_function_outputs = mock_function_outputs
+          @input_builder = build_input_builder(mock_function_outputs)
         end
 
         # Process an API response and handle any function calls
@@ -55,17 +59,21 @@ module PromptTracker
           while response[:tool_calls].present? && iteration_count < MAX_ITERATIONS
             iteration_count += 1
 
+            tool_calls = response[:tool_calls]
+            log_function_calls_received(tool_calls, iteration_count, turn)
+
             # Collect tool calls
-            all_tool_calls.concat(response[:tool_calls])
+            all_tool_calls.concat(tool_calls)
 
             # Update previous_response_id for next call
             previous_response_id = response[:response_id]
 
-            # Execute function calls and get outputs
-            function_outputs = build_function_outputs(response[:tool_calls])
+            # Build continuation input (executes functions and pairs calls with outputs)
+            input_items = @input_builder.build_continuation_input(tool_calls)
+            log_continuation_input(input_items, previous_response_id)
 
-            # Call API with function outputs
-            response = call_api_with_function_outputs(function_outputs, previous_response_id)
+            # Call API with paired function call/output items
+            response = call_api_with_function_outputs(input_items, previous_response_id)
             all_responses << response
           end
 
@@ -87,56 +95,26 @@ module PromptTracker
 
         private
 
-        # Build function call outputs from tool calls
+        # Build the input builder with a function executor
         #
-        # @param tool_calls [Array<Hash>] the tool calls to execute
-        # @return [Array<Hash>] function call outputs
-        def build_function_outputs(tool_calls)
-          tool_calls.map do |tool_call|
-            {
-              type: "function_call_output",
-              call_id: tool_call[:id],
-              output: execute_function_call(tool_call)
-            }
-          end
+        # @param mock_function_outputs [Hash, nil] custom mock responses
+        # @return [FunctionInputBuilder]
+        def build_input_builder(mock_function_outputs)
+          executor = FunctionExecutor.new(mock_function_outputs: mock_function_outputs)
+          FunctionInputBuilder.new(executor: executor)
         end
 
-        # Execute a function call (mock implementation)
+        # Call the Response API with function call/output pairs
         #
-        # @param tool_call [Hash] the function call details
-        # @return [String] function execution result (JSON string)
-        def execute_function_call(tool_call)
-          function_name = tool_call[:function_name]
-          arguments = tool_call[:arguments]
-
-          # Check if custom mock is configured for this function
-          custom_mock = @mock_function_outputs&.dig(function_name)
-
-          if custom_mock
-            # Use custom mock response
-            # Convert to JSON string if it's a Hash, otherwise use as-is (already a string)
-            custom_mock.is_a?(Hash) ? custom_mock.to_json : custom_mock
-          else
-            # Fall back to generic mock
-            {
-              success: true,
-              message: "Mock result for #{function_name}",
-              data: arguments
-            }.to_json
-          end
-        end
-
-        # Call the Response API with function outputs
-        #
-        # @param function_outputs [Array<Hash>] function call outputs
+        # @param input_items [Array<Hash>] paired function_call + function_call_output items
         # @param previous_response_id [String] the response ID to continue from
         # @return [Hash] API response
-        def call_api_with_function_outputs(function_outputs, previous_response_id)
+        def call_api_with_function_outputs(input_items, previous_response_id)
           return mock_response unless @use_real_llm
 
           OpenaiResponseService.call_with_context(
             model: @model,
-            user_prompt: function_outputs,
+            input: input_items,
             previous_response_id: previous_response_id,
             tools: @tools.map(&:to_sym),
             tool_config: @tool_config
@@ -160,6 +138,46 @@ module PromptTracker
           )
         end
 
+        # Log received function calls for debugging
+        #
+        # @param tool_calls [Array<Hash>] the tool calls received
+        # @param iteration [Integer] current iteration number
+        # @param turn [Integer] current turn number
+        def log_function_calls_received(tool_calls, iteration, turn)
+          Rails.logger.debug do
+            function_names = tool_calls.map { |tc| tc[:function_name] }.join(", ")
+            "[FunctionCallHandler] Turn #{turn}, Iteration #{iteration}: " \
+              "Received #{tool_calls.size} function call(s): #{function_names}"
+          end
+        end
+
+        # Log the continuation input being sent to the API
+        #
+        # @param input_items [Array<Hash>] the paired input items
+        # @param previous_response_id [String] the response ID
+        def log_continuation_input(input_items, previous_response_id)
+          Rails.logger.debug do
+            "[FunctionCallHandler] Sending continuation request:\n" \
+              "  previous_response_id: #{previous_response_id}\n" \
+              "  input_items (#{input_items.size} items): #{format_input_items_for_log(input_items)}"
+          end
+        end
+
+        # Format input items for readable logging
+        #
+        # @param input_items [Array<Hash>] the input items
+        # @return [String] formatted string
+        def format_input_items_for_log(input_items)
+          input_items.map do |item|
+            if item[:type] == "function_call"
+              "function_call(#{item[:name]}, call_id: #{item[:call_id]})"
+            else
+              output_preview = item[:output].to_s.truncate(100)
+              "function_call_output(call_id: #{item[:call_id]}, output: #{output_preview})"
+            end
+          end.join(", ")
+        end
+
         # Log warning if iteration limit was reached
         #
         # @param iteration_count [Integer] number of iterations
@@ -169,7 +187,7 @@ module PromptTracker
           return unless iteration_count >= MAX_ITERATIONS && response[:tool_calls].present?
 
           Rails.logger.warn(
-            "Function call iteration limit (#{MAX_ITERATIONS}) reached for turn #{turn}. " \
+            "[FunctionCallHandler] Iteration limit (#{MAX_ITERATIONS}) reached for turn #{turn}. " \
             "Model may be stuck in a function calling loop."
           )
         end

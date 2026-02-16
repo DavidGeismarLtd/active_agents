@@ -53,7 +53,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
         expect(result.conversation_state[:previous_response_id]).to eq("resp_123")
       end
 
-      it "passes system_prompt separately for first message" do
+      it "passes instructions separately for first message" do
         described_class.call(
           content: content,
           system_prompt: system_prompt,
@@ -63,8 +63,8 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
 
         expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
           model: "gpt-4o",
-          user_prompt: content,
-          system_prompt: system_prompt,
+          input: content,
+          instructions: system_prompt,
           tools: [],
           tool_config: nil,
           temperature: 0.7
@@ -94,7 +94,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
 
         expect(PromptTracker::OpenaiResponseService).to have_received(:call_with_context).with(
           model: "gpt-4o",
-          user_prompt: content,
+          input: content,
           previous_response_id: "resp_previous",
           tools: [],
           tool_config: nil,

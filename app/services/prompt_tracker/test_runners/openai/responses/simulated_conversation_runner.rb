@@ -184,7 +184,7 @@ module PromptTracker
           if @previous_response_id
             OpenaiResponseService.call_with_context(
               model: model,
-              user_prompt: user_prompt,
+              input: user_prompt,
               previous_response_id: @previous_response_id,
               tools: tools.map(&:to_sym),
               tool_config: tool_config
@@ -192,8 +192,8 @@ module PromptTracker
           else
             OpenaiResponseService.call(
               model: model,
-              user_prompt: user_prompt,
-              system_prompt: system_prompt,
+              input: user_prompt,
+              instructions: system_prompt,
               tools: tools.map(&:to_sym),
               tool_config: tool_config,
               temperature: temperature
@@ -203,12 +203,12 @@ module PromptTracker
 
         # Generate a mock Response API response
         #
-        # @return [NormalizedResponse] mock response
+        # @return [PromptTracker::NormalizedLlmResponse] mock response
         def mock_response_api_response
           @mock_response_counter ||= 0
           @mock_response_counter += 1
 
-          NormalizedResponse.new(
+          PromptTracker::NormalizedLlmResponse.new(
             text: "Mock Response API response for testing (#{@mock_response_counter})",
             usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
             model: model,
@@ -237,9 +237,9 @@ module PromptTracker
 
         # Get the function call handler instance
         #
-        # @return [Helpers::FunctionCallHandler]
+        # @return [PromptTracker::Openai::Responses::FunctionCallHandler]
         def function_call_handler
-          @function_call_handler ||= Helpers::FunctionCallHandler.new(
+          @function_call_handler ||= PromptTracker::Openai::Responses::FunctionCallHandler.new(
             model: model,
             tools: tools,
             tool_config: tool_config,

@@ -181,8 +181,8 @@ module PromptTracker
       when :openai_responses
         OpenaiResponseService.call(
           model: model,
-          user_prompt: prompt,
-          system_prompt: options[:system_prompt],
+          input: prompt,
+          instructions: options[:system_prompt],
           tools: options[:tools] || [],
           temperature: temperature,
           max_tokens: max_tokens,

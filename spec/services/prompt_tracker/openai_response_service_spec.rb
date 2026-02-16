@@ -41,8 +41,8 @@ module PromptTracker
 
         response = described_class.call(
           model: model,
-          user_prompt: user_prompt,
-          system_prompt: system_prompt
+          input: user_prompt,
+          instructions: system_prompt
         )
 
         expect(response[:text]).to eq("I don't have access to real-time weather data.")
@@ -69,8 +69,8 @@ module PromptTracker
 
         described_class.call(
           model: model,
-          user_prompt: user_prompt,
-          system_prompt: system_prompt
+          input: user_prompt,
+          instructions: system_prompt
         )
       end
 
@@ -81,7 +81,7 @@ module PromptTracker
 
         described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           max_tokens: 100
         )
       end
@@ -90,14 +90,14 @@ module PromptTracker
         allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return(nil)
 
         expect {
-          described_class.call(model: model, user_prompt: user_prompt)
+          described_class.call(model: model, input: user_prompt)
         }.to raise_error(OpenaiResponseService::ResponseApiError, /OpenAI API key not configured/)
       end
 
       it "redacts sensitive data in error messages when API call fails" do
         # Create a long prompt and system instructions to test truncation
-        long_user_prompt = "A" * 200
-        long_system_prompt = "B" * 150
+        long_input = "A" * 200
+        long_instructions = "B" * 150
         function_tool = {
           type: "function",
           name: "get_weather",
@@ -119,19 +119,19 @@ module PromptTracker
         expect {
           described_class.call(
             model: model,
-            user_prompt: long_user_prompt,
-            system_prompt: long_system_prompt,
+            input: long_input,
+            instructions: long_instructions,
             tools: [ :web_search, function_tool ]
           )
         }.to raise_error(OpenaiResponseService::ResponseApiError) do |error|
           # Error message should contain the API error
           expect(error.message).to include("Invalid request")
 
-          # User prompt should be truncated
+          # Input should be truncated
           expect(error.message).to include("truncated, total length: 200")
           expect(error.message).not_to include("A" * 200)
 
-          # System prompt should be truncated
+          # Instructions should be truncated
           expect(error.message).to include("truncated, total length: 150")
           expect(error.message).not_to include("B" * 150)
 
@@ -195,7 +195,7 @@ module PromptTracker
 
         described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           tools: [ :web_search ]
         )
       end
@@ -205,7 +205,7 @@ module PromptTracker
 
         response = described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           tools: [ :web_search ]
         )
 
@@ -220,7 +220,7 @@ module PromptTracker
 
         response = described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           tools: [ :web_search ]
         )
 
@@ -246,7 +246,7 @@ module PromptTracker
 
         described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           tools: [ :web_search ],
           include: [ "some_other_field" ]
         )
@@ -261,7 +261,7 @@ module PromptTracker
 
         described_class.call(
           model: model,
-          user_prompt: user_prompt,
+          input: user_prompt,
           tools: [ :web_search ],
           include: [ "web_search_call.action.sources" ]  # Same as auto-added
         )
@@ -295,7 +295,7 @@ module PromptTracker
 
         described_class.call_with_context(
           model: model,
-          user_prompt: "What's my name?",
+          input: "What's my name?",
           previous_response_id: previous_response_id
         )
       end
@@ -305,7 +305,7 @@ module PromptTracker
 
         response = described_class.call_with_context(
           model: model,
-          user_prompt: "What's my name?",
+          input: "What's my name?",
           previous_response_id: previous_response_id
         )
 
@@ -355,7 +355,7 @@ module PromptTracker
 
         described_class.call_with_context(
           model: model,
-          user_prompt: "What's my name?",
+          input: "What's my name?",
           previous_response_id: previous_response_id,
           tools: [ :web_search, :functions ],
           tool_config: { "functions" => function_definitions },
@@ -381,7 +381,7 @@ module PromptTracker
           )
         ).and_return(api_response)
 
-        described_class.call(model: model, user_prompt: user_prompt, tools: [ :file_search ])
+        described_class.call(model: model, input: user_prompt, tools: [ :file_search ])
       end
 
       it "formats code_interpreter tool correctly" do
@@ -391,7 +391,7 @@ module PromptTracker
           )
         ).and_return(api_response)
 
-        described_class.call(model: model, user_prompt: user_prompt, tools: [ :code_interpreter ])
+        described_class.call(model: model, input: user_prompt, tools: [ :code_interpreter ])
       end
 
       it "passes through custom tool hashes" do
@@ -402,7 +402,7 @@ module PromptTracker
           )
         ).and_return(api_response)
 
-        described_class.call(model: model, user_prompt: user_prompt, tools: [ custom_tool ])
+        described_class.call(model: model, input: user_prompt, tools: [ custom_tool ])
       end
     end
   end
