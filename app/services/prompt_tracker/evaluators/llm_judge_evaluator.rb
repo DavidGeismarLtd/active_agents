@@ -155,8 +155,8 @@ module PromptTracker
       def parse_structured_response(content)
         return content.with_indifferent_access if content.is_a?(Hash)
 
-        # Use Anthropic parser for string responses (handles markdown code blocks)
-        Anthropic::Messages::StructuredOutputParser.parse(content)
+        # Parse string responses (handles markdown code blocks from some providers)
+        StructuredOutputParser.parse(content)
       end
 
       # Build RubyLLM schema for structured output
