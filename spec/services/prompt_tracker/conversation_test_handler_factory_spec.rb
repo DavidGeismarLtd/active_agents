@@ -53,13 +53,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletions::SimulatedConversationRunner" do
+        it "returns RubyLlm::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
+          expect(handler).to be_a(TestRunners::RubyLlm::SimulatedConversationRunner)
         end
       end
 
@@ -103,13 +103,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletions::SimulatedConversationRunner" do
+        it "returns RubyLlm::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
+          expect(handler).to be_a(TestRunners::RubyLlm::SimulatedConversationRunner)
         end
       end
 
@@ -122,13 +122,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletions::SimulatedConversationRunner" do
+        it "returns RubyLlm::SimulatedConversationRunner" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
+          expect(handler).to be_a(TestRunners::RubyLlm::SimulatedConversationRunner)
         end
       end
 
@@ -141,13 +141,13 @@ module PromptTracker
           }
         end
 
-        it "returns ChatCompletions::SimulatedConversationRunner as fallback" do
+        it "returns RubyLlm::SimulatedConversationRunner as fallback" do
           handler = described_class.build(
             model_config: model_config,
             use_real_llm: false
           )
 
-          expect(handler).to be_a(TestRunners::Openai::ChatCompletions::SimulatedConversationRunner)
+          expect(handler).to be_a(TestRunners::RubyLlm::SimulatedConversationRunner)
         end
       end
 

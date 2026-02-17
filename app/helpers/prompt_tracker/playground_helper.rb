@@ -31,7 +31,6 @@ module PromptTracker
     def available_tools_for_provider(provider: nil, api: nil)
       provider ||= current_provider
       api ||= current_api
-
       PromptTracker.configuration.tools_for_api(provider.to_sym, api.to_sym)
     end
 

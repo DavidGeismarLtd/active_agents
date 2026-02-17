@@ -67,6 +67,7 @@ module PromptTracker
             input: prompt,
             instructions: nil,
             tools: [ :web_search ],
+            tool_config: {},
             temperature: 0.7,
             max_tokens: nil
           )
@@ -126,85 +127,26 @@ module PromptTracker
           )
         end
       end
+      context "with standard chat API (routes to RubyLlmService)" do
+        let(:ruby_llm_response) do
+          PromptTracker::NormalizedLlmResponse.new(
+            text: "The capital of France is Paris.",
+            usage: { prompt_tokens: 10, completion_tokens: 8, total_tokens: 18 },
+            model: "gpt-4-0613",
+            tool_calls: [],
+            file_search_results: [],
+            web_search_results: [],
+            code_interpreter_results: [],
+            api_metadata: {},
+            raw_response: {}
+          )
+        end
 
+        before do
+          allow(RubyLlmService).to receive(:call).and_return(ruby_llm_response)
+        end
 
-
-
-
-      it "calls RubyLLM.chat with model only" do
-        described_class.call(
-          provider: provider,
-          api: "chat",
-          model: model,
-          prompt: prompt,
-          temperature: temperature
-        )
-
-        expect(RubyLLM).to have_received(:chat).with(model: model)
-      end
-
-      it "applies temperature using with_temperature" do
-        described_class.call(
-          provider: provider,
-          api: "chat",
-          model: model,
-          prompt: prompt,
-          temperature: temperature
-        )
-
-        expect(chat_double).to have_received(:with_temperature).with(temperature)
-      end
-
-      it "calls ask with the prompt" do
-        described_class.call(
-          provider: provider,
-          api: "chat",
-          model: model,
-          prompt: prompt,
-          temperature: temperature
-        )
-
-        expect(chat_with_temp_double).to have_received(:ask).with(prompt)
-      end
-
-      it "returns formatted response" do
-        result = described_class.call(
-          provider: provider,
-          api: "chat",
-          model: model,
-          prompt: prompt,
-          temperature: temperature
-        )
-
-        expect(result[:text]).to eq("The capital of France is Paris.")
-        expect(result[:usage][:prompt_tokens]).to eq(10)
-        expect(result[:usage][:completion_tokens]).to eq(8)
-        expect(result[:usage][:total_tokens]).to eq(18)
-        expect(result[:model]).to eq("gpt-4-0613")
-        expect(result[:raw_response]).to eq(response_double)
-      end
-
-      it "applies max_tokens using with_params" do
-        chat_with_params_double = double("RubyLLM::Chat with params")
-        allow(chat_with_temp_double).to receive(:with_params).and_yield({}).and_return(chat_with_params_double)
-        allow(chat_with_params_double).to receive(:ask).and_return(response_double)
-
-        described_class.call(
-          provider: provider,
-          api: "chat",
-          model: model,
-          prompt: prompt,
-          temperature: temperature,
-          max_tokens: 100
-        )
-
-        expect(chat_with_temp_double).to have_received(:with_params)
-      end
-
-      it "handles API errors by raising them" do
-        allow(chat_with_temp_double).to receive(:ask).and_raise(StandardError.new("Rate limit exceeded"))
-
-        expect do
+        it "routes to RubyLlmService" do
           described_class.call(
             provider: provider,
             api: "chat",
@@ -212,21 +154,115 @@ module PromptTracker
             prompt: prompt,
             temperature: temperature
           )
-        end.to raise_error(StandardError, /Rate limit exceeded/)
-      end
 
-      context "with Anthropic model" do
-        let(:model) { "claude-3-opus-20240229" }
+          expect(RubyLlmService).to have_received(:call).with(
+            model: model,
+            prompt: prompt,
+            system: nil,
+            tools: [],
+            tool_config: {},
+            mock_function_outputs: nil,
+            temperature: temperature,
+            max_tokens: nil
+          )
+        end
 
-        it "works with Claude models (RubyLLM auto-detects provider)" do
+        it "returns formatted response" do
+          result = described_class.call(
+            provider: provider,
+            api: "chat",
+            model: model,
+            prompt: prompt,
+            temperature: temperature
+          )
+
+          expect(result[:text]).to eq("The capital of France is Paris.")
+          expect(result[:usage][:prompt_tokens]).to eq(10)
+          expect(result[:usage][:completion_tokens]).to eq(8)
+          expect(result[:usage][:total_tokens]).to eq(18)
+          expect(result[:model]).to eq("gpt-4-0613")
+        end
+
+        it "passes tools and tool_config to RubyLlmService" do
+          tool_config = { "functions" => [ { "name" => "get_weather" } ] }
+
+          described_class.call(
+            provider: provider,
+            api: "chat",
+            model: model,
+            prompt: prompt,
+            tools: [ :functions ],
+            tool_config: tool_config
+          )
+
+          expect(RubyLlmService).to have_received(:call).with(
+            hash_including(
+              tools: [ :functions ],
+              tool_config: tool_config
+            )
+          )
+        end
+
+        it "passes system_prompt to RubyLlmService" do
+          described_class.call(
+            provider: provider,
+            api: "chat",
+            model: model,
+            prompt: prompt,
+            system_prompt: "You are a helpful assistant"
+          )
+
+          expect(RubyLlmService).to have_received(:call).with(
+            hash_including(system: "You are a helpful assistant")
+          )
+        end
+
+        it "handles API errors by raising them" do
+          allow(RubyLlmService).to receive(:call).and_raise(StandardError.new("Rate limit exceeded"))
+
           expect do
             described_class.call(
-              provider: "anthropic",  # Provider is ignored
+              provider: provider,
               api: "chat",
               model: model,
-              prompt: prompt
+              prompt: prompt,
+              temperature: temperature
             )
-          end.not_to raise_error
+          end.to raise_error(StandardError, /Rate limit exceeded/)
+        end
+      end
+
+      context "with Anthropic provider (routes to RubyLlmService)" do
+        let(:model) { "claude-3-opus-20240229" }
+        let(:ruby_llm_response) do
+          PromptTracker::NormalizedLlmResponse.new(
+            text: "Hello from Claude",
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+            model: model,
+            tool_calls: [],
+            file_search_results: [],
+            web_search_results: [],
+            code_interpreter_results: [],
+            api_metadata: {},
+            raw_response: {}
+          )
+        end
+
+        before do
+          allow(RubyLlmService).to receive(:call).and_return(ruby_llm_response)
+        end
+
+        it "routes Anthropic to RubyLlmService" do
+          described_class.call(
+            provider: "anthropic",
+            api: "messages",
+            model: model,
+            prompt: prompt
+          )
+
+          expect(RubyLlmService).to have_received(:call).with(
+            hash_including(model: model, prompt: prompt)
+          )
         end
       end
 

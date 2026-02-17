@@ -142,9 +142,9 @@ module PromptTracker
       # Generate a mock response for testing
       #
       # @param turn [Integer] the turn number
-      # @return [NormalizedResponse] mock LLM response
+      # @return [NormalizedLlmResponse] mock LLM response
       def mock_llm_response(turn: 1)
-        NormalizedResponse.new(
+        PromptTracker::NormalizedLlmResponse.new(
           text: "Mock LLM response for testing (turn #{turn})",
           usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
           model: model,

@@ -65,8 +65,8 @@ module PromptTracker
 
       # Determine handler class based on model config
       #
-      # Routes to provider-specific handlers based on the API type.
-      # All handlers are namespaced under TestRunners::{Provider}::
+      # Routes to specialized runners for OpenAI Responses/Assistants APIs.
+      # All other APIs use the unified RubyLLM runner.
       #
       # @param model_config [Hash] model configuration
       # @return [Class] handler class
@@ -81,20 +81,10 @@ module PromptTracker
         when :openai_assistants
           # OpenAI Assistants API uses thread-based conversation management
           TestRunners::Openai::Assistants::SimulatedConversationRunner
-        when :openai_chat_completions
-          # OpenAI Chat Completions API
-          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
-        when :anthropic_messages
-          # Anthropic uses the same completion pattern as OpenAI
-          # For now, use the ChatCompletions runner (could be split later if needed)
-          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
-        when :google_gemini
-          # Google Gemini uses the same completion pattern
-          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
         else
-          # Fallback to ChatCompletions runner for unknown API types
-          # This handles any custom or future API types that follow the chat completion pattern
-          TestRunners::Openai::ChatCompletions::SimulatedConversationRunner
+          # Unified runner for all RubyLLM-compatible providers
+          # This includes: OpenAI Chat Completions, Anthropic, Google, DeepSeek, etc.
+          TestRunners::RubyLlm::SimulatedConversationRunner
         end
       end
     end

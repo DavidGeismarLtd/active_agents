@@ -84,7 +84,11 @@ module PromptTracker
 
             break if user_message.nil?
 
-            messages << { "role" => "user", "content" => user_message, "turn" => turn }
+            messages << ConversationMessage.new(
+              role: "user",
+              content: user_message,
+              turn: turn
+            ).to_h
             conversation_history << { role: "user", content: user_message }
 
             # Get assistant response
@@ -94,17 +98,17 @@ module PromptTracker
             )
 
             # Build message with standardized structure matching NormalizedResponse
-            messages << {
-              "role" => "assistant",
-              "content" => response[:text],
-              "turn" => turn,
-              "usage" => response[:usage],
-              "tool_calls" => response[:tool_calls] || [],
-              "file_search_results" => response[:file_search_results] || [],
-              "web_search_results" => response[:web_search_results] || [],
-              "code_interpreter_results" => response[:code_interpreter_results] || [],
-              "api_metadata" => response[:api_metadata] || {}
-            }
+            messages << ConversationMessage.new(
+              role: "assistant",
+              content: response[:text],
+              turn: turn,
+              usage: response[:usage],
+              tool_calls: response[:tool_calls],
+              file_search_results: response[:file_search_results],
+              web_search_results: response[:web_search_results],
+              code_interpreter_results: response[:code_interpreter_results],
+              api_metadata: response[:api_metadata]
+            ).to_h
             conversation_history << { role: "assistant", content: response[:text] }
           end
 

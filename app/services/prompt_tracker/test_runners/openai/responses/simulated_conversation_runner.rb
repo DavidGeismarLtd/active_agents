@@ -90,7 +90,11 @@ module PromptTracker
 
             break if user_message.nil?
 
-            messages << { "role" => "user", "content" => user_message, "turn" => turn }
+            messages << ConversationMessage.new(
+              role: "user",
+              content: user_message,
+              turn: turn
+            ).to_h
 
             # Call Response API and handle function calls
             # The API may return function calls that need to be executed and sent back
@@ -112,17 +116,17 @@ module PromptTracker
             @all_responses.concat(all_responses)
 
             # Build message with standardized structure matching NormalizedResponse
-            messages << {
-              "role" => "assistant",
-              "content" => response[:text],
-              "turn" => turn,
-              "usage" => aggregated_usage,  # Use aggregated usage from ALL API calls in this turn
-              "tool_calls" => all_tool_calls,  # Include ALL tool calls from this turn
-              "file_search_results" => response[:file_search_results] || [],
-              "web_search_results" => response[:web_search_results] || [],
-              "code_interpreter_results" => response[:code_interpreter_results] || [],
-              "api_metadata" => response[:api_metadata] || {}
-            }
+            messages << ConversationMessage.new(
+              role: "assistant",
+              content: response[:text],
+              turn: turn,
+              usage: aggregated_usage,  # Use aggregated usage from ALL API calls in this turn
+              tool_calls: all_tool_calls,  # Include ALL tool calls from this turn
+              file_search_results: response[:file_search_results],
+              web_search_results: response[:web_search_results],
+              code_interpreter_results: response[:code_interpreter_results],
+              api_metadata: response[:api_metadata]
+            ).to_h
           end
 
           messages

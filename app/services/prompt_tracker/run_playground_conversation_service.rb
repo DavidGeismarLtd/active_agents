@@ -75,6 +75,8 @@ module PromptTracker
         execute_responses_api
       when :openai_assistants
         execute_assistants_api
+      when :anthropic_messages
+        execute_anthropic_messages
       else
         execute_chat_completion
       end
@@ -113,6 +115,19 @@ module PromptTracker
       )
     end
 
+    def execute_anthropic_messages
+      # Build messages array with conversation history
+      messages = build_anthropic_messages
+      AnthropicMessagesService.call(
+        model: model_config[:model],
+        messages: messages,
+        system: rendered_system_prompt,
+        tools: parse_tools,
+        tool_config: model_config[:tool_config],
+        temperature: model_config[:temperature]
+      )
+    end
+
     def execute_chat_completion
       # For chat completion APIs, build the full prompt with conversation history
       LlmClientService.call(
@@ -137,6 +152,27 @@ module PromptTracker
       parts << rendered_user_prompt_template if rendered_user_prompt_template.present?
       parts << content
       parts.join("\n\n")
+    end
+
+    # Build messages array for Anthropic Messages API
+    #
+    # Anthropic is stateless, so we must include the full conversation history.
+    # The messages array alternates between user and assistant roles.
+    #
+    # @return [Array<Hash>] messages array for Anthropic API
+    def build_anthropic_messages
+      messages = []
+
+      # Add previous conversation history from state
+      previous_messages = conversation_state[:messages] || []
+      previous_messages.each do |msg|
+        messages << { role: msg["role"] || msg[:role], content: msg["content"] || msg[:content] }
+      end
+
+      # Add current user message
+      messages << { role: "user", content: content }
+
+      messages
     end
 
     def rendered_user_prompt_template

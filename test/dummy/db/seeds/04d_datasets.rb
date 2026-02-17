@@ -868,5 +868,185 @@ ecommerce_conversational_dataset.dataset_rows.create!([
 
 puts "  ✓ Created e-commerce conversational dataset (3 rows)"
 
-puts "\n  ✅ Created 10 single-turn datasets (39 rows) and 4 conversational datasets (13 rows)"
-puts "  📊 Total: 14 datasets with 52 rows"
+# ============================================================================
+# 15. Tech Support Assistant Dataset (Anthropic + Functions)
+# ============================================================================
+
+tech_support_v1 = PromptTracker::PromptVersion.joins(:prompt)
+  .where(prompt_tracker_prompts: { name: "tech_support_assistant_claude" })
+  .where(status: "active")
+  .first!
+
+tech_support_dataset = PromptTracker::Dataset.create!(
+  testable: tech_support_v1,
+  name: "Tech Support Scenarios",
+  description: "Common technical support scenarios for testing Claude function calling"
+)
+
+tech_support_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "issue_description" => "Error code E1001 when trying to login to the billing system",
+      "mock_function_outputs" => {
+        "lookup_error_code" => '{"error_code": "E1001", "product": "billing_system", "description": "Authentication failure due to expired session token", "severity": "medium", "solutions": [{"step": 1, "action": "Clear browser cache and cookies"}, {"step": 2, "action": "Log out and log back in"}, {"step": 3, "action": "If issue persists, reset password"}], "known_issue": true, "affected_versions": ["2.1", "2.2"]}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "The payment processing service is down, customers can't complete purchases",
+      "mock_function_outputs" => {
+        "get_system_status" => '{"system_name": "payment_processing", "status": "degraded", "uptime_percentage": 94.5, "last_incident": "2026-02-17T08:30:00Z", "current_issues": [{"id": "INC-2345", "title": "Payment gateway timeout errors", "severity": "high", "started_at": "2026-02-17T08:30:00Z", "affected_services": ["checkout", "subscription_billing"]}], "recent_history": [{"date": "2026-02-16", "status": "operational"}, {"date": "2026-02-15", "status": "operational"}]}',
+        "create_support_ticket" => '{"ticket_id": "TKT-78901", "status": "created", "priority": "high", "assigned_to": "infrastructure-team", "estimated_response_time": "30 minutes", "created_at": "2026-02-17T09:15:00Z"}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "How do I configure two-factor authentication for my account?",
+      "mock_function_outputs" => {
+        "search_knowledge_base" => '{"results": [{"article_id": "KB-1234", "title": "Setting Up Two-Factor Authentication", "category": "security", "relevance_score": 0.95, "excerpt": "Two-factor authentication adds an extra layer of security to your account. Follow these steps to enable it...", "url": "/help/articles/KB-1234"}, {"article_id": "KB-1235", "title": "Supported 2FA Methods", "category": "security", "relevance_score": 0.87, "excerpt": "We support several 2FA methods including authenticator apps, SMS, and hardware keys...", "url": "/help/articles/KB-1235"}], "total_results": 5}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "Windows error 0x80070005 Access Denied when installing the desktop app",
+      "mock_function_outputs" => {
+        "lookup_error_code" => '{"error_code": "0x80070005", "product": "desktop_app", "description": "Windows Access Denied error - insufficient permissions for installation", "severity": "medium", "solutions": [{"step": 1, "action": "Right-click installer and select Run as Administrator"}, {"step": 2, "action": "Temporarily disable antivirus software"}, {"step": 3, "action": "Check that you have write permissions to the installation directory"}], "known_issue": true, "affected_versions": ["Windows 10", "Windows 11"]}'
+      }
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created tech support assistant dataset (4 rows)"
+
+# ============================================================================
+# 16. Tech Support Assistant Conversational Dataset (Anthropic + Functions)
+# ============================================================================
+
+tech_support_conversational_dataset = PromptTracker::Dataset.create!(
+  testable: tech_support_v1,
+  name: "Tech Support Conversations",
+  description: "Multi-turn technical support conversations with Claude function calling",
+  dataset_type: :conversational
+)
+
+tech_support_conversational_dataset.dataset_rows.create!([
+  {
+    row_data: {
+      "issue_description" => "I keep getting an error when trying to use the app",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a frustrated user who keeps getting error E2003 when using the mobile app.
+        Start vaguely: "I keep getting an error when trying to use the app"
+        When asked for details, provide:
+        - Error code: E2003
+        - App: Mobile app on Android
+        - Happens when: Trying to sync data
+        - Started: Yesterday after an update
+        Ask follow-up questions about:
+        - Is this a known issue?
+        - When will it be fixed?
+        - Is there a workaround?
+        Be cooperative but express frustration if it takes too long to resolve.
+        Accept a solution if they provide clear troubleshooting steps.
+      PROMPT
+      "max_turns" => 8,
+      "mock_function_outputs" => {
+        "lookup_error_code" => '{"error_code": "E2003", "product": "mobile_app", "description": "Data synchronization failure due to API version mismatch", "severity": "high", "solutions": [{"step": 1, "action": "Force close the app completely"}, {"step": 2, "action": "Clear app cache in Settings > Apps > Mobile App > Clear Cache"}, {"step": 3, "action": "Update to the latest version from the app store"}, {"step": 4, "action": "If issue persists, uninstall and reinstall the app"}], "known_issue": true, "affected_versions": ["3.2.0", "3.2.1"]}',
+        "get_system_status" => '{"system_name": "mobile_api", "status": "operational", "uptime_percentage": 99.8, "last_incident": "2026-02-15T14:00:00Z", "current_issues": [], "recent_history": [{"date": "2026-02-17", "status": "operational"}, {"date": "2026-02-16", "status": "operational"}]}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "Our entire team can't access the dashboard",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are an IT manager reporting an outage affecting your entire team of 50 people.
+        Start urgently: "Our entire team can't access the dashboard"
+        When asked for details, provide:
+        - Company: Acme Corp (account ID: ACME-12345)
+        - Team size: 50 users affected
+        - Issue: Dashboard shows "Service Unavailable" error
+        - Impact: Critical - quarterly reports due today
+        - Started: About 30 minutes ago
+        Demand escalation and ask for:
+        - Estimated time to resolution
+        - Whether you should create a support ticket
+        - A direct contact for updates
+        Be professional but firm about the business impact.
+        Accept if they create a high-priority ticket and provide an ETA.
+      PROMPT
+      "max_turns" => 10,
+      "mock_function_outputs" => {
+        "get_system_status" => '{"system_name": "dashboard_service", "status": "degraded", "uptime_percentage": 97.2, "last_incident": "2026-02-17T09:00:00Z", "current_issues": [{"id": "INC-3456", "title": "Dashboard service experiencing high latency and timeouts", "severity": "critical", "started_at": "2026-02-17T09:00:00Z", "affected_services": ["dashboard", "reporting", "analytics"], "estimated_resolution": "2026-02-17T11:00:00Z"}], "recent_history": [{"date": "2026-02-16", "status": "operational"}, {"date": "2026-02-15", "status": "operational"}]}',
+        "create_support_ticket" => '{"ticket_id": "TKT-89012", "status": "created", "priority": "critical", "assigned_to": "platform-team", "estimated_response_time": "15 minutes", "created_at": "2026-02-17T09:35:00Z", "escalation_path": "Platform Team Lead > Engineering Director > VP of Engineering"}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "I need help setting up SSO for my organization",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are an IT administrator setting up Single Sign-On for your organization.
+        Start with: "I need help setting up SSO for my organization"
+        When asked for details, provide:
+        - Organization: TechStart Inc (500 users)
+        - Identity Provider: Azure AD
+        - Current status: Have Azure configured, need help with our side
+        - Technical background: Familiar with SAML but new to your platform
+        Ask about:
+        - Step-by-step setup process
+        - What metadata you need from Azure
+        - How to test before rolling out to all users
+        - Troubleshooting common SSO issues
+        Be technically competent and ask specific questions.
+        Thank them when you have enough information to proceed.
+      PROMPT
+      "max_turns" => 8,
+      "mock_function_outputs" => {
+        "search_knowledge_base" => '{"results": [{"article_id": "KB-5001", "title": "Setting Up SAML SSO with Azure AD", "category": "authentication", "relevance_score": 0.98, "excerpt": "This guide walks through configuring SAML-based Single Sign-On with Microsoft Azure Active Directory...", "url": "/help/articles/KB-5001"}, {"article_id": "KB-5002", "title": "SSO Troubleshooting Guide", "category": "authentication", "relevance_score": 0.85, "excerpt": "Common issues when configuring SSO include certificate mismatches, incorrect assertion consumer service URLs...", "url": "/help/articles/KB-5002"}, {"article_id": "KB-5003", "title": "Testing SSO Before Production Rollout", "category": "authentication", "relevance_score": 0.82, "excerpt": "Use our SSO testing mode to validate your configuration with a subset of users before enabling for everyone...", "url": "/help/articles/KB-5003"}], "total_results": 12}'
+      }
+    },
+    source: "manual"
+  },
+  {
+    row_data: {
+      "issue_description" => "Something is wrong with my account, I think I was hacked",
+      "interlocutor_simulation_prompt" => <<~PROMPT.strip,
+        You are a panicked user who noticed suspicious activity on your account.
+        Start worried: "Something is wrong with my account, I think I was hacked"
+        When asked for details, provide:
+        - Email: john.doe@example.com
+        - Suspicious activity: Password changed without your knowledge
+        - Other signs: Unfamiliar devices in login history
+        - When noticed: This morning
+        - Still have access: Yes, via mobile app
+        Ask urgently about:
+        - How to secure your account immediately
+        - Whether any data was accessed
+        - How to report this officially
+        - Getting a new password securely
+        Be anxious but follow their instructions carefully.
+        Calm down once they help you secure the account.
+      PROMPT
+      "max_turns" => 10,
+      "mock_function_outputs" => {
+        "search_knowledge_base" => '{"results": [{"article_id": "KB-3001", "title": "Account Security: Responding to Unauthorized Access", "category": "security", "relevance_score": 0.96, "excerpt": "If you suspect unauthorized access: 1) Change your password immediately, 2) Enable 2FA, 3) Review recent activity, 4) Contact support...", "url": "/help/articles/KB-3001"}, {"article_id": "KB-3002", "title": "How to Enable Two-Factor Authentication", "category": "security", "relevance_score": 0.88, "excerpt": "Two-factor authentication adds an extra layer of security to your account...", "url": "/help/articles/KB-3002"}], "total_results": 8}',
+        "create_support_ticket" => '{"ticket_id": "TKT-90123", "status": "created", "priority": "high", "assigned_to": "security-team", "estimated_response_time": "10 minutes", "created_at": "2026-02-17T10:15:00Z", "security_flag": true}'
+      }
+    },
+    source: "manual"
+  }
+])
+
+puts "  ✓ Created tech support conversational dataset (4 rows)"
+
+puts "\n  ✅ Created 11 single-turn datasets (43 rows) and 5 conversational datasets (17 rows)"
+puts "  📊 Total: 16 datasets with 60 rows"

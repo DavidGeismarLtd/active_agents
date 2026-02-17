@@ -423,4 +423,102 @@ news_prompt.prompt_versions.create!(
 
 puts "  ✓ Created news analyst prompt with web search"
 
-puts "\n  ✅ Created 7 prompts with Response API tools (web_search, code_interpreter, functions)"
+# ============================================================================
+# 8. Tech Support Assistant (Anthropic with Function Calls)
+# ============================================================================
+
+tech_support_prompt = PromptTracker::Prompt.create!(
+  name: "tech_support_assistant_claude",
+  description: "Provides technical support using Claude with function calls",
+  category: "support",
+  tags: [ "anthropic", "functions", "tech-support" ],
+  created_by: "support-team@example.com"
+)
+
+tech_support_prompt.prompt_versions.create!(
+  system_prompt: <<~SYSTEM.strip,
+    You are a technical support assistant powered by Claude. Your role is to:
+    1. Diagnose technical issues by gathering system information
+    2. Look up error codes and known solutions
+    3. Create support tickets when needed
+    4. Provide step-by-step troubleshooting guidance
+    5. Escalate complex issues to human agents
+
+    Use the available functions to access the knowledge base and ticketing system.
+    Be patient, thorough, and explain technical concepts clearly.
+  SYSTEM
+  user_prompt: "Technical issue: {{issue_description}}",
+  status: "active",
+  variables_schema: [
+    { "name" => "issue_description", "type" => "string", "required" => true }
+  ],
+  model_config: {
+    "provider" => "anthropic",
+    "api" => "messages",
+    "model" => "claude-sonnet-4-20250514",
+    "temperature" => 0.5,
+    "max_tokens" => 4096,
+    "tools" => [ "functions" ],
+    "tool_config" => {
+      "functions" => [
+        {
+          "name" => "lookup_error_code",
+          "description" => "Look up an error code in the knowledge base to find known solutions",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "error_code" => { "type" => "string", "description" => "The error code to look up (e.g., E1001, 0x80070005)" },
+              "product" => { "type" => "string", "description" => "Product or system name" }
+            },
+            "required" => [ "error_code" ]
+          }
+        },
+        {
+          "name" => "get_system_status",
+          "description" => "Check the status of a system or service",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "system_name" => { "type" => "string", "description" => "Name of the system to check" },
+              "include_history" => { "type" => "boolean", "description" => "Include recent status history" }
+            },
+            "required" => [ "system_name" ]
+          }
+        },
+        {
+          "name" => "create_support_ticket",
+          "description" => "Create a new support ticket for an issue",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "title" => { "type" => "string", "description" => "Brief title of the issue" },
+              "description" => { "type" => "string", "description" => "Detailed description of the issue" },
+              "priority" => { "type" => "string", "enum" => [ "low", "medium", "high", "critical" ], "description" => "Issue priority" },
+              "category" => { "type" => "string", "description" => "Issue category (e.g., hardware, software, network)" }
+            },
+            "required" => [ "title", "description", "priority" ]
+          }
+        },
+        {
+          "name" => "search_knowledge_base",
+          "description" => "Search the knowledge base for articles related to an issue",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "query" => { "type" => "string", "description" => "Search query" },
+              "category" => { "type" => "string", "description" => "Article category filter" },
+              "max_results" => { "type" => "integer", "description" => "Maximum number of results to return" }
+            },
+            "required" => [ "query" ]
+          }
+        }
+      ]
+    }
+  },
+  notes: "Anthropic Claude tech support with function calls for diagnostics and ticketing",
+  created_by: "support-team@example.com"
+)
+
+puts "  ✓ Created tech support assistant prompt with Anthropic + function calls"
+
+puts "\n  ✅ Created 8 prompts with API tools (web_search, code_interpreter, functions)"

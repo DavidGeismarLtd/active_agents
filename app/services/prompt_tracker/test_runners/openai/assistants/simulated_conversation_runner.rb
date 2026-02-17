@@ -89,7 +89,11 @@ module PromptTracker
 
               break if user_message.nil?
 
-              messages << { "role" => "user", "content" => user_message, "turn" => turn }
+              messages << ConversationMessage.new(
+                role: "user",
+                content: user_message,
+                turn: turn
+              ).to_h
 
               # Call Assistants API
               response = call_assistants_api(user_message: user_message)
@@ -99,17 +103,17 @@ module PromptTracker
               @thread_id ||= response.thread_id
 
               # Build message with standardized structure matching NormalizedResponse
-              messages << {
-                "role" => "assistant",
-                "content" => response[:text],
-                "turn" => turn,
-                "usage" => response[:usage],
-                "tool_calls" => response[:tool_calls] || [],
-                "file_search_results" => response[:file_search_results] || [],
-                "web_search_results" => response[:web_search_results] || [],
-                "code_interpreter_results" => response[:code_interpreter_results] || [],
-                "api_metadata" => response[:api_metadata] || {}
-              }
+              messages << ConversationMessage.new(
+                role: "assistant",
+                content: response[:text],
+                turn: turn,
+                usage: response[:usage],
+                tool_calls: response[:tool_calls],
+                file_search_results: response[:file_search_results],
+                web_search_results: response[:web_search_results],
+                code_interpreter_results: response[:code_interpreter_results],
+                api_metadata: response[:api_metadata]
+              ).to_h
             end
 
             messages
@@ -133,7 +137,7 @@ module PromptTracker
 
           # Generate a mock Assistants API response
           #
-          # @return [NormalizedResponse] mock response matching OpenaiAssistantService format
+          # @return [NormalizedLlmResponse] mock response matching OpenaiAssistantService format
           def mock_assistants_api_response
             @mock_response_counter ||= 0
             @mock_response_counter += 1
@@ -142,7 +146,7 @@ module PromptTracker
             @mock_thread_id ||= "thread_mock_#{SecureRandom.hex(8)}"
             mock_run_id = "run_mock_#{SecureRandom.hex(8)}"
 
-            NormalizedResponse.new(
+            PromptTracker::NormalizedLlmResponse.new(
               text: "Mock Assistants API response for testing (#{@mock_response_counter})",
               usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
               model: assistant_id,

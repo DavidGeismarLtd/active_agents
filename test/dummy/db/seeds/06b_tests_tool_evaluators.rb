@@ -355,4 +355,107 @@ test_news_search.evaluator_configs.create!(
 
 puts "  ✓ Created news analyst test with query validation"
 
-puts "\n  ✅ Created 10 tests with WebSearch, CodeInterpreter, and FunctionCall evaluators"
+# ============================================================================
+# 8. Tech Support Assistant Tests (Anthropic + FunctionCallEvaluator)
+# ============================================================================
+
+tech_support_version = PromptTracker::PromptVersion.joins(:prompt)
+  .where(prompt_tracker_prompts: { name: "tech_support_assistant_claude" })
+  .where(status: "active")
+  .first!
+
+test_tech_support_error = tech_support_version.tests.create!(
+  name: "Error Code Lookup",
+  description: "Verifies Claude uses lookup_error_code function for error code queries",
+  tags: [ "anthropic", "functions", "error-lookup" ],
+  enabled: true
+)
+
+test_tech_support_error.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FunctionCallEvaluator",
+  enabled: true,
+  config: {
+    "expected_functions" => [ "lookup_error_code" ],
+    "require_all" => true,
+    "check_arguments" => true,
+    "expected_arguments" => {
+      "lookup_error_code" => {
+        "error_code" => "E1001"
+      }
+    },
+    "threshold_score" => 85
+  }
+)
+
+test_tech_support_error.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+  enabled: true,
+  config: {
+    "judge_model" => "claude-sonnet-4-20250514",
+    "custom_instructions" => "Evaluate if the tech support response clearly explains the error and provides actionable troubleshooting steps."
+  }
+)
+
+test_tech_support_system = tech_support_version.tests.create!(
+  name: "System Status Check",
+  description: "Verifies Claude checks system status and creates tickets for outages",
+  tags: [ "anthropic", "functions", "system-status" ],
+  enabled: true
+)
+
+test_tech_support_system.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FunctionCallEvaluator",
+  enabled: true,
+  config: {
+    "expected_functions" => [ "get_system_status", "create_support_ticket" ],
+    "require_all" => false,
+    "check_arguments" => false,
+    "threshold_score" => 80
+  }
+)
+
+test_tech_support_system.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::KeywordEvaluator",
+  enabled: true,
+  config: {
+    "required_keywords" => [ "status", "ticket" ],
+    "forbidden_keywords" => [],
+    "case_sensitive" => false
+  }
+)
+
+test_tech_support_kb = tech_support_version.tests.create!(
+  name: "Knowledge Base Search",
+  description: "Verifies Claude searches knowledge base for how-to questions",
+  tags: [ "anthropic", "functions", "knowledge-base" ],
+  enabled: true
+)
+
+test_tech_support_kb.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::FunctionCallEvaluator",
+  enabled: true,
+  config: {
+    "expected_functions" => [ "search_knowledge_base" ],
+    "require_all" => true,
+    "check_arguments" => true,
+    "expected_arguments" => {
+      "search_knowledge_base" => {
+        "query" => "two-factor authentication"
+      }
+    },
+    "threshold_score" => 80
+  }
+)
+
+test_tech_support_kb.evaluator_configs.create!(
+  evaluator_type: "PromptTracker::Evaluators::LlmJudgeEvaluator",
+  enabled: true,
+  config: {
+    "judge_model" => "claude-sonnet-4-20250514",
+    "custom_instructions" => "Evaluate if the response provides clear, step-by-step instructions based on the knowledge base article."
+  }
+)
+
+puts "  ✓ Created tech support assistant tests with FunctionCallEvaluator (Anthropic)"
+
+puts "\n  ✅ Created 13 tests with WebSearch, CodeInterpreter, and FunctionCall evaluators"
