@@ -134,20 +134,20 @@ module PromptTracker
               end
 
               before do
-                allow(OpenaiAssistantService).to receive(:call).and_return(mock_response)
+                allow(LlmClients::OpenaiAssistantService).to receive(:call).and_return(mock_response)
               end
 
-              it "calls OpenaiAssistantService with correct parameters" do
+              it "calls LlmClients::OpenaiAssistantService with correct parameters" do
                 runner.execute(params)
 
-                expect(OpenaiAssistantService).to have_received(:call).with(
+                expect(LlmClients::OpenaiAssistantService).to have_received(:call).with(
                   assistant_id: "asst_abc123",
                   user_message: "Hello",
                   thread_id: nil
                 )
               end
 
-              it "uses response from OpenaiAssistantService" do
+              it "uses response from LlmClients::OpenaiAssistantService" do
                 result = runner.execute(params)
 
                 assistant_message = result["messages"].find { |m| m["role"] == "assistant" }

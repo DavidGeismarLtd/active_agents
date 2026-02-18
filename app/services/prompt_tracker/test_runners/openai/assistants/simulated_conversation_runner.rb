@@ -125,7 +125,7 @@ module PromptTracker
           # @return [Hash] API response
           def call_assistants_api(user_message:)
             if use_real_llm
-              OpenaiAssistantService.call(
+              LlmClients::OpenaiAssistantService.call(
                 assistant_id: assistant_id,
                 user_message: user_message,
                 thread_id: @thread_id
@@ -137,7 +137,7 @@ module PromptTracker
 
           # Generate a mock Assistants API response
           #
-          # @return [NormalizedLlmResponse] mock response matching OpenaiAssistantService format
+          # @return [NormalizedLlmResponse] mock response matching LlmClients::OpenaiAssistantService format
           def mock_assistants_api_response
             @mock_response_counter ||= 0
             @mock_response_counter += 1

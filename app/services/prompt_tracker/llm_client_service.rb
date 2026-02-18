@@ -177,7 +177,7 @@ module PromptTracker
       case api_type
       when :openai_responses
         # Direct SDK - has built-in tools (web_search, file_search, code_interpreter)
-        OpenaiResponseService.call(
+        LlmClients::OpenaiResponseService.call(
           model: model,
           input: prompt,
           instructions: options[:system_prompt],
@@ -189,16 +189,16 @@ module PromptTracker
         )
       when :openai_assistants
         # Direct SDK - thread-based with persistent state
-        OpenaiAssistantService.call(
+        LlmClients::OpenaiAssistantService.call(
           assistant_id: options[:assistant_id],
           user_message: prompt,
           timeout: options[:timeout] || 60
         )
       else
-        # All other providers go through unified RubyLlmService
+        # All other providers go through unified LlmClients::RubyLlmService
         # This includes: openai_chat_completions, anthropic_messages,
         # google_gemini, deepseek, openrouter, ollama, etc.
-        RubyLlmService.call(
+        LlmClients::RubyLlmService.call(
           model: model,
           prompt: prompt,
           system: options[:system_prompt],

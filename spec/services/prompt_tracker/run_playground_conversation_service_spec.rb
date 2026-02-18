@@ -21,8 +21,8 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
     end
 
     before do
-      allow(PromptTracker::OpenaiResponseService).to receive(:call).and_return(mock_response)
-      allow(PromptTracker::OpenaiResponseService).to receive(:call_with_context).and_return(mock_response)
+      allow(PromptTracker::LlmClients::OpenaiResponseService).to receive(:call).and_return(mock_response)
+      allow(PromptTracker::LlmClients::OpenaiResponseService).to receive(:call_with_context).and_return(mock_response)
     end
 
     context "with valid input" do
@@ -61,7 +61,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
           conversation_state: conversation_state
         )
 
-        expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
+        expect(PromptTracker::LlmClients::OpenaiResponseService).to have_received(:call).with(
           model: "gpt-4o",
           input: content,
           instructions: system_prompt,
@@ -84,7 +84,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
         }
       end
 
-      it "calls OpenaiResponseService.call_with_context" do
+      it "calls LlmClients::OpenaiResponseService.call_with_context" do
         described_class.call(
           content: content,
           system_prompt: system_prompt,
@@ -92,7 +92,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
           conversation_state: conversation_state
         )
 
-        expect(PromptTracker::OpenaiResponseService).to have_received(:call_with_context).with(
+        expect(PromptTracker::LlmClients::OpenaiResponseService).to have_received(:call_with_context).with(
           model: "gpt-4o",
           input: content,
           previous_response_id: "resp_previous",
@@ -160,7 +160,7 @@ RSpec.describe PromptTracker::RunPlaygroundConversationService do
           conversation_state: conversation_state
         )
 
-        expect(PromptTracker::OpenaiResponseService).to have_received(:call).with(
+        expect(PromptTracker::LlmClients::OpenaiResponseService).to have_received(:call).with(
           hash_including(tools: [ :web_search, :code_interpreter ])
         )
       end

@@ -109,15 +109,15 @@ module PromptTracker
           messages
         end
 
-        # Build a RubyLLM::Chat instance via RubyLlmService
+        # Build a RubyLLM::Chat instance via LlmClients::RubyLlmService
         #
-        # Delegates to RubyLlmService.build_chat for consistent chat configuration
+        # Delegates to LlmClients::RubyLlmService.build_chat for consistent chat configuration
         # across single-turn and multi-turn conversations.
         #
         # @param params [Hash] execution parameters
         # @return [RubyLLM::Chat] configured chat instance
         def build_ruby_llm_chat(params)
-          RubyLlmService.build_chat(
+          LlmClients::RubyLlmService.build_chat(
             model: model,
             system: params[:system_prompt],
             tools: tools,

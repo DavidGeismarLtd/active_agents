@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe PromptTracker::RubyLlmService do
+RSpec.describe PromptTracker::LlmClients::RubyLlmService do
   let(:model) { "gpt-4o-mini" }
   let(:prompt) { "Hello!" }
   let(:system) { "You are a helpful assistant." }
@@ -68,8 +68,8 @@ RSpec.describe PromptTracker::RubyLlmService do
       end
 
       it "logs the request" do
-        expect(Rails.logger).to receive(:info).with(/\[RubyLlmService\] Request:.*model=#{model}/)
-        expect(Rails.logger).to receive(:info).with(/\[RubyLlmService\] Response:/)
+        expect(Rails.logger).to receive(:info).with(/\[LlmClients::RubyLlmService\] Request:.*model=#{model}/)
+        expect(Rails.logger).to receive(:info).with(/\[LlmClients::RubyLlmService\] Response:/)
 
         described_class.call(model: model, prompt: prompt)
       end

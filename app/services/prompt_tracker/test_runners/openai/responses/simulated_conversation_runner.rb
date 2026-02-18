@@ -186,7 +186,7 @@ module PromptTracker
         # Call the real OpenAI Response API
         def call_real_response_api(user_prompt:, system_prompt: nil)
           if @previous_response_id
-            OpenaiResponseService.call_with_context(
+            LlmClients::OpenaiResponseService.call_with_context(
               model: model,
               input: user_prompt,
               previous_response_id: @previous_response_id,
@@ -194,7 +194,7 @@ module PromptTracker
               tool_config: tool_config
             )
           else
-            OpenaiResponseService.call(
+            LlmClients::OpenaiResponseService.call(
               model: model,
               input: user_prompt,
               instructions: system_prompt,

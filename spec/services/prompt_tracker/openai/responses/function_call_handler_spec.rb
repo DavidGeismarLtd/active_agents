@@ -167,7 +167,7 @@ module PromptTracker
             end
 
             before do
-              allow(OpenaiResponseService).to receive(:call_with_context).and_return(
+              allow(LlmClients::OpenaiResponseService).to receive(:call_with_context).and_return(
                 {
                   text: "The weather is sunny",
                   response_id: "resp_124",
@@ -177,14 +177,14 @@ module PromptTracker
               )
             end
 
-            it "calls OpenaiResponseService with function outputs" do
+            it "calls LlmClients::OpenaiResponseService with function outputs" do
               handler.process_with_function_handling(
                 initial_response: initial_response,
                 previous_response_id: "resp_000",
                 turn: 1
               )
 
-              expect(OpenaiResponseService).to have_received(:call_with_context)
+              expect(LlmClients::OpenaiResponseService).to have_received(:call_with_context)
             end
           end
         end

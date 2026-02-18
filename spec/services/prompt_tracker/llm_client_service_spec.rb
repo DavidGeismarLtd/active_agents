@@ -52,7 +52,7 @@ module PromptTracker
         end
 
         it "routes to OpenaiResponseService" do
-          allow(OpenaiResponseService).to receive(:call).and_return(response_service_response)
+          allow(LlmClients::OpenaiResponseService).to receive(:call).and_return(response_service_response)
 
           result = described_class.call(
             provider: provider,
@@ -62,7 +62,7 @@ module PromptTracker
             tools: [ :web_search ]
           )
 
-          expect(OpenaiResponseService).to have_received(:call).with(
+          expect(LlmClients::OpenaiResponseService).to have_received(:call).with(
             model: model,
             input: prompt,
             instructions: nil,
@@ -90,7 +90,7 @@ module PromptTracker
         end
 
         it "routes to OpenaiAssistantService with assistant_id from options" do
-          allow(OpenaiAssistantService).to receive(:call).and_return(assistant_response)
+          allow(LlmClients::OpenaiAssistantService).to receive(:call).and_return(assistant_response)
 
           result = described_class.call(
             provider: provider,
@@ -100,7 +100,7 @@ module PromptTracker
             assistant_id: assistant_id
           )
 
-          expect(OpenaiAssistantService).to have_received(:call).with(
+          expect(LlmClients::OpenaiAssistantService).to have_received(:call).with(
             assistant_id: assistant_id,
             user_message: prompt,
             timeout: 60
@@ -109,7 +109,7 @@ module PromptTracker
         end
 
         it "uses custom timeout when provided" do
-          allow(OpenaiAssistantService).to receive(:call).and_return(assistant_response)
+          allow(LlmClients::OpenaiAssistantService).to receive(:call).and_return(assistant_response)
 
           described_class.call(
             provider: provider,
@@ -120,14 +120,14 @@ module PromptTracker
             timeout: 120
           )
 
-          expect(OpenaiAssistantService).to have_received(:call).with(
+          expect(LlmClients::OpenaiAssistantService).to have_received(:call).with(
             assistant_id: assistant_id,
             user_message: prompt,
             timeout: 120
           )
         end
       end
-      context "with standard chat API (routes to RubyLlmService)" do
+      context "with standard chat API (routes to LlmClients::RubyLlmService)" do
         let(:ruby_llm_response) do
           PromptTracker::NormalizedLlmResponse.new(
             text: "The capital of France is Paris.",
@@ -143,10 +143,10 @@ module PromptTracker
         end
 
         before do
-          allow(RubyLlmService).to receive(:call).and_return(ruby_llm_response)
+          allow(LlmClients::RubyLlmService).to receive(:call).and_return(ruby_llm_response)
         end
 
-        it "routes to RubyLlmService" do
+        it "routes to LlmClients::RubyLlmService" do
           described_class.call(
             provider: provider,
             api: "chat",
@@ -155,7 +155,7 @@ module PromptTracker
             temperature: temperature
           )
 
-          expect(RubyLlmService).to have_received(:call).with(
+          expect(LlmClients::RubyLlmService).to have_received(:call).with(
             model: model,
             prompt: prompt,
             system: nil,
@@ -183,7 +183,7 @@ module PromptTracker
           expect(result[:model]).to eq("gpt-4-0613")
         end
 
-        it "passes tools and tool_config to RubyLlmService" do
+        it "passes tools and tool_config to LlmClients::RubyLlmService" do
           tool_config = { "functions" => [ { "name" => "get_weather" } ] }
 
           described_class.call(
@@ -195,7 +195,7 @@ module PromptTracker
             tool_config: tool_config
           )
 
-          expect(RubyLlmService).to have_received(:call).with(
+          expect(LlmClients::RubyLlmService).to have_received(:call).with(
             hash_including(
               tools: [ :functions ],
               tool_config: tool_config
@@ -203,7 +203,7 @@ module PromptTracker
           )
         end
 
-        it "passes system_prompt to RubyLlmService" do
+        it "passes system_prompt to LlmClients::RubyLlmService" do
           described_class.call(
             provider: provider,
             api: "chat",
@@ -212,13 +212,13 @@ module PromptTracker
             system_prompt: "You are a helpful assistant"
           )
 
-          expect(RubyLlmService).to have_received(:call).with(
+          expect(LlmClients::RubyLlmService).to have_received(:call).with(
             hash_including(system: "You are a helpful assistant")
           )
         end
 
         it "handles API errors by raising them" do
-          allow(RubyLlmService).to receive(:call).and_raise(StandardError.new("Rate limit exceeded"))
+          allow(LlmClients::RubyLlmService).to receive(:call).and_raise(StandardError.new("Rate limit exceeded"))
 
           expect do
             described_class.call(
@@ -232,7 +232,7 @@ module PromptTracker
         end
       end
 
-      context "with Anthropic provider (routes to RubyLlmService)" do
+      context "with Anthropic provider (routes to LlmClients::RubyLlmService)" do
         let(:model) { "claude-3-opus-20240229" }
         let(:ruby_llm_response) do
           PromptTracker::NormalizedLlmResponse.new(
@@ -249,10 +249,10 @@ module PromptTracker
         end
 
         before do
-          allow(RubyLlmService).to receive(:call).and_return(ruby_llm_response)
+          allow(LlmClients::RubyLlmService).to receive(:call).and_return(ruby_llm_response)
         end
 
-        it "routes Anthropic to RubyLlmService" do
+        it "routes Anthropic to LlmClients::RubyLlmService" do
           described_class.call(
             provider: "anthropic",
             api: "messages",
@@ -260,7 +260,7 @@ module PromptTracker
             prompt: prompt
           )
 
-          expect(RubyLlmService).to have_received(:call).with(
+          expect(LlmClients::RubyLlmService).to have_received(:call).with(
             hash_including(model: model, prompt: prompt)
           )
         end

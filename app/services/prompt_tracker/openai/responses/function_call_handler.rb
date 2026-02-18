@@ -112,7 +112,7 @@ module PromptTracker
         def call_api_with_function_outputs(input_items, previous_response_id)
           return mock_response unless @use_real_llm
 
-          OpenaiResponseService.call_with_context(
+          LlmClients::OpenaiResponseService.call_with_context(
             model: @model,
             input: input_items,
             previous_response_id: previous_response_id,

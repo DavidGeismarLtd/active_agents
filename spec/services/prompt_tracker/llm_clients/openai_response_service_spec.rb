@@ -3,7 +3,7 @@
 require "rails_helper"
 
 module PromptTracker
-  RSpec.describe OpenaiResponseService do
+  RSpec.describe LlmClients::OpenaiResponseService do
     let(:model) { "gpt-4o" }
     let(:user_prompt) { "What's the weather in Berlin?" }
     let(:system_prompt) { "You are a helpful assistant." }
@@ -91,7 +91,7 @@ module PromptTracker
 
         expect {
           described_class.call(model: model, input: user_prompt)
-        }.to raise_error(OpenaiResponseService::ResponseApiError, /OpenAI API key not configured/)
+        }.to raise_error(LlmClients::OpenaiResponseService::ResponseApiError, /OpenAI API key not configured/)
       end
 
       it "redacts sensitive data in error messages when API call fails" do
@@ -123,7 +123,7 @@ module PromptTracker
             instructions: long_instructions,
             tools: [ :web_search, function_tool ]
           )
-        }.to raise_error(OpenaiResponseService::ResponseApiError) do |error|
+        }.to raise_error(LlmClients::OpenaiResponseService::ResponseApiError) do |error|
           # Error message should contain the API error
           expect(error.message).to include("Invalid request")
 

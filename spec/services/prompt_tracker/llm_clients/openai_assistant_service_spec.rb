@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 module PromptTracker
-  RSpec.describe OpenaiAssistantService do
+  RSpec.describe LlmClients::OpenaiAssistantService do
     let(:assistant_id) { "asst_abc123" }
     let(:user_message) { "What's the weather in Berlin?" }
     let(:thread_id) { "thread_xyz789" }
@@ -82,7 +82,7 @@ module PromptTracker
 
         expect {
           described_class.call(assistant_id: assistant_id, user_message: user_message)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /OpenAI API key not configured/)
+        }.to raise_error(LlmClients::OpenaiAssistantService::AssistantError, /OpenAI API key not configured/)
       end
 
       it 'raises error when run fails' do
@@ -107,7 +107,7 @@ module PromptTracker
 
         expect {
           described_class.call(assistant_id: assistant_id, user_message: user_message)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /failed/)
+        }.to raise_error(LlmClients::OpenaiAssistantService::AssistantError, /failed/)
       end
 
       it 'raises error when run times out' do
@@ -133,7 +133,7 @@ module PromptTracker
         # Use very short timeout for test
         expect {
           described_class.call(assistant_id: assistant_id, user_message: user_message, timeout: 1)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /timed out/)
+        }.to raise_error(LlmClients::OpenaiAssistantService::AssistantError, /timed out/)
       end
 
       it 'raises error when run requires action (tool calls)' do
@@ -157,7 +157,7 @@ module PromptTracker
 
         expect {
           described_class.call(assistant_id: assistant_id, user_message: user_message)
-        }.to raise_error(OpenaiAssistantService::AssistantError, /requires action/)
+        }.to raise_error(LlmClients::OpenaiAssistantService::AssistantError, /requires action/)
       end
     end
   end
