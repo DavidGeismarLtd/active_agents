@@ -15,14 +15,10 @@
 <!-- Judge Model -->
 <div class="mb-3">
   <label class="form-label">Judge Model</label>
-  <%
-    # Get available models for LLM judge context (only providers with API keys and structured output capability)
-    all_models = models_for(:llm_judge)
-  %>
   <select name="<%= namespace %>[judge_model]" class="form-select" required>
-    <% all_models.each do |provider_key, models| %>
-      <% provider_name = provider_key.to_s.titleize %>
-      <% # Group models by category %>
+    <% enabled_providers.each do |provider_key| %>
+      <% provider_name = provider_name(provider_key) %>
+      <% models = models_for_provider(provider_key) %>
       <% models.group_by { |m| m[:category] }.each do |category, models_in_category| %>
         <% if category.present? %>
           <optgroup label="<%= provider_name %> - <%= category %>">
@@ -42,7 +38,7 @@
     <% end %>
   </select>
   <small class="form-text text-muted">
-    The LLM model to use as a judge for evaluating conversation messages. Only models with structured output capability are shown.
+    The LLM model to use as a judge for evaluating conversation messages.
   </small>
 </div>
 

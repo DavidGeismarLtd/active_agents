@@ -45,9 +45,9 @@ module PromptTracker
       @dataset = dataset
       @count = count
       @instructions = instructions
-      @model = model || PromptTracker.configuration.dataset_generator_model
-      @provider = PromptTracker.configuration.dataset_generator_provider
-      @api = PromptTracker.configuration.dataset_generator_api
+      @model = model || PromptTracker.configuration.default_model_for(:dataset_generation)
+      @provider = PromptTracker.configuration.default_provider_for(:dataset_generation)
+      @api = PromptTracker.configuration.default_api_for(:dataset_generation)
 
       validate_params!
     end

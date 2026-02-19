@@ -37,6 +37,16 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
       end
 
       before do
+        # Set up dataset_generation context configuration
+        PromptTracker.configuration.contexts = {
+          dataset_generation: {
+            description: "Generating test dataset rows via LLM",
+            default_provider: :openai,
+            default_api: :chat_completions,
+            default_model: "gpt-4o"
+          }
+        }
+
         allow(PromptTracker::LlmClientService).to receive(:call_with_schema)
           .and_return(mock_llm_response)
 
@@ -102,7 +112,7 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
       it "calls LlmClientService with correct parameters" do
         expect(PromptTracker::LlmClientService).to receive(:call_with_schema)
           .with(hash_including(
-                  provider: "openai",
+                  provider: :openai,
                   model: model,
                   temperature: 0.8
                 ))

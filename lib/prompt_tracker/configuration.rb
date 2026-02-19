@@ -8,17 +8,22 @@ module PromptTracker
   #     config.prompts_path = Rails.root.join("app", "prompts")
   #     config.basic_auth_username = "admin"
   #     config.basic_auth_password = "secret"
-  #     config.api_keys = { openai: ENV["OPENAI_API_KEY"] }
   #     config.providers = {
   #       openai: {
+  #         api_key: ENV["OPENAI_API_KEY"],
   #         name: "OpenAI",
   #         apis: {
-  #           chat_completion: { name: "Chat Completions", default: true },
-  #           response_api: { name: "Responses API" }
-  #         }
+  #           chat_completions: { name: "Chat Completions", default: true },
+  #           responses: { name: "Responses" }
+  #         },
+  #         models: [
+  #           { id: "gpt-4o", name: "GPT-4o", capabilities: [:structured_output] }
+  #         ]
   #       }
   #     }
-  #     config.models = { openai: [{ id: "gpt-4o", name: "GPT-4o" }] }
+  #     config.contexts = {
+  #       playground: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" }
+  #     }
   #   end
   #
   class Configuration
@@ -34,41 +39,38 @@ module PromptTracker
     # @return [String, nil] the password
     attr_accessor :basic_auth_password
 
-    # API keys for each provider. A provider is only available if its key is present.
-    # @return [Hash] hash of provider symbol => API key string
-    attr_accessor :api_keys
-
-    # Provider definitions with their available APIs.
+    # Provider definitions including api_key, name, APIs, and models.
     # @return [Hash] hash of provider symbol => provider config hash
     # @example
     #   {
     #     openai: {
+    #       api_key: ENV["OPENAI_API_KEY"],
     #       name: "OpenAI",
     #       apis: {
-    #         chat_completion: { name: "Chat Completions", default: true },
-    #         response_api: { name: "Responses API", capabilities: [:web_search] }
-    #       }
+    #         chat_completions: { name: "Chat Completions", default: true },
+    #         responses: { name: "Responses" }
+    #       },
+    #       models: [
+    #         { id: "gpt-4o", name: "GPT-4o", capabilities: [:structured_output] }
+    #       ]
     #     }
     #   }
     attr_accessor :providers
 
-    # Master model registry. All available models in the system.
-    # @return [Hash] hash of provider symbol => array of model hashes
-    attr_accessor :models
-
-
-
-    # Context-specific model restrictions.
-    # @return [Hash] hash of context symbol => restrictions hash
+    # Context-specific default selections.
+    # @return [Hash] hash of context symbol => defaults hash
+    # @example
+    #   {
+    #     playground: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" },
+    #     llm_judge: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" }
+    #   }
     attr_accessor :contexts
 
-    # Default model selections for each context.
-    # @return [Hash] hash of setting name => value
-    attr_accessor :defaults
-
-    # Enable OpenAI Assistant sync button in Testing Dashboard.
-    # @return [Boolean] true if the sync button should be shown
-    attr_accessor :enable_openai_assistant_sync
+    # Feature flags.
+    # @return [Hash] hash of feature symbol => boolean
+    # @example
+    #   { openai_assistant_sync: true }
+    attr_accessor :features
 
     # Built-in tools metadata (for Response API and Assistants API).
     # Maps tool capability symbols to display information.
@@ -88,13 +90,10 @@ module PromptTracker
       @prompts_path = default_prompts_path
       @basic_auth_username = nil
       @basic_auth_password = nil
-      @api_keys = {}
       @providers = {}
-      @models = {}
       @contexts = {}
-      @defaults = {}
+      @features = {}
       @builtin_tools = default_builtin_tools
-      @enable_openai_assistant_sync = false
     end
 
     # Check if basic authentication is enabled.
@@ -103,11 +102,15 @@ module PromptTracker
       basic_auth_username.present? && basic_auth_password.present?
     end
 
+    # =========================================================================
+    # Provider Methods
+    # =========================================================================
+
     # Check if a provider has a valid API key configured.
     # @param provider [Symbol] the provider name
     # @return [Boolean] true if the provider has an API key
     def provider_configured?(provider)
-      key = api_keys[provider.to_sym]
+      key = providers.dig(provider.to_sym, :api_key)
       key.present?
     end
 
@@ -115,77 +118,14 @@ module PromptTracker
     # @param provider [Symbol] the provider name
     # @return [String, nil] the API key or nil if not configured
     def api_key_for(provider)
-      api_keys[provider.to_sym]
+      providers.dig(provider.to_sym, :api_key)
     end
 
     # Get all providers that have API keys configured.
     # @return [Array<Symbol>] list of configured provider symbols
-    def configured_providers
-      api_keys.select { |_, key| key.present? }.keys
+    def enabled_providers
+      providers.select { |_, config| config[:api_key].present? }.keys
     end
-
-    # Get available providers for a specific context.
-    # Filters by both context restrictions AND API key presence.
-    # @param context [Symbol] the context name (e.g., :playground, :llm_judge)
-    # @return [Array<Symbol>] list of available provider symbols
-    def providers_for(context)
-      context_config = contexts[context] || {}
-      allowed_providers = context_config[:providers]
-
-      if allowed_providers.nil?
-        configured_providers
-      else
-        allowed_providers.select { |p| provider_configured?(p) }
-      end
-    end
-
-    # Get available models for a context.
-    # @param context [Symbol] the context name
-    # @param provider [Symbol, nil] optional provider filter
-    # @return [Hash, Array] hash of provider => models, or array if provider specified
-    def models_for(context, provider: nil)
-      context_config = contexts[context] || {}
-      available_providers = providers_for(context)
-      required_capability = context_config[:require_capability]
-      allowed_model_ids = context_config[:models]
-
-      if provider
-        filter_models_for_provider(provider, available_providers, required_capability, allowed_model_ids)
-      else
-        available_providers.each_with_object({}) do |p, result|
-          filtered = filter_models_for_provider(p, available_providers, required_capability, allowed_model_ids)
-          result[p] = filtered if filtered.any?
-        end
-      end
-    end
-
-    # Get the default model for a context.
-    # @param context [Symbol] the context name
-    # @return [String, nil] the default model ID or nil
-    def default_model_for(context)
-      key = :"#{context}_model"
-      defaults[key]
-    end
-
-    # Get the default provider for a context.
-    # @param context [Symbol] the context name
-    # @return [Symbol, nil] the default provider or nil
-    def default_provider_for(context)
-      key = :"#{context}_provider"
-      defaults[key]
-    end
-
-    # Get the default API for a context.
-    # @param context [Symbol] the context name
-    # @return [Symbol, nil] the default API or nil
-    def default_api_for(context)
-      key = :"#{context}_api"
-      defaults[key]
-    end
-
-    # =========================================================================
-    # Provider/API Methods
-    # =========================================================================
 
     # Get the display name for a provider.
     # @param provider [Symbol] the provider key
@@ -196,7 +136,7 @@ module PromptTracker
 
     # Get available APIs for a provider.
     # @param provider [Symbol] the provider key
-    # @return [Array<Hash>] array of API hashes with :key, :name, :default, :capabilities
+    # @return [Array<Hash>] array of API hashes with :key, :name, :default, :capabilities, :description
     def apis_for(provider)
       provider_config = providers[provider.to_sym]
       return [] unless provider_config && provider_config[:apis]
@@ -228,12 +168,19 @@ module PromptTracker
       apis_for(provider).size > 1
     end
 
+    # Get all models for a provider.
+    # @param provider [Symbol] the provider key
+    # @return [Array<Hash>] array of model hashes
+    def models_for_provider(provider)
+      providers.dig(provider.to_sym, :models) || []
+    end
+
     # Get models for a specific provider and API combination.
     # @param provider [Symbol] the provider key
     # @param api [Symbol] the API key
     # @return [Array<Hash>] array of model hashes compatible with the API
     def models_for_api(provider, api)
-      provider_models = models[provider.to_sym] || []
+      provider_models = models_for_provider(provider)
 
       provider_models.select do |model|
         supported_apis = model[:supported_apis]
@@ -242,16 +189,64 @@ module PromptTracker
       end
     end
 
+    # =========================================================================
+    # Context Methods
+    # =========================================================================
+
+    # Get a context default value.
+    # @param context [Symbol] the context name
+    # @param attribute [Symbol] the attribute (:provider, :api, :model)
+    # @return [Object, nil] the default value or nil
+    def context_default(context, attribute)
+      contexts.dig(context.to_sym, :"default_#{attribute}")
+    end
+
+    # Get the default provider for a context.
+    # @param context [Symbol] the context name
+    # @return [Symbol, nil] the default provider or nil
+    def default_provider_for(context)
+      context_default(context, :provider)
+    end
+
+    # Get the default API for a context.
+    # @param context [Symbol] the context name
+    # @return [Symbol, nil] the default API or nil
+    def default_api_for(context)
+      context_default(context, :api)
+    end
+
+    # Get the default model for a context.
+    # @param context [Symbol] the context name
+    # @return [String, nil] the default model ID or nil
+    def default_model_for(context)
+      context_default(context, :model)
+    end
+
+    # =========================================================================
+    # Feature Flag Methods
+    # =========================================================================
+
+    # Check if a feature is enabled.
+    # @param feature [Symbol] the feature name
+    # @return [Boolean] true if the feature is enabled
+    def feature_enabled?(feature)
+      features[feature.to_sym] == true
+    end
+
+    # =========================================================================
+    # Provider/API Utility Methods
+    # =========================================================================
+
     # Build a combined provider+api identifier for storage.
     # @param provider [Symbol] the provider key
     # @param api [Symbol] the API key
-    # @return [String] combined identifier like "openai:chat_completion"
+    # @return [String] combined identifier like "openai:chat_completions"
     def build_provider_api_key(provider, api)
       "#{provider}:#{api}"
     end
 
     # Parse a combined provider+api identifier.
-    # @param combined_key [String] combined identifier like "openai:chat_completion"
+    # @param combined_key [String] combined identifier like "openai:chat_completions"
     # @return [Hash] hash with :provider and :api keys
     def parse_provider_api_key(combined_key)
       parts = combined_key.to_s.split(":", 2)
@@ -264,7 +259,7 @@ module PromptTracker
     # Get all provider/API combinations for the UI.
     # @return [Array<Hash>] array of hashes with provider and API info
     def all_provider_api_options
-      configured_providers.flat_map do |provider|
+      enabled_providers.flat_map do |provider|
         apis = apis_for(provider)
         apis.map do |api|
           {
@@ -277,88 +272,6 @@ module PromptTracker
           }
         end
       end
-    end
-
-    # =========================================================================
-    # Backward Compatibility Methods (DEPRECATED)
-    # =========================================================================
-
-    # @deprecated Use {#models} instead
-    def available_models
-      models
-    end
-
-    # @deprecated Use {#models=} instead
-    def available_models=(value)
-      self.models = value
-    end
-
-    # @deprecated Use {#api_keys} instead
-    def provider_api_key_env_vars
-      # Return a mapping that mimics the old behavior for backward compatibility
-      api_keys.transform_values { |_| "CONFIGURED" }
-    end
-
-    # @deprecated Use {#api_keys=} instead
-    def provider_api_key_env_vars=(value)
-      # Convert old format to new format by looking up ENV vars
-      self.api_keys = value.transform_values { |env_var| ENV[env_var] }
-    end
-
-    # @deprecated Use {#defaults[:prompt_generator_model]} instead
-    def prompt_generator_model
-      defaults[:prompt_generator_model]
-    end
-
-    # @deprecated Use {#defaults=} instead
-    def prompt_generator_model=(value)
-      defaults[:prompt_generator_model] = value
-    end
-
-    # Get the dataset generator model (with fallback to gpt-4o)
-    # @return [String] the model to use for dataset generation
-    def dataset_generator_model
-      defaults[:dataset_generator_model] || "gpt-4o"
-    end
-
-    # Set the dataset generator model
-    # @param value [String] the model to use
-    def dataset_generator_model=(value)
-      defaults[:dataset_generator_model] = value
-    end
-
-    # Get the dataset generator provider (with fallback to openai)
-    # @return [String] the provider to use for dataset generation
-    def dataset_generator_provider
-      defaults[:dataset_generator_provider] || "openai"
-    end
-
-    # Set the dataset generator provider
-    # @param value [String] the provider to use
-    def dataset_generator_provider=(value)
-      defaults[:dataset_generator_provider] = value
-    end
-
-    # Get the dataset generator API (with fallback to chat_completions)
-    # @return [String] the API to use for dataset generation
-    def dataset_generator_api
-      defaults[:dataset_generator_api] || "chat_completions"
-    end
-
-    # Set the dataset generator API
-    # @param value [String] the API to use
-    def dataset_generator_api=(value)
-      defaults[:dataset_generator_api] = value
-    end
-
-    # @deprecated Use {#defaults[:llm_judge_model]} instead
-    def llm_judge_model
-      defaults[:llm_judge_model]
-    end
-
-    # @deprecated Use {#defaults=} instead
-    def llm_judge_model=(value)
-      defaults[:llm_judge_model] = value
     end
 
     # Get available tools for a specific provider and API combination.
@@ -388,26 +301,6 @@ module PromptTracker
     end
 
     private
-
-    # Filter models for a specific provider based on context restrictions.
-    def filter_models_for_provider(provider, available_providers, required_capability, allowed_model_ids)
-      return [] unless available_providers.include?(provider.to_sym)
-
-      provider_models = models[provider.to_sym] || []
-
-      provider_models.select do |model|
-        # Filter by allowed model IDs if specified
-        next false if allowed_model_ids && !allowed_model_ids.include?(model[:id])
-
-        # Filter by required capability if specified
-        if required_capability
-          capabilities = model[:capabilities] || []
-          next false unless capabilities.include?(required_capability)
-        end
-
-        true
-      end
-    end
 
     # Get the default prompts path.
     # @return [String] default path

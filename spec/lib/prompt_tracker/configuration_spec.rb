@@ -19,20 +19,16 @@ module PromptTracker
         expect(config.basic_auth_password).to be_nil
       end
 
-      it "sets api_keys to empty hash" do
-        expect(config.api_keys).to eq({})
-      end
-
-      it "sets models to empty hash" do
-        expect(config.models).to eq({})
+      it "sets providers to empty hash" do
+        expect(config.providers).to eq({})
       end
 
       it "sets contexts to empty hash" do
         expect(config.contexts).to eq({})
       end
 
-      it "sets defaults to empty hash" do
-        expect(config.defaults).to eq({})
+      it "sets features to empty hash" do
+        expect(config.features).to eq({})
       end
     end
 
@@ -64,10 +60,10 @@ module PromptTracker
 
     describe "#provider_configured?" do
       before do
-        config.api_keys = {
-          openai: "sk-test-openai",
-          anthropic: "sk-test-anthropic",
-          google: nil
+        config.providers = {
+          openai: { api_key: "sk-test-openai", name: "OpenAI" },
+          anthropic: { api_key: "sk-test-anthropic", name: "Anthropic" },
+          google: { api_key: nil, name: "Google" }
         }
       end
 
@@ -91,10 +87,10 @@ module PromptTracker
 
     describe "#api_key_for" do
       before do
-        config.api_keys = {
-          openai: "sk-test-openai",
-          anthropic: "sk-test-anthropic",
-          google: nil
+        config.providers = {
+          openai: { api_key: "sk-test-openai", name: "OpenAI" },
+          anthropic: { api_key: "sk-test-anthropic", name: "Anthropic" },
+          google: { api_key: nil, name: "Google" }
         }
       end
 
@@ -116,136 +112,103 @@ module PromptTracker
       end
     end
 
-    describe "#configured_providers" do
+    describe "#enabled_providers" do
       before do
-        config.api_keys = {
-          openai: "sk-test-openai",
-          anthropic: "sk-test-anthropic",
-          google: nil,
-          azure: ""
+        config.providers = {
+          openai: { api_key: "sk-test-openai", name: "OpenAI" },
+          anthropic: { api_key: "sk-test-anthropic", name: "Anthropic" },
+          google: { api_key: nil, name: "Google" },
+          azure: { api_key: "", name: "Azure" }
         }
       end
 
       it "returns only providers with non-blank API keys" do
-        expect(config.configured_providers).to contain_exactly(:openai, :anthropic)
+        expect(config.enabled_providers).to contain_exactly(:openai, :anthropic)
       end
     end
 
-    describe "#providers_for" do
+    describe "#models_for_provider" do
       before do
-        config.api_keys = {
-          openai: "sk-test-openai",
-          anthropic: "sk-test-anthropic",
-          google: nil
+        config.providers = {
+          openai: {
+            api_key: "sk-test-openai",
+            name: "OpenAI",
+            models: [
+              { id: "gpt-4o", name: "GPT-4o", capabilities: [ :chat, :structured_output ] },
+              { id: "gpt-4", name: "GPT-4", capabilities: [ :chat ] }
+            ]
+          },
+          anthropic: {
+            api_key: "sk-test-anthropic",
+            name: "Anthropic",
+            models: [
+              { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", capabilities: [ :chat, :structured_output ] }
+            ]
+          },
+          google: { api_key: nil, name: "Google" }
         }
-        config.contexts = {
-          playground: { providers: nil, models: nil, require_capability: nil },
-          llm_judge: { providers: [ :openai ], models: nil, require_capability: :structured_output }
-        }
       end
 
-      context "when context has no restrictions" do
-        it "returns all configured providers" do
-          expect(config.providers_for(:playground)).to contain_exactly(:openai, :anthropic)
-        end
+      it "returns models for a configured provider" do
+        result = config.models_for_provider(:openai)
+        expect(result).to be_an(Array)
+        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
       end
 
-      context "when context has provider restrictions" do
-        it "returns only allowed providers that are also configured" do
-          expect(config.providers_for(:llm_judge)).to contain_exactly(:openai)
-        end
+      it "returns empty array for provider without models" do
+        result = config.models_for_provider(:google)
+        expect(result).to eq([])
       end
 
-      context "when context restricts to unconfigured provider" do
-        before do
-          config.contexts[:google_only] = { providers: [ :google ], models: nil, require_capability: nil }
-        end
-
-        it "returns empty array" do
-          expect(config.providers_for(:google_only)).to eq([])
-        end
+      it "returns empty array for unknown provider" do
+        result = config.models_for_provider(:unknown)
+        expect(result).to eq([])
       end
 
-      context "when context is not defined" do
-        it "returns all configured providers" do
-          expect(config.providers_for(:unknown_context)).to contain_exactly(:openai, :anthropic)
-        end
+      it "handles string provider names" do
+        result = config.models_for_provider("openai")
+        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
       end
     end
 
-    describe "#models_for" do
+    describe "#context_default" do
       before do
-        config.api_keys = {
-          openai: "sk-test-openai",
-          anthropic: "sk-test-anthropic",
-          google: nil
-        }
-        config.models = {
-          openai: [
-            { id: "gpt-4o", name: "GPT-4o", category: "Latest", capabilities: [ :chat, :structured_output ] },
-            { id: "gpt-4", name: "GPT-4", category: "GPT-4", capabilities: [ :chat ] }
-          ],
-          anthropic: [
-            { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", capabilities: [ :chat, :structured_output ] }
-          ],
-          google: [
-            { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", capabilities: [ :chat ] }
-          ]
-        }
         config.contexts = {
-          playground: { providers: nil, models: nil, require_capability: nil },
-          llm_judge: { providers: [ :openai ], models: nil, require_capability: :structured_output },
-          restricted: { providers: [ :openai ], models: [ "gpt-4o" ], require_capability: nil }
+          playground: {
+            description: "Prompt testing",
+            default_provider: :openai,
+            default_api: :chat_completions,
+            default_model: "gpt-4o"
+          },
+          llm_judge: {
+            description: "LLM evaluation",
+            default_provider: :anthropic,
+            default_api: :messages,
+            default_model: "claude-3-5-sonnet"
+          }
         }
       end
 
-      context "without provider filter" do
-        it "returns models from all available providers for context" do
-          result = config.models_for(:playground)
-          expect(result.keys).to contain_exactly(:openai, :anthropic)
-          expect(result[:openai].map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
-        end
-
-        it "excludes providers without API keys" do
-          result = config.models_for(:playground)
-          expect(result.keys).not_to include(:google)
-        end
+      it "returns the default value for a context attribute" do
+        expect(config.context_default(:playground, :provider)).to eq(:openai)
+        expect(config.context_default(:playground, :api)).to eq(:chat_completions)
+        expect(config.context_default(:playground, :model)).to eq("gpt-4o")
       end
 
-      context "with provider filter" do
-        it "returns only models from that provider as an array" do
-          result = config.models_for(:playground, provider: :openai)
-          expect(result).to be_an(Array)
-          expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
-        end
-
-        it "returns empty array for unconfigured provider" do
-          result = config.models_for(:playground, provider: :google)
-          expect(result).to eq([])
-        end
+      it "returns nil for unknown context" do
+        expect(config.context_default(:unknown, :provider)).to be_nil
       end
 
-      context "when context requires a capability" do
-        it "filters models by capability" do
-          result = config.models_for(:llm_judge)
-          expect(result[:openai].map { |m| m[:id] }).to contain_exactly("gpt-4o")
-          expect(result[:openai].map { |m| m[:id] }).not_to include("gpt-4")
-        end
-      end
-
-      context "when context restricts to specific models" do
-        it "only returns allowed models" do
-          result = config.models_for(:restricted)
-          expect(result[:openai].map { |m| m[:id] }).to contain_exactly("gpt-4o")
-        end
+      it "returns nil for unknown attribute" do
+        expect(config.context_default(:playground, :unknown_attr)).to be_nil
       end
     end
 
     describe "#default_model_for" do
       before do
-        config.defaults = {
-          playground_model: "gpt-4o",
-          llm_judge_model: "claude-3-5-sonnet"
+        config.contexts = {
+          playground: { default_model: "gpt-4o" },
+          llm_judge: { default_model: "claude-3-5-sonnet" }
         }
       end
 
@@ -261,17 +224,62 @@ module PromptTracker
 
     describe "#default_provider_for" do
       before do
-        config.defaults = {
-          playground_provider: :openai
+        config.contexts = {
+          playground: { default_provider: :openai },
+          llm_judge: { default_provider: :anthropic }
         }
       end
 
       it "returns the default provider for the context" do
         expect(config.default_provider_for(:playground)).to eq(:openai)
+        expect(config.default_provider_for(:llm_judge)).to eq(:anthropic)
       end
 
       it "returns nil for unknown context" do
         expect(config.default_provider_for(:unknown)).to be_nil
+      end
+    end
+
+    describe "#default_api_for" do
+      before do
+        config.contexts = {
+          playground: { default_api: :chat_completions },
+          llm_judge: { default_api: :messages }
+        }
+      end
+
+      it "returns the default API for the context" do
+        expect(config.default_api_for(:playground)).to eq(:chat_completions)
+        expect(config.default_api_for(:llm_judge)).to eq(:messages)
+      end
+
+      it "returns nil for unknown context" do
+        expect(config.default_api_for(:unknown)).to be_nil
+      end
+    end
+
+    describe "#feature_enabled?" do
+      before do
+        config.features = {
+          openai_assistant_sync: true,
+          experimental_ui: false
+        }
+      end
+
+      it "returns true for enabled features" do
+        expect(config.feature_enabled?(:openai_assistant_sync)).to be true
+      end
+
+      it "returns false for disabled features" do
+        expect(config.feature_enabled?(:experimental_ui)).to be false
+      end
+
+      it "returns false for unknown features" do
+        expect(config.feature_enabled?(:unknown_feature)).to be false
+      end
+
+      it "handles string feature names" do
+        expect(config.feature_enabled?("openai_assistant_sync")).to be true
       end
     end
 

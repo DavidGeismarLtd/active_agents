@@ -5,31 +5,52 @@ require "rails_helper"
 module PromptTracker
   RSpec.describe ApplicationHelper, type: :helper do
     before do
-      PromptTracker.configuration.api_keys = {
-        openai: "sk-test-openai",
-        anthropic: "sk-test-anthropic",
-        google: nil
-      }
-      PromptTracker.configuration.models = {
-        openai: [
-          { id: "gpt-4o", name: "GPT-4o", category: "Latest", capabilities: [ :chat, :structured_output ] },
-          { id: "gpt-4", name: "GPT-4", category: "GPT-4", capabilities: [ :chat ] }
-        ],
-        anthropic: [
-          { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", capabilities: [ :chat, :structured_output ] }
-        ],
-        google: [
-          { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", capabilities: [ :chat ] }
-        ]
+      PromptTracker.configuration.providers = {
+        openai: {
+          api_key: "sk-test-openai",
+          name: "OpenAI",
+          apis: {
+            chat_completions: { name: "Chat Completions", default: true }
+          },
+          models: [
+            { id: "gpt-4o", name: "GPT-4o", category: "Latest", capabilities: [ :chat, :structured_output ] },
+            { id: "gpt-4", name: "GPT-4", category: "GPT-4", capabilities: [ :chat ] }
+          ]
+        },
+        anthropic: {
+          api_key: "sk-test-anthropic",
+          name: "Anthropic",
+          apis: {
+            messages: { name: "Messages", default: true }
+          },
+          models: [
+            { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", capabilities: [ :chat, :structured_output ] }
+          ]
+        },
+        google: {
+          api_key: nil,
+          name: "Google",
+          apis: {
+            generative: { name: "Generative Language", default: true }
+          },
+          models: [
+            { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", capabilities: [ :chat ] }
+          ]
+        }
       }
       PromptTracker.configuration.contexts = {
-        playground: { providers: nil, models: nil, require_capability: nil },
-        llm_judge: { providers: [ :openai ], models: nil, require_capability: :structured_output }
-      }
-      PromptTracker.configuration.defaults = {
-        playground_provider: :openai,
-        playground_model: "gpt-4o",
-        llm_judge_model: "gpt-4o"
+        playground: {
+          description: "Prompt testing",
+          default_provider: :openai,
+          default_api: :chat_completions,
+          default_model: "gpt-4o"
+        },
+        llm_judge: {
+          description: "LLM evaluation",
+          default_provider: :openai,
+          default_api: :chat_completions,
+          default_model: "gpt-4o"
+        }
       }
     end
 
@@ -57,57 +78,32 @@ module PromptTracker
       end
     end
 
-    describe "#providers_for" do
-      context "when context has no restrictions" do
-        it "returns all configured providers" do
-          expect(helper.providers_for(:playground)).to contain_exactly(:openai, :anthropic)
-        end
-      end
-
-      context "when context has provider restrictions" do
-        it "returns only allowed providers that are also configured" do
-          expect(helper.providers_for(:llm_judge)).to contain_exactly(:openai)
-        end
-      end
-    end
-
-    describe "#available_providers" do
-      it "returns all configured providers" do
-        expect(helper.available_providers).to contain_exactly(:openai, :anthropic)
+    describe "#enabled_providers" do
+      it "returns all providers with API keys configured" do
+        expect(helper.enabled_providers).to contain_exactly(:openai, :anthropic)
       end
 
       context "when no API keys are configured" do
         before do
-          PromptTracker.configuration.api_keys = {}
+          PromptTracker.configuration.providers = {}
         end
 
         it "returns empty array" do
-          expect(helper.available_providers).to be_empty
+          expect(helper.enabled_providers).to be_empty
         end
       end
     end
 
-    describe "#models_for" do
-      context "without provider filter" do
-        it "returns models from all available providers" do
-          result = helper.models_for(:playground)
-          expect(result.keys).to contain_exactly(:openai, :anthropic)
-        end
+    describe "#models_for_provider" do
+      it "returns models for a specific provider" do
+        result = helper.models_for_provider(:openai)
+        expect(result).to be_an(Array)
+        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
       end
 
-      context "with provider filter" do
-        it "returns only models from that provider" do
-          result = helper.models_for(:playground, provider: :openai)
-          expect(result).to be_an(Array)
-          expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
-        end
-      end
-
-      context "when context requires a capability" do
-        it "filters models by capability" do
-          result = helper.models_for(:llm_judge)
-          expect(result[:openai].map { |m| m[:id] }).to contain_exactly("gpt-4o")
-        end
+      it "returns empty array for provider without models" do
+        PromptTracker.configuration.providers[:test] = { api_key: "key" }
+        expect(helper.models_for_provider(:test)).to eq([])
       end
     end
 
@@ -128,6 +124,23 @@ module PromptTracker
 
       it "returns nil for unknown context" do
         expect(helper.default_provider_for(:unknown)).to be_nil
+      end
+    end
+
+    describe "#default_api_for" do
+      it "returns the default API for the context" do
+        expect(helper.default_api_for(:playground)).to eq(:chat_completions)
+      end
+
+      it "returns nil for unknown context" do
+        expect(helper.default_api_for(:unknown)).to be_nil
+      end
+    end
+
+    describe "#provider_name" do
+      it "returns the display name for a provider" do
+        expect(helper.provider_name(:openai)).to eq("OpenAI")
+        expect(helper.provider_name(:anthropic)).to eq("Anthropic")
       end
     end
   end

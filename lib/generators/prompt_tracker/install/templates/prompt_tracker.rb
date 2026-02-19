@@ -2,194 +2,149 @@
 
 # PromptTracker Configuration
 #
-# This file is used to configure PromptTracker settings.
+# This file configures PromptTracker settings.
+# Structure:
+#   1. Core Settings (paths, auth)
+#   2. Providers (api_key, name, APIs, models - all in one place)
+#   3. Contexts (usage scenarios with defaults)
+#   4. Feature Flags
+#   5. Tool UI Metadata (optional)
 
 PromptTracker.configure do |config|
   # ===========================================================================
-  # Basic Settings
+  # 1. CORE SETTINGS
   # ===========================================================================
 
   # Path to the directory containing prompt YAML files
-  # Default: Rails.root.join("app", "prompts")
   config.prompts_path = Rails.root.join("app", "prompts")
 
   # Basic Authentication for Web UI
-  # If both username and password are set, the web UI will require
-  # HTTP Basic Authentication. If either is nil, the UI is public.
+  # If both username and password are set, the web UI will require HTTP Basic Auth.
+  # SECURITY: Use environment variables for credentials in production.
   #
-  # SECURITY: It's recommended to use environment variables for credentials
-  # and enable basic auth in production to protect sensitive data.
-  #
-  # Example with environment variables:
+  # Example:
   #   config.basic_auth_username = ENV["PROMPT_TRACKER_USERNAME"]
   #   config.basic_auth_password = ENV["PROMPT_TRACKER_PASSWORD"]
-  #
-  # Default: nil (public access)
   config.basic_auth_username = nil
   config.basic_auth_password = nil
 
   # ===========================================================================
-  # API Keys (per provider, not per API)
+  # 2. PROVIDERS
   # ===========================================================================
-  # A provider is only available if its key is set.
-  # Use environment variables for security.
-  config.api_keys = {
-    openai: ENV["OPENAI_API_KEY"],
-    anthropic: ENV["ANTHROPIC_API_KEY"],
-    google: ENV["GOOGLE_API_KEY"]
-  }
-
-  # ===========================================================================
-  # Providers and Their APIs
-  # ===========================================================================
-  # Define providers and the APIs they offer.
-  # Each API can have:
-  # - name: Human-readable name shown in the UI
-  # - default: Whether this is the default API for the provider
-  # - description: Optional description for the UI
-  # - capabilities: Special capabilities like :web_search, :file_search
+  # Each provider contains: api_key, display name, available APIs, and models.
+  # A provider is only enabled if api_key is present.
+  # Tool capabilities are defined in ApiCapabilities (engine), not here.
   config.providers = {
     openai: {
+      api_key: ENV["OPENAI_API_KEY"],
       name: "OpenAI",
       apis: {
-        chat_completion: {
-          name: "Chat Completions",
-          description: "Standard chat API with messages",
-          default: true
-        },
-        response_api: {
-          name: "Responses API",
-          description: "Stateful conversations with built-in tools",
-          capabilities: [ :web_search, :file_search, :code_interpreter ]
-        },
-        assistants_api: {
-          name: "Assistants API",
-          description: "Full assistant features with threads and runs"
-        }
-      }
+        chat_completions: { name: "Chat Completions", description: "Standard chat API with messages", default: true },
+        responses: { name: "Responses", description: "Stateful conversations with built-in tools" },
+        assistants: { name: "Assistants", description: "Full assistant features with threads and runs" }
+      },
+      models: [
+        { id: "gpt-4o", name: "GPT-4o", category: "Latest",
+          capabilities: [ :chat, :structured_output, :vision, :function_calling ],
+          supported_apis: [ :chat_completions, :responses, :assistants ] },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini", category: "Latest",
+          capabilities: [ :chat, :structured_output, :function_calling ],
+          supported_apis: [ :chat_completions, :responses, :assistants ] },
+        { id: "gpt-4-turbo", name: "GPT-4 Turbo", category: "GPT-4",
+          capabilities: [ :chat, :vision, :function_calling ],
+          supported_apis: [ :chat_completions, :responses, :assistants ] },
+        { id: "gpt-4", name: "GPT-4", category: "GPT-4",
+          capabilities: [ :chat, :function_calling ],
+          supported_apis: [ :chat_completions, :assistants ] },
+        { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", category: "GPT-3.5",
+          capabilities: [ :chat, :function_calling ],
+          supported_apis: [ :chat_completions, :assistants ] }
+      ]
     },
+
     anthropic: {
+      api_key: ENV["ANTHROPIC_API_KEY"],
       name: "Anthropic",
       apis: {
-        messages: {
-          name: "Messages API",
-          description: "Claude chat API",
-          default: true
-        }
-      }
+        messages: { name: "Messages", description: "Claude chat API", default: true }
+      },
+      models: [
+        { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5",
+          capabilities: [ :chat, :structured_output, :function_calling ] },
+        { id: "claude-opus-4-1", name: "Claude Opus 4.1",
+          capabilities: [ :chat, :structured_output, :function_calling ] },
+        { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet",
+          capabilities: [ :chat, :structured_output, :function_calling ] },
+        { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku",
+          capabilities: [ :chat, :structured_output, :function_calling ] }
+      ]
     },
+
     google: {
+      api_key: ENV["GOOGLE_API_KEY"],
       name: "Google",
       apis: {
-        gemini: {
-          name: "Gemini API",
-          description: "Google Gemini models",
-          default: true
-        }
-      }
+        gemini: { name: "Gemini", description: "Google Gemini API", default: true }
+      },
+      models: [
+        { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Experimental)", category: "Gemini 2.0",
+          capabilities: [ :chat ] },
+        { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", category: "Gemini 1.5",
+          capabilities: [ :chat ] },
+        { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", category: "Gemini 1.5",
+          capabilities: [ :chat ] }
+      ]
     }
   }
 
   # ===========================================================================
-  # Model Registry
+  # 3. CONTEXTS
   # ===========================================================================
-  # Master list of all available models per provider.
-  # Each model can have:
-  # - id: The actual model ID used in API calls (required)
-  # - name: Human-readable name shown in the UI (required)
-  # - category: Used to group models in optgroups (optional)
-  # - capabilities: Array of capabilities like :chat, :structured_output (optional)
-  # - supported_apis: Array of API keys this model works with (optional, nil = all)
-  config.models = {
-    openai: [
-      { id: "gpt-4o", name: "GPT-4o", category: "Latest",
-        capabilities: [ :chat, :structured_output ],
-        supported_apis: [ :chat_completion, :response_api, :assistants_api ] },
-      { id: "gpt-4o-mini", name: "GPT-4o Mini", category: "Latest",
-        capabilities: [ :chat, :structured_output ],
-        supported_apis: [ :chat_completion, :response_api, :assistants_api ] },
-      { id: "gpt-4-turbo", name: "GPT-4 Turbo", category: "GPT-4",
-        capabilities: [ :chat, :structured_output ],
-        supported_apis: [ :chat_completion, :response_api, :assistants_api ] },
-      { id: "gpt-4", name: "GPT-4", category: "GPT-4",
-        capabilities: [ :chat ],
-        supported_apis: [ :chat_completion, :assistants_api ] },
-      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", category: "GPT-3.5",
-        capabilities: [ :chat ],
-        supported_apis: [ :chat_completion, :assistants_api ] }
-    ],
-    anthropic: [
-      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", category: "Claude 3.5",
-        capabilities: [ :chat, :structured_output ] },
-      { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", category: "Claude 3.5",
-        capabilities: [ :chat, :structured_output ] },
-      { id: "claude-3-opus-20240229", name: "Claude 3 Opus", category: "Claude 3",
-        capabilities: [ :chat ] },
-      { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet", category: "Claude 3",
-        capabilities: [ :chat ] },
-      { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku", category: "Claude 3",
-        capabilities: [ :chat ] }
-    ],
-    google: [
-      { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Experimental)", category: "Gemini 2.0",
-        capabilities: [ :chat ] },
-      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", category: "Gemini 1.5",
-        capabilities: [ :chat ] },
-      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", category: "Gemini 1.5",
-        capabilities: [ :chat ] }
-    ]
-  }
-
-  # ===========================================================================
-  # Context-Specific Model Restrictions (Optional)
-  # ===========================================================================
-  # Define which providers/models are available in specific contexts.
-  # If not specified, all configured providers/models are available.
-  #
-  # Options:
-  # - providers: Array of allowed provider symbols, or nil for all
-  # - models: Array of allowed model IDs, or nil for all
-  # - require_capability: Symbol like :structured_output to filter models
+  # Usage scenarios with their default selections.
+  # Each context specifies which provider/api/model to use by default.
   config.contexts = {
-    # Playground allows all providers and models
     playground: {
-      providers: nil,
-      models: nil,
-      require_capability: nil
+      description: "Prompt version testing in the playground",
+      default_provider: :openai,
+      default_api: :chat_completions,
+      default_model: "gpt-4o"
     },
-    # LLM Judge requires structured output capability
     llm_judge: {
-      providers: nil,
-      models: nil,
-      require_capability: :structured_output
+      description: "LLM-as-judge evaluation of responses",
+      default_provider: :openai,
+      default_api: :chat_completions,
+      default_model: "gpt-4o"
     },
-    # OpenAI Assistant playground is OpenAI-only
-    assistant_playground: {
-      providers: [ :openai ],
-      models: nil,
-      require_capability: nil
+    dataset_generation: {
+      description: "Generating test dataset rows via LLM",
+      default_provider: :openai,
+      default_api: :chat_completions,
+      default_model: "gpt-4o"
+    },
+    prompt_generation: {
+      description: "AI-assisted prompt creation and enhancement",
+      default_provider: :openai,
+      default_api: :chat_completions,
+      default_model: "gpt-4o-mini"
     }
   }
 
   # ===========================================================================
-  # Default Selections
+  # 4. FEATURE FLAGS
   # ===========================================================================
-  # Default provider, API, and model for various contexts.
-  config.defaults = {
-    playground_provider: :openai,
-    playground_api: :chat_completion,
-    playground_model: "gpt-4o",
-    llm_judge_model: "gpt-4o",
-    prompt_generator_model: "gpt-4o-mini",
-    dataset_generator_model: "gpt-4o"
+  config.features = {
+    openai_assistant_sync: false  # Show "Sync OpenAI Assistants" button in Testing Dashboard
   }
 
   # ===========================================================================
-  # Feature Flags
+  # 5. TOOL UI METADATA (Optional - defaults provided by engine)
   # ===========================================================================
-  # Enable OpenAI Assistant sync button in Testing Dashboard.
-  # When enabled, shows a "Sync OpenAI Assistants" button that fetches
-  # all assistants from your OpenAI account and creates agents for them.
-  # Default: false
-  config.enable_openai_assistant_sync = false
+  # Customize the display metadata for built-in API tools.
+  # Uncomment and modify to customize:
+  #
+  # config.builtin_tools = {
+  #   web_search: { name: "Web Search", description: "Search the web", icon: "bi-globe" },
+  #   file_search: { name: "File Search", description: "Search files", icon: "bi-file-earmark-search" },
+  #   code_interpreter: { name: "Code Interpreter", description: "Execute Python code", icon: "bi-code-slash" }
+  # }
 end

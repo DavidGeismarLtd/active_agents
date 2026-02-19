@@ -165,7 +165,7 @@ module PromptTracker
     # @param version [PromptVersion] the prompt version (can be nil)
     # @return [Hash] complete config data with all necessary information
     def playground_model_config_data(version)
-      available_providers_list = providers_for(:playground)
+      available_providers_list = enabled_providers
       default_provider_value = default_provider_for(:playground)
       default_api_value = default_api_for(:playground)
 

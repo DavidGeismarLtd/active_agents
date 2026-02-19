@@ -186,36 +186,23 @@ module PromptTracker
       PromptTracker.configuration.provider_configured?(provider)
     end
 
-    # Get list of available providers for a given context.
-    # Returns providers that have API keys configured AND are allowed by the context.
+    # Get list of enabled providers (those with API keys configured).
     #
-    # @param context [Symbol] the context name (e.g., :playground, :llm_judge)
     # @return [Array<Symbol>] list of provider keys
     # @example
-    #   providers_for(:playground) # => [:openai, :anthropic]
-    #   providers_for(:llm_judge) # => [:openai]
-    def providers_for(context)
-      PromptTracker.configuration.providers_for(context)
+    #   enabled_providers # => [:openai, :anthropic]
+    def enabled_providers
+      PromptTracker.configuration.enabled_providers
     end
 
-    # Get list of available providers (those with API keys configured).
-    # @deprecated Use {#providers_for} with a context instead
-    # @return [Array<Symbol>] list of provider keys
-    def available_providers
-      PromptTracker.configuration.configured_providers
-    end
-
-    # Get available models for a context.
-    # Returns models that are allowed by the context AND whose provider has an API key.
+    # Get all models for a provider.
     #
-    # @param context [Symbol] the context name (e.g., :playground, :llm_judge)
-    # @param provider [Symbol, nil] optional provider filter
-    # @return [Hash, Array] hash of provider => models, or array if provider specified
+    # @param provider [Symbol] the provider key
+    # @return [Array<Hash>] array of model hashes
     # @example
-    #   models_for(:playground) # => { openai: [...], anthropic: [...] }
-    #   models_for(:playground, provider: :openai) # => [{ id: "gpt-4o", ... }]
-    def models_for(context, provider: nil)
-      PromptTracker.configuration.models_for(context, provider: provider)
+    #   models_for_provider(:openai) # => [{ id: "gpt-4o", name: "GPT-4o", ... }]
+    def models_for_provider(provider)
+      PromptTracker.configuration.models_for_provider(provider)
     end
 
     # Get the default model for a context.
