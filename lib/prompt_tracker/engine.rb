@@ -76,5 +76,31 @@ module PromptTracker
         helper Turbo::StreamsHelper if defined?(Turbo::StreamsHelper)
       end
     end
+
+    # Configure RubyLLM with API keys from PromptTracker providers configuration
+    # This runs after host app initializers so PromptTracker.configuration is available
+    initializer "prompt_tracker.configure_ruby_llm", after: :load_config_initializers do
+      # Map PromptTracker provider names to RubyLLM config attributes
+      PROVIDER_KEY_MAPPING = {
+        openai: :openai_api_key,
+        anthropic: :anthropic_api_key,
+        google: :gemini_api_key,
+        gemini: :gemini_api_key,
+        deepseek: :deepseek_api_key,
+        mistral: :mistral_api_key,
+        perplexity: :perplexity_api_key,
+        openrouter: :openrouter_api_key,
+        xai: :xai_api_key
+      }.freeze
+
+      RubyLLM.configure do |config|
+        providers = PromptTracker.configuration.providers
+
+        PROVIDER_KEY_MAPPING.each do |provider, config_key|
+          api_key = providers.dig(provider, :api_key)
+          config.public_send("#{config_key}=", api_key) if api_key.present?
+        end
+      end
+    end
   end
 end
