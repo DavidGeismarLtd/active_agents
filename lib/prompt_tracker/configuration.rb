@@ -8,19 +8,14 @@ module PromptTracker
   #     config.prompts_path = Rails.root.join("app", "prompts")
   #     config.basic_auth_username = "admin"
   #     config.basic_auth_password = "secret"
+  #
+  #     # Minimal config - only API keys required
+  #     # Provider name, APIs, and models are auto-populated from ProviderDefaults and RubyLLM
   #     config.providers = {
-  #       openai: {
-  #         api_key: ENV["OPENAI_API_KEY"],
-  #         name: "OpenAI",
-  #         apis: {
-  #           chat_completions: { name: "Chat Completions", default: true },
-  #           responses: { name: "Responses" }
-  #         },
-  #         models: [
-  #           { id: "gpt-4o", name: "GPT-4o", capabilities: [:structured_output] }
-  #         ]
-  #       }
+  #       openai: { api_key: ENV["OPENAI_API_KEY"] },
+  #       anthropic: { api_key: ENV["ANTHROPIC_API_KEY"] }
   #     }
+  #
   #     config.contexts = {
   #       playground: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" }
   #     }
@@ -39,20 +34,21 @@ module PromptTracker
     # @return [String, nil] the password
     attr_accessor :basic_auth_password
 
-    # Provider definitions including api_key, name, APIs, and models.
+    # Provider definitions. Only api_key is required.
+    # Provider name and APIs are auto-populated from ProviderDefaults.
+    # Models are auto-populated from RubyLLM's model registry.
     # @return [Hash] hash of provider symbol => provider config hash
-    # @example
+    # @example Minimal config (recommended)
+    #   {
+    #     openai: { api_key: ENV["OPENAI_API_KEY"] },
+    #     anthropic: { api_key: ENV["ANTHROPIC_API_KEY"] }
+    #   }
+    # @example With optional overrides
     #   {
     #     openai: {
     #       api_key: ENV["OPENAI_API_KEY"],
-    #       name: "OpenAI",
-    #       apis: {
-    #         chat_completions: { name: "Chat Completions", default: true },
-    #         responses: { name: "Responses" }
-    #       },
-    #       models: [
-    #         { id: "gpt-4o", name: "GPT-4o", capabilities: [:structured_output] }
-    #       ]
+    #       name: "Custom OpenAI Name",  # Optional: overrides ProviderDefaults
+    #       apis: { ... }                # Optional: overrides ProviderDefaults
     #     }
     #   }
     attr_accessor :providers
@@ -128,20 +124,25 @@ module PromptTracker
     end
 
     # Get the display name for a provider.
+    # Uses explicit config, then ProviderDefaults, then titleized key.
     # @param provider [Symbol] the provider key
     # @return [String] the provider display name
     def provider_name(provider)
-      providers.dig(provider.to_sym, :name) || provider.to_s.titleize
+      providers.dig(provider.to_sym, :name) ||
+        ProviderDefaults.name_for(provider) ||
+        provider.to_s.titleize
     end
 
     # Get available APIs for a provider.
+    # Uses explicit config if present, otherwise falls back to ProviderDefaults.
     # @param provider [Symbol] the provider key
     # @return [Array<Hash>] array of API hashes with :key, :name, :default, :capabilities, :description
     def apis_for(provider)
-      provider_config = providers[provider.to_sym]
-      return [] unless provider_config && provider_config[:apis]
+      # Use explicit apis config if present, otherwise use ProviderDefaults
+      apis_config = providers.dig(provider.to_sym, :apis) || ProviderDefaults.apis_for(provider)
+      return [] if apis_config.empty?
 
-      provider_config[:apis].map do |api_key, api_config|
+      apis_config.map do |api_key, api_config|
         {
           key: api_key,
           name: api_config[:name] || api_key.to_s.titleize,
@@ -168,11 +169,11 @@ module PromptTracker
       apis_for(provider).size > 1
     end
 
-    # Get all models for a provider.
+    # Get all models for a provider from RubyLLM model registry.
     # @param provider [Symbol] the provider key
-    # @return [Array<Hash>] array of model hashes
+    # @return [Array<Hash>] array of model hashes from RubyLLM
     def models_for_provider(provider)
-      providers.dig(provider.to_sym, :models) || []
+      RubyLlmModelAdapter.models_for(provider)
     end
 
     # Get models for a specific provider and API combination.
@@ -275,32 +276,59 @@ module PromptTracker
     end
 
     # Get available tools for a specific provider and API combination.
-    # Returns tool metadata for a provider/API combination.
-    # Delegates to ApiCapabilities for capability detection, then enriches with metadata.
+    # Returns tool metadata combining:
+    # 1. API builtin_tools (from ApiCapabilities)
+    # 2. Functions tool (if model supports function_calling)
     #
     # @param provider [Symbol] the provider key
     # @param api [Symbol] the API key
+    # @param model_id [String, nil] optional model ID to check for function_calling capability
     # @return [Array<Hash>] array of tool hashes with :id, :name, :description, :icon, :configurable
-    def tools_for_api(provider, api)
-      # Get tools from ApiCapabilities (single source of truth)
-      tool_symbols = ApiCapabilities.tools_for(provider, api)
+    def tools_for_api(provider, api, model_id: nil)
+      tools = []
 
-      # Enrich with metadata from builtin_tools
-      tool_symbols.map do |tool_symbol|
+      # 1. Add API builtin tools (web_search, file_search, code_interpreter)
+      builtin_tool_symbols = ApiCapabilities.builtin_tools_for(provider, api)
+      builtin_tool_symbols.each do |tool_symbol|
         tool_metadata = builtin_tools[tool_symbol]
         next unless tool_metadata
 
-        {
-          id: tool_symbol.to_s,
-          name: tool_metadata[:name],
-          description: tool_metadata[:description],
-          icon: tool_metadata[:icon],
-          configurable: tool_metadata[:configurable] == true
-        }
-      end.compact
+        tools << build_tool_hash(tool_symbol, tool_metadata)
+      end
+
+      # 2. Add functions tool if model supports function_calling
+      if model_supports_function_calling?(model_id)
+        tool_metadata = builtin_tools[:functions]
+        tools << build_tool_hash(:functions, tool_metadata) if tool_metadata
+      end
+
+      tools
+    end
+
+    # Check if a model supports function calling.
+    # @param model_id [String, nil] model ID
+    # @return [Boolean] true if model supports function_calling
+    def model_supports_function_calling?(model_id)
+      return true if model_id.nil?  # Default to true if no model specified
+
+      RubyLlmModelAdapter.capabilities_for(model_id).include?(:function_calling)
     end
 
     private
+
+    # Build a tool hash from symbol and metadata.
+    # @param tool_symbol [Symbol] the tool symbol
+    # @param tool_metadata [Hash] the tool metadata
+    # @return [Hash] tool hash with :id, :name, :description, :icon, :configurable
+    def build_tool_hash(tool_symbol, tool_metadata)
+      {
+        id: tool_symbol.to_s,
+        name: tool_metadata[:name],
+        description: tool_metadata[:description],
+        icon: tool_metadata[:icon],
+        configurable: tool_metadata[:configurable] == true
+      }
+    end
 
     # Get the default prompts path.
     # @return [String] default path

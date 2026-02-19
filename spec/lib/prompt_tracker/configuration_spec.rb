@@ -149,15 +149,28 @@ module PromptTracker
         }
       end
 
-      it "returns models for a configured provider" do
+      it "returns models from RubyLLM for a configured provider" do
         result = config.models_for_provider(:openai)
         expect(result).to be_an(Array)
-        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
+        expect(result.length).to be > 0
+        # Should include well-known models (RubyLLM provides these)
+        model_ids = result.map { |m| m[:id] }
+        expect(model_ids).to include("gpt-4o")
+        # Each model should have expected structure
+        result.each do |model|
+          expect(model).to have_key(:id)
+          expect(model).to have_key(:name)
+          expect(model).to have_key(:capabilities)
+        end
       end
 
-      it "returns empty array for provider without models" do
+      it "returns models from RubyLLM for Google (mapped from gemini)" do
         result = config.models_for_provider(:google)
-        expect(result).to eq([])
+        expect(result).to be_an(Array)
+        # Google models should exist in RubyLLM (mapped from "gemini" provider)
+        expect(result.length).to be > 0
+        model_ids = result.map { |m| m[:id] }
+        expect(model_ids.any? { |id| id.include?("gemini") }).to be true
       end
 
       it "returns empty array for unknown provider" do
@@ -167,7 +180,9 @@ module PromptTracker
 
       it "handles string provider names" do
         result = config.models_for_provider("openai")
-        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
+        expect(result).to be_an(Array)
+        expect(result.length).to be > 0
+        expect(result.map { |m| m[:id] }).to include("gpt-4o")
       end
     end
 
@@ -285,7 +300,7 @@ module PromptTracker
 
     describe "#tools_for_api" do
       context "with OpenAI provider" do
-        it "returns enriched tool metadata for chat_completions API" do
+        it "returns functions for chat_completions API (no builtin tools, but model supports function_calling by default)" do
           tools = config.tools_for_api(:openai, :chat_completions)
 
           expect(tools).to be_an(Array)
@@ -299,7 +314,7 @@ module PromptTracker
           expect(functions_tool[:configurable]).to be true
         end
 
-        it "returns enriched tool metadata for responses API" do
+        it "returns builtin tools + functions for responses API" do
           tools = config.tools_for_api(:openai, :responses)
 
           expect(tools).to be_an(Array)
@@ -325,7 +340,7 @@ module PromptTracker
           expect(web_search[:configurable]).to be false
         end
 
-        it "returns enriched tool metadata for assistants API" do
+        it "returns builtin tools + functions for assistants API" do
           tools = config.tools_for_api(:openai, :assistants)
 
           expect(tools).to be_an(Array)
@@ -337,7 +352,7 @@ module PromptTracker
       end
 
       context "with Anthropic provider" do
-        it "returns enriched tool metadata for messages API" do
+        it "returns functions for messages API (no builtin tools)" do
           tools = config.tools_for_api(:anthropic, :messages)
 
           expect(tools).to be_an(Array)
@@ -350,33 +365,48 @@ module PromptTracker
       end
 
       context "with unknown provider" do
-        it "returns empty array" do
+        it "returns only functions (model supports function_calling by default)" do
           tools = config.tools_for_api(:unknown_provider, :chat_completions)
-          expect(tools).to eq([])
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
       end
 
       context "with unknown API" do
-        it "returns empty array for known provider but unknown API" do
+        it "returns only functions for known provider but unknown API" do
           tools = config.tools_for_api(:openai, :unknown_api)
-          expect(tools).to eq([])
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
       end
 
       context "with nil arguments" do
-        it "returns empty array when provider is nil" do
+        it "returns only functions when provider is nil" do
           tools = config.tools_for_api(nil, :chat_completions)
-          expect(tools).to eq([])
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
 
-        it "returns empty array when API is nil" do
+        it "returns only functions when API is nil" do
           tools = config.tools_for_api(:openai, nil)
-          expect(tools).to eq([])
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
 
-        it "returns empty array when both are nil" do
+        it "returns only functions when both are nil" do
           tools = config.tools_for_api(nil, nil)
-          expect(tools).to eq([])
+
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
       end
 

@@ -130,14 +130,13 @@ export default class extends Controller {
     // Get capabilities for this provider/API combination
     const capabilities = this.getCapabilities(provider, api)
     const playgroundUI = capabilities.playground_ui || []
-    const tools = capabilities.tools || []
 
     console.log(`[PlaygroundUIController] Capabilities:`, capabilities)
 
     // Update all UI elements
     this.updatePanelVisibility(playgroundUI)
     this.updateConversationVisibility(playgroundUI)
-    this.updateToolsVisibility(tools, provider, api)
+    this.updateToolsVisibility(provider, api)
     this.updateApiDescription(provider, api)
   }
 
@@ -148,12 +147,12 @@ export default class extends Controller {
    *
    * @param {string} provider - Provider name (e.g., 'openai')
    * @param {string} api - API name (e.g., 'assistants')
-   * @returns {Object} Capabilities object with playground_ui, tools, features arrays
+   * @returns {Object} Capabilities object with playground_ui, builtin_tools, features arrays
    */
   getCapabilities(provider, api) {
     if (!this.hasCapabilitiesValue) {
       console.warn('[PlaygroundUIController] No capabilities data available')
-      return { playground_ui: [], tools: [], features: [] }
+      return { playground_ui: [], builtin_tools: [], features: [] }
     }
 
     const capabilities = this.capabilitiesValue
@@ -161,14 +160,14 @@ export default class extends Controller {
 
     if (!providerConfig) {
       console.warn(`[PlaygroundUIController] Unknown provider: ${provider}`)
-      return { playground_ui: [], tools: [], features: [] }
+      return { playground_ui: [], builtin_tools: [], features: [] }
     }
 
     const apiConfig = providerConfig[api]
 
     if (!apiConfig) {
       console.warn(`[PlaygroundUIController] Unknown API: ${api} for provider: ${provider}`)
-      return { playground_ui: [], tools: [], features: [] }
+      return { playground_ui: [], builtin_tools: [], features: [] }
     }
 
     return apiConfig
@@ -349,22 +348,25 @@ export default class extends Controller {
   /**
    * Update tools panel visibility and content based on available tools
    *
-   * @param {Array<string>} toolSymbols - Array of tool symbols from capabilities (e.g., ['functions', 'web_search'])
+   * Tools visibility is determined by actual tools data from providerData.tools_by_api,
+   * which includes both API builtin_tools and functions (if model supports function_calling).
+   *
    * @param {string} provider - Current provider key
    * @param {string} api - Current API key
    */
-  updateToolsVisibility(toolSymbols, provider, api) {
+  updateToolsVisibility(provider, api) {
     if (!this.hasToolsPanelContainerTarget) return
 
-    const hasTools = toolSymbols && toolSymbols.length > 0
+    // Get full tool metadata from providerData (includes builtin tools + functions if supported)
+    const toolsData = this.getToolsDataForApi(provider, api)
+    const hasTools = toolsData && toolsData.length > 0
+
     this.toolsPanelContainerTarget.style.display = hasTools ? '' : 'none'
 
-    console.log(`[PlaygroundUIController] Tools panel: ${hasTools ? 'visible' : 'hidden'} (${toolSymbols.length} tools)`)
+    console.log(`[PlaygroundUIController] Tools panel: ${hasTools ? 'visible' : 'hidden'} (${toolsData.length} tools)`)
 
     // Update the actual tool cards via outlet
     if (this.hasPlaygroundToolsOutlet) {
-      // Get full tool metadata from providerData
-      const toolsData = this.getToolsDataForApi(provider, api)
       this.playgroundToolsOutlet.updateTools(toolsData)
     }
   }

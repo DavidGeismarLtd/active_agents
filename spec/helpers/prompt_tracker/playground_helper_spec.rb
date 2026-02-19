@@ -91,9 +91,11 @@ module PromptTracker
       end
 
       context "with unknown provider" do
-        it "returns empty array" do
+        it "returns only functions (model supports function_calling by default)" do
           tools = helper.available_tools_for_provider(provider: :unknown, api: :unknown)
-          expect(tools).to eq([])
+          expect(tools).to be_an(Array)
+          expect(tools.length).to eq(1)
+          expect(tools.first[:id]).to eq("functions")
         end
       end
     end
@@ -115,8 +117,8 @@ module PromptTracker
         expect(helper.provider_supports_tools?(provider: :anthropic, api: :messages)).to be true
       end
 
-      it "returns false for unknown provider/API" do
-        expect(helper.provider_supports_tools?(provider: :unknown, api: :unknown)).to be false
+      it "returns true for unknown provider/API (defaults to functions)" do
+        expect(helper.provider_supports_tools?(provider: :unknown, api: :unknown)).to be true
       end
 
       context "when provider and api are not specified" do

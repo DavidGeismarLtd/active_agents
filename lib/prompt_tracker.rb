@@ -11,4 +11,5 @@ end
 
 require "prompt_tracker/configuration"
 require "prompt_tracker/api_capabilities"
+require "prompt_tracker/provider_defaults"
 # Trackable will be auto-loaded by Rails when needed

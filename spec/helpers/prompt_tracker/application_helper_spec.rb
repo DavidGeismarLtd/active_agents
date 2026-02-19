@@ -95,15 +95,15 @@ module PromptTracker
     end
 
     describe "#models_for_provider" do
-      it "returns models for a specific provider" do
+      it "returns models from RubyLLM for a provider" do
         result = helper.models_for_provider(:openai)
         expect(result).to be_an(Array)
-        expect(result.map { |m| m[:id] }).to contain_exactly("gpt-4o", "gpt-4")
+        expect(result.length).to be > 0
+        expect(result.map { |m| m[:id] }).to include("gpt-4o")
       end
 
-      it "returns empty array for provider without models" do
-        PromptTracker.configuration.providers[:test] = { api_key: "key" }
-        expect(helper.models_for_provider(:test)).to eq([])
+      it "returns empty array for unknown provider" do
+        expect(helper.models_for_provider(:unknown)).to eq([])
       end
     end
 
