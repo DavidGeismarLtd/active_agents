@@ -9,7 +9,7 @@ module PromptTracker
     # TODO: Investigate why CSRF token verification fails for conversation actions
     # The token is correctly sent in X-CSRF-Token header but Rails still rejects it.
     # Other actions (save, preview) work fine with the same pattern.
-    skip_before_action :verify_authenticity_token, only: [ :run_conversation, :reset_conversation, :preview, :generate, :save ]
+    skip_before_action :verify_authenticity_token, only: [ :run_conversation, :reset_conversation, :preview, :generate, :save, :check_version_impact ]
 
     before_action :set_prompt, if: -> { params[:prompt_id].present? }
     before_action :set_prompt_version, if: -> { params[:prompt_version_id].present? }
@@ -176,6 +176,62 @@ module PromptTracker
       render json: { success: true }
     end
 
+    # POST /playground/check_version_impact
+    # POST /prompts/:prompt_id/playground/check_version_impact
+    # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/check_version_impact
+    # Check if saving will create a new version and why
+    def check_version_impact
+      version = @prompt_version || (@prompt && (@prompt.active_version || @prompt.latest_version))
+
+      # No version = new version will be created (first version)
+      unless version
+        render json: {
+          will_create_new_version: true,
+          reason: "first_version",
+          message: "This will create the first version of this prompt."
+        }
+        return
+      end
+
+      structural_change = structural_fields_changing?(version)
+
+      # Check version state
+      if version.production_state?
+        render json: {
+          will_create_new_version: true,
+          reason: "production_immutable",
+          message: "This version has production responses. A new version will be created.",
+          current_state: "Production",
+          structural_change: structural_change
+        }
+      elsif version.testing_state? && structural_change
+        render json: {
+          will_create_new_version: true,
+          reason: "structural_change_with_tests",
+          message: "Structural fields are changing while tests/datasets exist. A new version will be created.",
+          current_state: "Testing",
+          structural_change: true
+        }
+      elsif structural_change
+        # Development state with structural changes - allowed but inform user
+        render json: {
+          will_create_new_version: false,
+          reason: "structural_change_development",
+          message: "Since this version has no tests or datasets yet, you can choose to update this version or to create a new version.",
+          current_state: "Development",
+          structural_change: true
+        }
+      else
+        render json: {
+          will_create_new_version: false,
+          reason: nil,
+          message: "Changes will update the current version.",
+          current_state: version.production_state? ? "Production" : (version.testing_state? ? "Testing" : "Development"),
+          structural_change: false
+        }
+      end
+    end
+
     # POST /prompts/:prompt_id/playground/push_to_remote
     # POST /prompts/:prompt_id/versions/:prompt_version_id/playground/push_to_remote
     # Push local changes to remote entity (e.g., OpenAI Assistant)
@@ -269,6 +325,52 @@ module PromptTracker
       }.compact
     end
 
+    # Check if structural fields are changing compared to the version
+    #
+    # @param version [PromptVersion] the version to compare against
+    # @return [Boolean] true if structural fields are changing
+    def structural_fields_changing?(version)
+      old_config = version.model_config || {}
+      new_config = params[:model_config]&.to_unsafe_h || {}
+
+      # Check structural model_config keys
+      structural_keys_changed = PromptVersion::STRUCTURAL_MODEL_CONFIG_KEYS.any? do |key|
+        old_config[key] != new_config[key]
+      end
+
+      # Extract variables_schema from incoming user_prompt (same logic as model callback)
+      new_variables_schema = extract_variables_schema_from_prompt(params[:user_prompt])
+
+      structural_keys_changed ||
+        version.variables_schema != new_variables_schema ||
+        version.response_schema != extract_response_schema_param
+    end
+
+    # Extract variables_schema from user_prompt (mirrors PromptVersion#extract_variables_schema)
+    #
+    # @param user_prompt [String] the user prompt template
+    # @return [Array<Hash>, nil] the extracted variables schema
+    def extract_variables_schema_from_prompt(user_prompt)
+      return nil if user_prompt.blank?
+
+      # Extract variable names using same patterns as PromptVersion model
+      variables = []
+      variables += user_prompt.scan(/\{\{\s*(\w+)\s*\}\}/).flatten
+      variables += user_prompt.scan(/\{\{\s*(\w+)\s*\|/).flatten
+      variables += user_prompt.scan(/\{\{\s*(\w+)\./).flatten
+      variable_names = variables.uniq
+
+      return nil if variable_names.empty?
+
+      variable_names.map do |var_name|
+        {
+          "name" => var_name,
+          "type" => "string",
+          "required" => false
+        }
+      end
+    end
+
     def set_prompt
       @prompt = Prompt.find(params[:prompt_id])
     end
@@ -306,10 +408,27 @@ module PromptTracker
         version_id: result.version.id,
         version_number: result.version.version_number,
         redirect_url: testing_prompt_prompt_version_path(result.prompt, result.version),
-        action: result.action.to_s
+        action: result.action.to_s,
+        message: build_save_message(result)
       }
       response[:prompt_id] = result.prompt.id if result.action == :created && @prompt.nil?
+      response[:version_created_reason] = result.version_created_reason.to_s if result.version_created_reason
       response
+    end
+
+    def build_save_message(result)
+      case result.version_created_reason
+      when :production_immutable
+        "Created new version v#{result.version.version_number} because the previous version has production responses."
+      when :structural_change_with_tests
+        "Created new version v#{result.version.version_number} because structural fields changed while tests/datasets existed."
+      else
+        if result.action == :created
+          "Created version v#{result.version.version_number} successfully."
+        else
+          "Version v#{result.version.version_number} updated successfully."
+        end
+      end
     end
 
     # Extract variable names from both system and user prompts

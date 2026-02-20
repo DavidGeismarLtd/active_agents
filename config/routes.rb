@@ -17,6 +17,7 @@ PromptTracker::Engine.routes.draw do
       post :reset_conversation, on: :member # Reset conversation state
       post :push_to_remote, on: :member     # Push local changes to remote entity
       post :pull_from_remote, on: :member   # Pull latest from remote entity
+      post :check_version_impact, on: :member # Check if save will create new version
     end
 
     # Prompt versions (for testing)
@@ -30,6 +31,7 @@ PromptTracker::Engine.routes.draw do
         post :reset_conversation, on: :member # Reset conversation state
         post :push_to_remote, on: :member     # Push local changes to remote entity
         post :pull_from_remote, on: :member   # Pull latest from remote entity
+        post :check_version_impact, on: :member # Check if save will create new version
       end
 
       resources :prompt_versions, only: [ :show ], path: "versions" do
@@ -47,6 +49,7 @@ PromptTracker::Engine.routes.draw do
           post :reset_conversation, on: :member # Reset conversation state
           post :push_to_remote, on: :member     # Push local changes to remote entity
           post :pull_from_remote, on: :member   # Pull latest from remote entity
+          post :check_version_impact, on: :member # Check if save will create new version
         end
 
         # Datasets nested under prompt versions

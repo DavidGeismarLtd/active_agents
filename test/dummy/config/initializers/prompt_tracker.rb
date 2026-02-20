@@ -3,80 +3,33 @@
 # PromptTracker Configuration
 #
 # This file configures PromptTracker settings.
+#
 # Structure:
-#   1. Core Settings (paths, auth)
-#   2. Providers (api_key, name, APIs, models - all in one place)
+#   1. Core Settings (auth)
+#   2. Providers (minimal: just api_key; RubyLLM provides models)
 #   3. Contexts (usage scenarios with defaults)
 #   4. Feature Flags
-#   5. Tool UI Metadata (optional)
 
 PromptTracker.configure do |config|
   # ===========================================================================
   # 1. CORE SETTINGS
   # ===========================================================================
-  config.prompts_path = Rails.root.join("app", "prompts")
   config.basic_auth_username = nil
   config.basic_auth_password = nil
 
   # ===========================================================================
   # 2. PROVIDERS
   # ===========================================================================
-  # Each provider contains: api_key, display name, available APIs, and models.
+  # Minimal config: just API keys!
+  # - Provider names default from ProviderDefaults (e.g., "OpenAI", "Anthropic")
+  # - APIs default from ProviderDefaults (e.g., chat_completions, messages)
+  # - Models auto-populate from RubyLLM's model registry (always up-to-date)
+  #
   # A provider is only enabled if api_key is present.
-  # Tool capabilities are defined in ApiCapabilities, not here.
   config.providers = {
-    openai: {
-      api_key: ENV["OPENAI_LOUNA_API_KEY"],
-      name: "OpenAI",
-      apis: {
-        chat_completions: { name: "Chat Completions", description: "Standard chat API with messages", default: true },
-        responses: { name: "Responses", description: "Stateful conversations with built-in tools" },
-        assistants: { name: "Assistants", description: "Full assistant features with threads and runs" }
-      },
-      models: [
-        { id: "gpt-5.2", name: "GPT-5 (Aug 2025)", category: "Latest",
-          capabilities: [ :chat, :structured_output, :vision, :function_calling, :reasoning ],
-          supported_apis: [ :chat_completions, :responses ] },
-        { id: "gpt-4.1", name: "GPT-4.1 (Aug 2025)", category: "Latest",
-          capabilities: [ :chat, :structured_output, :vision, :function_calling, :reasoning ],
-          supported_apis: [ :chat_completions, :responses ] },
-        { id: "gpt-4o", name: "GPT-4o", category: "Latest",
-          capabilities: [ :chat, :structured_output, :vision, :function_calling ],
-          supported_apis: [ :chat_completions, :responses, :assistants ] },
-        { id: "gpt-4o-mini", name: "GPT-4o Mini", category: "Latest",
-          capabilities: [ :chat, :structured_output, :vision, :function_calling ],
-          supported_apis: [ :chat_completions, :responses, :assistants ] },
-        { id: "gpt-4-turbo", name: "GPT-4 Turbo", category: "GPT-4",
-          capabilities: [ :chat, :vision, :function_calling ],
-          supported_apis: [ :chat_completions, :responses, :assistants ] },
-        { id: "gpt-4", name: "GPT-4", category: "GPT-4",
-          capabilities: [ :chat, :function_calling ],
-          supported_apis: [ :chat_completions, :assistants ] },
-        { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", category: "GPT-3.5",
-          capabilities: [ :chat, :function_calling ],
-          supported_apis: [ :chat_completions, :assistants ] }
-      ]
-    },
-
-    anthropic: {
-      api_key: ENV["ANTHROPIC_API_KEY"],
-      name: "Anthropic",
-      apis: {
-        messages: { name: "Messages", description: "Claude chat API", default: true }
-      },
-      models: [
-        { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5",
-          capabilities: [ :chat, :structured_output, :function_calling ] },
-        { id: "claude-opus-4-1", name: "Claude Opus 4.1",
-          capabilities: [ :chat, :structured_output, :function_calling ] },
-        { id: "claude-haiku-4-5", name: "Claude Haiku 4.5",
-          capabilities: [ :chat, :structured_output, :function_calling ] },
-        { id: "claude-3-7-sonnet-latest", name: "Claude Sonnet 3.7",
-          capabilities: [ :chat, :structured_output, :function_calling ] },
-        { id: "claude-3-5-haiku-latest", name: "Claude 3.5 Haiku",
-          capabilities: [ :chat, :structured_output, :function_calling ] }
-      ]
-    }
+    openai: { api_key: ENV["OPENAI_API_KEY"] },
+    anthropic: { api_key: ENV["ANTHROPIC_API_KEY"] },
+    google: { api_key: ENV["GOOGLE_API_KEY"] }
   }
 
   # ===========================================================================
@@ -117,16 +70,4 @@ PromptTracker.configure do |config|
   config.features = {
     openai_assistant_sync: true  # Show "Sync OpenAI Assistants" button in Testing Dashboard
   }
-
-  # ===========================================================================
-  # 5. TOOL UI METADATA (Optional - defaults provided by engine)
-  # ===========================================================================
-  # Customize the display metadata for built-in API tools.
-  # Uncomment and modify to customize:
-  #
-  # config.builtin_tools = {
-  #   web_search: { name: "Web Search", description: "Search the web", icon: "bi-globe" },
-  #   file_search: { name: "File Search", description: "Search files", icon: "bi-file-earmark-search" },
-  #   code_interpreter: { name: "Code Interpreter", description: "Execute Python code", icon: "bi-code-slash" }
-  # }
 end

@@ -5,7 +5,6 @@ module PromptTracker
   #
   # @example Configure in an initializer
   #   PromptTracker.configure do |config|
-  #     config.prompts_path = Rails.root.join("app", "prompts")
   #     config.basic_auth_username = "admin"
   #     config.basic_auth_password = "secret"
   #
@@ -22,10 +21,6 @@ module PromptTracker
   #   end
   #
   class Configuration
-    # Path to the directory containing prompt YAML files.
-    # @return [String] the prompts directory path
-    attr_accessor :prompts_path
-
     # Basic authentication username for web UI access.
     # @return [String, nil] the username
     attr_accessor :basic_auth_username
@@ -83,7 +78,6 @@ module PromptTracker
 
     # Initialize with default values.
     def initialize
-      @prompts_path = default_prompts_path
       @basic_auth_username = nil
       @basic_auth_password = nil
       @providers = {}
@@ -330,16 +324,6 @@ module PromptTracker
       }
     end
 
-    # Get the default prompts path.
-    # @return [String] default path
-    def default_prompts_path
-      if defined?(Rails) && Rails.respond_to?(:root) && Rails.root
-        Rails.root.join("app", "prompts").to_s
-      else
-        File.join(Dir.pwd, "app", "prompts")
-      end
-    end
-
     # Get the default built-in tools with metadata.
     # @return [Hash] hash of tool symbol => tool metadata
     def default_builtin_tools
@@ -380,10 +364,6 @@ module PromptTracker
   # Configure PromptTracker.
   #
   # @yield [Configuration] the configuration instance
-  # @example
-  #   PromptTracker.configure do |config|
-  #     config.prompts_path = "/custom/path"
-  #   end
   def self.configure
     yield(configuration)
   end

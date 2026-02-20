@@ -67,9 +67,11 @@
          data-playground-preview-preview-url-value="<%= preview_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        <% end %>
        data-playground-save-save-url-value="<%= save_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
+       data-playground-save-check-version-impact-url-value="<%= check_version_impact_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
        data-playground-save-version-id-value="<%= @prompt_version.id %>"
+       data-playground-save-current-version-number-value="<%= @prompt_version.version_number %>"
        data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        <% assistant_id = @prompt_version.model_config&.dig(:assistant_id) %>
@@ -82,6 +84,7 @@
          data-playground-preview-preview-url-value="<%= preview_testing_prompt_playground_path(@prompt) %>"
        <% end %>
        data-playground-save-save-url-value="<%= save_testing_prompt_playground_path(@prompt) %>"
+       data-playground-save-check-version-impact-url-value="<%= check_version_impact_testing_prompt_playground_path(@prompt) %>"
        data-playground-save-prompt-id-value="<%= @prompt.id %>"
        data-playground-save-prompt-name-value="<%= @prompt.name %>"
        data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_playground_path(@prompt) %>"
@@ -89,6 +92,7 @@
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_prompt_playground_path(@prompt) %>"
        <% if @version %>
          data-playground-save-version-id-value="<%= @version.id %>"
+         data-playground-save-current-version-number-value="<%= @version.version_number %>"
          <% assistant_id = @version.model_config&.dig(:assistant_id) %>
          <% if assistant_id.present? %>
            data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
@@ -99,6 +103,7 @@
          data-playground-preview-preview-url-value="<%= preview_testing_playground_path %>"
        <% end %>
        data-playground-save-save-url-value="<%= save_testing_playground_path %>"
+       data-playground-save-check-version-impact-url-value="<%= check_version_impact_testing_playground_path %>"
        data-playground-sync-push-url-value="<%= push_to_remote_testing_playground_path %>"
        data-playground-sync-pull-url-value="<%= pull_from_remote_testing_playground_path %>"
        data-playground-generate-prompt-generate-url-value="<%= generate_testing_playground_path %>"
@@ -123,18 +128,25 @@
           Playground: <%= @prompt.name %>
           <% if @version %>
             <span class="badge bg-primary">v<%= @version.version_number %></span>
+            <span class="badge <%= version_state_badge_class(@version) %>"><%= version_state_label(@version) %></span>
           <% end %>
         <% else %>
           Prompt Playground
+          <span class="badge bg-success">Development</span>
         <% end %>
       </h1>
       <p class="text-muted">
         <% if @prompt_version %>
           Testing specific version <%= @version.version_number %> of <%= @prompt.name %>.
+          <span class="small"><i class="bi bi-info-circle"></i> <%= version_state_description(@version) %></span>
         <% elsif @prompt %>
           Editing <%= @prompt.name %> (using <%= @version ? "v#{@version.version_number}" : "no version" %>).
+          <% if @version %>
+            <span class="small"><i class="bi bi-info-circle"></i> <%= version_state_description(@version) %></span>
+          <% end %>
         <% else %>
           Draft and test your prompt template with live preview.
+          <span class="small"><i class="bi bi-info-circle"></i> All changes are allowed.</span>
         <% end %>
         Supports Liquid template syntax with <code>{{ variable }}</code> and <code>{{ variable | filter }}</code>.
       </p>
@@ -218,6 +230,7 @@
     <%= render "prompt_tracker/testing/playground/template_examples_modal" %>
     <%= render "prompt_tracker/testing/playground/generate_prompt_modal" %>
     <%= render "prompt_tracker/testing/playground/generating_modal" %>
+    <%= render "prompt_tracker/testing/playground/save_modal" %>
   </div>
 </div>
 <!-- End of playground controller -->

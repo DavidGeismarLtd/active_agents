@@ -42,54 +42,7 @@
       </div>
     <% end %>
 
-    <% if prompt %>
-      <% if version && !version.has_responses? %>
-        <!-- Dropdown button for versions without responses -->
-        <div class="btn-group" role="group">
-          <button id="save-update-btn"
-                  type="button"
-                  class="btn btn-primary"
-                  data-playground-save-target="saveUpdateBtn"
-                  data-action="click->playground-save#saveUpdate">
-            <i class="bi bi-save"></i> Update This Version
-          </button>
-          <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="visually-hidden">Toggle Dropdown</span>
-          </button>
-          <ul class="dropdown-menu">
-            <li>
-              <button id="save-new-version-btn"
-                      class="dropdown-item"
-                      type="button"
-                      data-playground-save-target="saveNewVersionBtn"
-                      data-action="click->playground-save#saveNewVersion">
-                <i class="bi bi-plus-circle"></i> Save as New Version
-              </button>
-            </li>
-          </ul>
-        </div>
-      <% else %>
-        <!-- Single button for versions with responses or no version -->
-        <button id="save-draft-btn"
-                class="btn btn-primary"
-                data-playground-save-target="saveDraftBtn"
-                data-action="click->playground-save#saveDraft">
-          <i class="bi bi-save"></i> Save as Draft Version
-        </button>
-      <% end %>
-    <% else %>
-      <!-- Standalone mode -->
-      <button id="save-draft-btn"
-              class="btn btn-primary"
-              data-playground-save-target="saveDraftBtn"
-              data-action="click->playground-save#saveDraft">
-        <i class="bi bi-save"></i> Create Prompt
-      </button>
-      <a href="<%= testing_root_path %>" class="btn btn-outline-secondary">
-        <i class="bi bi-x-circle"></i>
-        Cancel
-      </a>
-    <% end %>
+    <%= render "prompt_tracker/testing/playground/save_button", prompt: prompt, version: version %>
 
     <!-- Sync buttons (Push/Pull) for remote entity linked APIs -->
     <%= render "prompt_tracker/testing/playground/sync_buttons",

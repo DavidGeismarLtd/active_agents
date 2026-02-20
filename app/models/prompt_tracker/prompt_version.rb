@@ -55,6 +55,9 @@ module PromptTracker
     # Constants
     STATUSES = %w[active deprecated draft].freeze
 
+    # Structural model config keys that force new version when changed in testing state
+    STRUCTURAL_MODEL_CONFIG_KEYS = %w[provider api model tool_config].freeze
+
     # Associations
     belongs_to :prompt,
                class_name: "PromptTracker::Prompt",
@@ -84,7 +87,7 @@ module PromptTracker
     validates :version_number,
               uniqueness: { scope: :prompt_id, message: "already exists for this prompt" }
 
-    validate :user_prompt_immutable_if_responses_exist, on: :update
+    validate :enforce_version_immutability, on: :update
     validate :variables_schema_must_be_array
     validate :model_config_must_be_hash
     validate :model_config_tool_config_structure
@@ -230,6 +233,91 @@ module PromptTracker
     # @return [Boolean] true if responses exist
     def has_responses?
       llm_responses.exists?
+    end
+
+    # Checks if this version has any tests.
+    #
+    # @return [Boolean] true if tests exist
+    def has_tests?
+      tests.exists?
+    end
+
+    # Checks if this version has any datasets.
+    #
+    # @return [Boolean] true if datasets exist
+    def has_datasets?
+      datasets.exists?
+    end
+
+    # Version State Methods
+    # =====================
+    # A PromptVersion can be in one of three states based on its associations:
+    # - Development: No tests, no datasets, no llm_responses → free editing of all fields
+    # - Testing: Has tests OR datasets (no llm_responses) → structural changes force new version
+    # - Production: Has llm_responses → all changes force new version (immutable)
+
+    # Checks if this version is in development state.
+    # In development state, all fields can be freely edited.
+    #
+    # @return [Boolean] true if no tests, datasets, or responses exist
+    def development_state?
+      !has_responses? && !has_tests? && !has_datasets?
+    end
+
+    # Checks if this version is in testing state.
+    # In testing state, structural changes force new version creation.
+    #
+    # @return [Boolean] true if has tests or datasets but no responses
+    def testing_state?
+      !has_responses? && (has_tests? || has_datasets?)
+    end
+
+    # Checks if this version is in production state.
+    # In production state, all changes force new version creation.
+    #
+    # @return [Boolean] true if has responses
+    def production_state?
+      has_responses?
+    end
+
+    # Returns the current version state as a symbol.
+    #
+    # @return [Symbol] :development, :testing, or :production
+    def version_state
+      if production_state?
+        :production
+      elsif testing_state?
+        :testing
+      else
+        :development
+      end
+    end
+
+    # Checks if structural fields have changed.
+    # Structural fields are those that would break dataset compatibility or change API behavior.
+    #
+    # @return [Boolean] true if any structural field has changed
+    def structural_fields_changed?
+      return true if variables_schema_changed?
+      return true if response_schema_changed?
+      return true if structural_model_config_changed?
+
+      false
+    end
+
+    # Checks if structural model_config keys have changed.
+    # These are: provider, api, model, tool_config
+    #
+    # @return [Boolean] true if any structural model_config key has changed
+    def structural_model_config_changed?
+      return false unless model_config_changed?
+
+      old_config = model_config_was || {}
+      new_config = model_config || {}
+
+      STRUCTURAL_MODEL_CONFIG_KEYS.any? do |key|
+        old_config[key] != new_config[key]
+      end
     end
 
     # Returns the average response time for this version.
@@ -400,11 +488,26 @@ module PromptTracker
       raise ArgumentError, "Missing required variables: #{missing_vars.join(', ')}"
     end
 
-    # Prevents user_prompt changes if responses exist
-    def user_prompt_immutable_if_responses_exist
-      return unless user_prompt_changed? && has_responses?
-
-      errors.add(:user_prompt, "cannot be changed after responses exist")
+    # Enforces version immutability rules based on version state.
+    #
+    # Version states and allowed changes:
+    # - Development (no tests/datasets/responses): All changes allowed
+    # - Testing (has tests or datasets): Structural changes blocked
+    # - Production (has responses): All significant changes blocked
+    def enforce_version_immutability
+      if production_state?
+        # Production: no changes to any significant field
+        if user_prompt_changed? || system_prompt_changed? ||
+           model_config_changed? || variables_schema_changed? || response_schema_changed?
+          errors.add(:base, "Cannot modify version with production responses. Create a new version instead.")
+        end
+      elsif testing_state?
+        # Testing: only structural fields are blocked
+        if structural_fields_changed?
+          errors.add(:base, "Cannot modify structural fields (provider, api, model, tools, variables, response_schema) when tests or datasets exist. Create a new version instead.")
+        end
+      end
+      # Development state: all changes allowed
     end
 
     # Validates that variables_schema is an array
