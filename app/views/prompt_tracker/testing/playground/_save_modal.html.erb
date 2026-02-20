@@ -1,0 +1,72 @@
+<%# Smart Save Modal for Playground %>
+<%# Shows different content based on save context:
+    - Forced new version (production/structural change): Confirmation with explanation
+    - Choice available (development/testing with content change): Update or New Version options
+
+    Note: Modal elements use IDs instead of Stimulus targets because Bootstrap moves
+    modals to <body>, taking them outside the Stimulus controller scope.
+%>
+<div data-modal-fix-target="modal">
+  <div class="modal fade"
+       id="saveModal"
+       tabindex="-1"
+       aria-labelledby="saveModalLabel"
+       aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <%# Header - changes based on context %>
+        <div class="modal-header" id="saveModalHeader">
+          <h5 class="modal-title" id="saveModalLabel">
+            <i class="bi bi-save me-2"></i>
+            <span id="saveModalTitle">Save Changes</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <%# Message area - populated by JavaScript %>
+          <p id="saveModalMessage">
+            <!-- Message will be populated by JavaScript -->
+          </p>
+
+          <%# Info box for forced new version - hidden by default %>
+          <div class="alert alert-info mb-0" id="saveModalInfo" style="display: none;">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>What this means:</strong>
+            <ul class="mb-0 mt-2">
+              <li>A new version (v<span id="saveModalNewVersionNumber">N+1</span>) will be created</li>
+              <li>The current version will remain unchanged</li>
+              <li>Tests and datasets will stay with the current version</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer" id="saveModalFooter">
+          <%# Buttons - populated by JavaScript based on context %>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+
+          <%# Update button - shown when update is available %>
+          <button type="button"
+                  class="btn btn-primary"
+                  id="saveModalUpdateBtn"
+                  onclick="document.getElementById('playground-container').dispatchEvent(new CustomEvent('save-modal:confirm-update'))"
+                  style="display: none;">
+            <i class="bi bi-save me-2"></i>
+            Update This Version
+          </button>
+
+          <%# New Version button - always available %>
+          <button type="button"
+                  class="btn btn-success"
+                  id="saveModalNewVersionBtn"
+                  onclick="document.getElementById('playground-container').dispatchEvent(new CustomEvent('save-modal:confirm-new-version'))">
+            <i class="bi bi-plus-circle me-2"></i>
+            <span id="saveModalNewVersionBtnText">Save as New Version</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

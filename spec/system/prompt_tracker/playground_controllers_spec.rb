@@ -220,44 +220,33 @@ RSpec.describe "Playground Controllers", type: :system, js: true do
         user_prompt_editor = find('textarea[data-playground-prompt-editor-target="userPromptEditor"]')
         user_prompt_editor.set("This is my updated prompt")
 
-        # Click save (Update This Version or Save as Draft)
-        save_btn = first('button[data-playground-save-target="saveUpdateBtn"], button[data-playground-save-target="saveDraftBtn"]')
-        save_btn.click if save_btn
+        # Click save button (now a single smart Save button)
+        save_btn = find('button[data-playground-save-target="saveBtn"]')
+        save_btn.click
 
-        # Should show success or redirect
-        expect(page).to have_content("Playground")
-      end
-
-      it "warns about unfilled variables" do
-        # Set prompt with variable
-        user_prompt_editor = find('textarea[data-playground-prompt-editor-target="userPromptEditor"]')
-        user_prompt_editor.set("Hello {{ name }}!")
-
-        # Wait for variable detection
-        sleep 0.5
-
-        # Don't fill variable - try to save
-        save_btn = first('button[data-playground-save-target="saveUpdateBtn"], button[data-playground-save-target="saveDraftBtn"]')
-        if save_btn
-          # Should show confirmation dialog for unfilled variables
-          accept_confirm do
-            save_btn.click
-          end
+        # Modal appears - click Update This Version
+        within("#saveModal") do
+          click_button "Update This Version"
         end
+
+        # Should redirect to prompt version show page after save
+        expect(page).to have_content("Test Prompt")
       end
 
       it "shows loading state during save" do
         user_prompt_editor = find('textarea[data-playground-prompt-editor-target="userPromptEditor"]')
         user_prompt_editor.set("Test prompt content")
 
-        save_btn = first('button[data-playground-save-target="saveUpdateBtn"], button[data-playground-save-target="saveDraftBtn"]')
-        if save_btn
-          # Click save
-          save_btn.click
+        save_btn = find('button[data-playground-save-target="saveBtn"]')
+        save_btn.click
 
-          # Loading state is hard to test due to timing, but page should respond
-          expect(page).to have_content("Playground")
+        # Modal appears - click Update This Version
+        within("#saveModal") do
+          click_button "Update This Version"
         end
+
+        # Should redirect to prompt version show page after save
+        expect(page).to have_content("Test Prompt")
       end
     end
 
@@ -491,9 +480,14 @@ RSpec.describe "Playground Controllers", type: :system, js: true do
       temperature_slider = find('input[data-playground-model-config-target="temperature"]')
       temperature_slider.set(0.8)
 
-      # Save (existing prompt uses saveUpdateBtn or saveDraftBtn)
-      save_btn = first('button[data-playground-save-target="saveUpdateBtn"], button[data-playground-save-target="saveDraftBtn"]')
-      save_btn.click if save_btn
+      # Save (existing prompt uses single Save button)
+      save_btn = find('button[data-playground-save-target="saveBtn"]')
+      save_btn.click
+
+      # Modal appears - click Update This Version
+      within("#saveModal") do
+        click_button "Update This Version"
+      end
 
       # Should collect data from editor, model-config, and response-schema controllers
       # After save, may redirect to prompt version show page

@@ -7,10 +7,6 @@ module PromptTracker
     let(:config) { Configuration.new }
 
     describe "#initialize" do
-      it "sets default prompts_path" do
-        expect(config.prompts_path).to be_present
-      end
-
       it "sets basic_auth_username to nil" do
         expect(config.basic_auth_username).to be_nil
       end

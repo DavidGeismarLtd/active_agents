@@ -280,26 +280,142 @@ module PromptTracker
         end
       end
 
-      it "allows user_prompt changes when no responses exist" do
-        version = PromptVersion.create!(valid_attributes)
-        version.user_prompt = "New template"
-        expect(version).to be_valid
-        expect(version.save).to be true
-      end
+      describe "version immutability" do
+        context "in development state (no tests, datasets, or responses)" do
+          it "allows all changes" do
+            version = PromptVersion.create!(valid_attributes)
 
-      it "prevents user_prompt changes when responses exist" do
-        version = PromptVersion.create!(valid_attributes)
-        version.llm_responses.create!(
-          rendered_prompt: "Test",
-          response_text: "Response",
-          model: "gpt-4",
-          provider: "openai",
-          status: "success"
-        )
+            version.user_prompt = "New user prompt"
+            version.system_prompt = "New system prompt"
+            version.model_config = { "provider" => "anthropic", "model" => "claude-3" }
+            version.variables_schema = [ { "name" => "new_var", "type" => "string" } ]
 
-        version.user_prompt = "New template"
-        expect(version).not_to be_valid
-        expect(version.errors[:user_prompt]).to include("cannot be changed after responses exist")
+            expect(version).to be_valid
+            expect(version.save).to be true
+          end
+        end
+
+        context "in testing state (has tests or datasets, no responses)" do
+          let(:version) { PromptVersion.create!(valid_attributes) }
+
+          before do
+            # Create a test to put version in testing state
+            version.tests.create!(name: "Test case")
+          end
+
+          it "allows content field changes (user_prompt, system_prompt)" do
+            version.user_prompt = "New user prompt"
+            version.system_prompt = "New system prompt"
+
+            expect(version).to be_valid
+            expect(version.save).to be true
+          end
+
+          it "blocks structural model_config changes (provider)" do
+            version.model_config = version.model_config.merge("provider" => "anthropic")
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "blocks structural model_config changes (api)" do
+            version.model_config = version.model_config.merge("api" => "responses")
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "blocks structural model_config changes (model)" do
+            version.model_config = version.model_config.merge("model" => "gpt-3.5-turbo")
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "blocks structural model_config changes (tool_config)" do
+            version.model_config = version.model_config.merge("tool_config" => { "functions" => [] })
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "blocks variables_schema changes" do
+            version.variables_schema = [ { "name" => "new_var", "type" => "string" } ]
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "blocks response_schema changes" do
+            version.response_schema = { "type" => "object", "properties" => {} }
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify structural fields/)
+          end
+
+          it "allows tuning parameter changes (temperature, max_tokens)" do
+            version.model_config = version.model_config.merge("temperature" => 0.9, "max_tokens" => 500)
+
+            expect(version).to be_valid
+            expect(version.save).to be true
+          end
+        end
+
+        context "in production state (has responses)" do
+          let(:version) { PromptVersion.create!(valid_attributes) }
+
+          before do
+            version.llm_responses.create!(
+              rendered_prompt: "Test",
+              response_text: "Response",
+              model: "gpt-4",
+              provider: "openai",
+              status: "success"
+            )
+          end
+
+          it "blocks user_prompt changes" do
+            version.user_prompt = "New user prompt"
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify version with production responses/)
+          end
+
+          it "blocks system_prompt changes" do
+            version.system_prompt = "New system prompt"
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify version with production responses/)
+          end
+
+          it "blocks model_config changes" do
+            version.model_config = { "provider" => "anthropic", "model" => "claude-3" }
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify version with production responses/)
+          end
+
+          it "blocks variables_schema changes" do
+            version.variables_schema = [ { "name" => "new_var", "type" => "string" } ]
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify version with production responses/)
+          end
+
+          it "blocks response_schema changes" do
+            version.response_schema = { "type" => "object", "properties" => {} }
+
+            expect(version).not_to be_valid
+            expect(version.errors[:base]).to include(/Cannot modify version with production responses/)
+          end
+
+          it "allows notes changes" do
+            version.notes = "Updated notes"
+
+            expect(version).to be_valid
+            expect(version.save).to be true
+          end
+        end
       end
     end
 
@@ -643,6 +759,203 @@ module PromptTracker
           status: "success"
         )
         expect(version.has_responses?).to be true
+      end
+    end
+
+    # Version State Methods
+
+    describe "#has_tests?" do
+      it "returns false when no tests exist" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.has_tests?).to be false
+      end
+
+      it "returns true when tests exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.tests.create!(name: "Test case")
+        expect(version.has_tests?).to be true
+      end
+    end
+
+    describe "#has_datasets?" do
+      it "returns false when no datasets exist" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.has_datasets?).to be false
+      end
+
+      it "returns true when datasets exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.datasets.create!(name: "Test dataset")
+        expect(version.has_datasets?).to be true
+      end
+    end
+
+    describe "#development_state?" do
+      it "returns true when no tests, datasets, or responses exist" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.development_state?).to be true
+      end
+
+      it "returns false when tests exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.tests.create!(name: "Test")
+        expect(version.development_state?).to be false
+      end
+
+      it "returns false when datasets exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.datasets.create!(name: "Dataset")
+        expect(version.development_state?).to be false
+      end
+
+      it "returns false when responses exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.llm_responses.create!(
+          rendered_prompt: "Test",
+          response_text: "Response",
+          model: "gpt-4",
+          provider: "openai",
+          status: "success"
+        )
+        expect(version.development_state?).to be false
+      end
+    end
+
+    describe "#testing_state?" do
+      it "returns false when no tests or datasets exist" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.testing_state?).to be false
+      end
+
+      it "returns true when tests exist but no responses" do
+        version = PromptVersion.create!(valid_attributes)
+        version.tests.create!(name: "Test")
+        expect(version.testing_state?).to be true
+      end
+
+      it "returns true when datasets exist but no responses" do
+        version = PromptVersion.create!(valid_attributes)
+        version.datasets.create!(name: "Dataset")
+        expect(version.testing_state?).to be true
+      end
+
+      it "returns false when responses exist (even with tests)" do
+        version = PromptVersion.create!(valid_attributes)
+        version.tests.create!(name: "Test")
+        version.llm_responses.create!(
+          rendered_prompt: "Test",
+          response_text: "Response",
+          model: "gpt-4",
+          provider: "openai",
+          status: "success"
+        )
+        expect(version.testing_state?).to be false
+      end
+    end
+
+    describe "#production_state?" do
+      it "returns false when no responses exist" do
+        version = PromptVersion.create!(valid_attributes)
+        expect(version.production_state?).to be false
+      end
+
+      it "returns true when responses exist" do
+        version = PromptVersion.create!(valid_attributes)
+        version.llm_responses.create!(
+          rendered_prompt: "Test",
+          response_text: "Response",
+          model: "gpt-4",
+          provider: "openai",
+          status: "success"
+        )
+        expect(version.production_state?).to be true
+      end
+    end
+
+    describe "#structural_fields_changed?" do
+      let(:version) do
+        PromptVersion.create!(valid_attributes.merge(
+          model_config: { "provider" => "openai", "api" => "chat", "model" => "gpt-4o" },
+          variables_schema: [ { "name" => "name", "type" => "string" } ],
+          response_schema: { "type" => "object", "properties" => { "result" => { "type" => "string" } } }
+        ))
+      end
+
+      it "returns false when no structural fields changed" do
+        version.user_prompt = "New prompt"
+        expect(version.structural_fields_changed?).to be false
+      end
+
+      it "returns true when variables_schema changed" do
+        version.variables_schema = [ { "name" => "new_var", "type" => "string" } ]
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns true when response_schema changed" do
+        version.response_schema = { "type" => "string" }
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns true when model_config provider changed" do
+        version.model_config = version.model_config.merge("provider" => "anthropic")
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns true when model_config api changed" do
+        version.model_config = version.model_config.merge("api" => "responses")
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns true when model_config model changed" do
+        version.model_config = version.model_config.merge("model" => "gpt-3.5-turbo")
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns true when model_config tool_config changed" do
+        version.model_config = version.model_config.merge("tool_config" => { "functions" => [] })
+        expect(version.structural_fields_changed?).to be true
+      end
+
+      it "returns false when only tuning params changed" do
+        version.model_config = version.model_config.merge("temperature" => 0.9)
+        expect(version.structural_fields_changed?).to be false
+      end
+    end
+
+    describe "#structural_model_config_changed?" do
+      let(:version) do
+        PromptVersion.create!(valid_attributes.merge(
+          model_config: { "provider" => "openai", "api" => "chat", "model" => "gpt-4o", "temperature" => 0.7 }
+        ))
+      end
+
+      it "returns false when model_config not changed" do
+        expect(version.structural_model_config_changed?).to be false
+      end
+
+      it "returns false when only non-structural keys changed" do
+        version.model_config = version.model_config.merge("temperature" => 0.9, "max_tokens" => 100)
+        expect(version.structural_model_config_changed?).to be false
+      end
+
+      it "returns true when provider changed" do
+        version.model_config = version.model_config.merge("provider" => "anthropic")
+        expect(version.structural_model_config_changed?).to be true
+      end
+
+      it "returns true when api changed" do
+        version.model_config = version.model_config.merge("api" => "responses")
+        expect(version.structural_model_config_changed?).to be true
+      end
+
+      it "returns true when model changed" do
+        version.model_config = version.model_config.merge("model" => "gpt-3.5-turbo")
+        expect(version.structural_model_config_changed?).to be true
+      end
+
+      it "returns true when tool_config changed" do
+        version.model_config = version.model_config.merge("tool_config" => {})
+        expect(version.structural_model_config_changed?).to be true
       end
     end
 

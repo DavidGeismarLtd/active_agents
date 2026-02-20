@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Modal } from "bootstrap"
 
 /**
  * Playground Save Stimulus Controller
@@ -75,18 +76,23 @@ export default class extends Controller {
   static targets = [
     "promptName",
     "promptSlug",
+    "saveBtn",
     "saveDraftBtn",
     "saveUpdateBtn",
     "saveNewVersionBtn",
     "alertContainer",
     "saveStatus"
+    // Note: Modal elements are accessed via document.getElementById() because
+    // Bootstrap moves modals to <body>, taking them outside the Stimulus controller scope
   ]
 
   static values = {
     saveUrl: String,
+    checkVersionImpactUrl: String,
     promptId: String,
     promptName: String,
-    versionId: String
+    versionId: String,
+    currentVersionNumber: Number
   }
 
   static outlets = [
@@ -111,77 +117,293 @@ export default class extends Controller {
     console.log('[PlaygroundSaveController] Has tools outlet?', this.hasPlaygroundToolsOutlet)
     console.log('[PlaygroundSaveController] Has file-search outlet?', this.hasPlaygroundFileSearchOutlet)
     console.log('[PlaygroundSaveController] Has functions outlet?', this.hasPlaygroundFunctionsOutlet)
+
+    // Listen for modal button clicks (modal is outside controller scope due to Bootstrap)
+    this.handleConfirmUpdate = this.handleConfirmUpdate.bind(this)
+    this.handleConfirmNewVersion = this.handleConfirmNewVersion.bind(this)
+    this.element.addEventListener('save-modal:confirm-update', this.handleConfirmUpdate)
+    this.element.addEventListener('save-modal:confirm-new-version', this.handleConfirmNewVersion)
+
     console.log('[PlaygroundSaveController] ========== CONNECT COMPLETE ==========')
   }
 
-  // Action: Save draft
+  disconnect() {
+    // Clean up event listeners
+    this.element.removeEventListener('save-modal:confirm-update', this.handleConfirmUpdate)
+    this.element.removeEventListener('save-modal:confirm-new-version', this.handleConfirmNewVersion)
+  }
+
+  // Handle confirm update event from modal
+  handleConfirmUpdate() {
+    console.log('[PlaygroundSaveController] ========== CONFIRM UPDATE (via event) ==========')
+    this.hideSaveModal()
+    this.performSave('update')
+  }
+
+  // Handle confirm new version event from modal
+  handleConfirmNewVersion() {
+    console.log('[PlaygroundSaveController] ========== CONFIRM NEW VERSION (via event) ==========')
+    this.hideSaveModal()
+    this.performSave('new_version')
+  }
+
+  // Action: Smart save - checks version impact first
+  async save(event) {
+    console.log('[PlaygroundSaveController] ========== SAVE ==========')
+    event.preventDefault()
+
+    // First validate inputs before checking version impact
+    if (!this.validateBeforeSave()) return
+
+    // Check version impact
+    const impact = await this.checkVersionImpact()
+    if (!impact) return // Error already shown
+
+    console.log('[PlaygroundSaveController] Version impact:', impact)
+
+    if (impact.will_create_new_version) {
+      // Forced to create new version - show confirmation modal
+      this.showForcedNewVersionModal(impact)
+    } else if (impact.structural_change && impact.reason === 'structural_change_development') {
+      // Structural change in Development state - show info modal
+      this.showStructuralChangeInfoModal(impact)
+    } else {
+      // Both options available - show choice modal
+      this.showChoiceModal(impact)
+    }
+  }
+
+  // Action: Save draft (standalone mode)
   async saveDraft(event) {
     console.log('[PlaygroundSaveController] ========== SAVE DRAFT ==========')
     event.preventDefault()
     await this.performSave('draft')
   }
 
-  // Action: Save update
-  async saveUpdate(event) {
-    console.log('[PlaygroundSaveController] ========== SAVE UPDATE ==========')
+  // Action: Confirm update from modal
+  async confirmUpdate(event) {
+    console.log('[PlaygroundSaveController] ========== CONFIRM UPDATE ==========')
     event.preventDefault()
+    this.hideSaveModal()
     await this.performSave('update')
   }
 
-  // Action: Save new version
-  async saveNewVersion(event) {
-    console.log('[PlaygroundSaveController] ========== SAVE NEW VERSION ==========')
+  // Action: Confirm new version from modal
+  async confirmNewVersion(event) {
+    console.log('[PlaygroundSaveController] ========== CONFIRM NEW VERSION ==========')
     event.preventDefault()
+    this.hideSaveModal()
     await this.performSave('new_version')
   }
 
-  // Perform save operation
-  async performSave(saveAction) {
-    console.log('[PlaygroundSaveController] performSave() called with action:', saveAction)
+  // Check version impact via API
+  async checkVersionImpact() {
+    const url = this.checkVersionImpactUrlValue
+    if (!url) {
+      console.warn('[PlaygroundSaveController] No check version impact URL configured')
+      // Fallback to direct save
+      return { will_create_new_version: false, reason: null }
+    }
 
+    // Collect current data to send for comparison
+    const data = this.collectSaveData()
+    if (!data) return null
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.getCsrfToken(),
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          model_config: data.model_config,
+          user_prompt: data.user_prompt,
+          response_schema: data.response_schema
+        })
+      })
+
+      if (!response.ok) {
+        console.error('[PlaygroundSaveController] Check version impact failed:', response.status)
+        this.showAlert('Failed to check version impact', 'danger')
+        return null
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('[PlaygroundSaveController] Check version impact error:', error)
+      this.showAlert(`Error: ${error.message}`, 'danger')
+      return null
+    }
+  }
+
+  // Get modal elements by ID (Bootstrap moves modals to <body>, outside Stimulus scope)
+  getSaveModalElements() {
+    return {
+      modal: document.getElementById('saveModal'),
+      header: document.getElementById('saveModalHeader'),
+      title: document.getElementById('saveModalTitle'),
+      message: document.getElementById('saveModalMessage'),
+      info: document.getElementById('saveModalInfo'),
+      updateBtn: document.getElementById('saveModalUpdateBtn'),
+      newVersionBtn: document.getElementById('saveModalNewVersionBtn'),
+      newVersionBtnText: document.getElementById('saveModalNewVersionBtnText'),
+      newVersionNumber: document.getElementById('saveModalNewVersionNumber')
+    }
+  }
+
+  // Show modal for forced new version (production/structural change)
+  showForcedNewVersionModal(impact) {
+    const elements = this.getSaveModalElements()
+
+    if (!elements.modal) {
+      console.warn('[PlaygroundSaveController] No save modal found')
+      // Fallback to confirm dialog
+      if (confirm(`${impact.message}\n\nDo you want to create a new version?`)) {
+        this.performSave('new_version')
+      }
+      return
+    }
+
+    // Configure modal for forced new version
+    if (elements.header) elements.header.className = 'modal-header bg-warning'
+    if (elements.title) elements.title.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>New Version Required'
+    if (elements.message) elements.message.textContent = impact.message
+
+    // Show info box
+    if (elements.info) elements.info.style.display = ''
+
+    // Update version number
+    if (elements.newVersionNumber) {
+      const nextVersion = (this.currentVersionNumberValue || 1) + 1
+      elements.newVersionNumber.textContent = nextVersion
+    }
+
+    // Hide update button, show only new version
+    if (elements.updateBtn) elements.updateBtn.style.display = 'none'
+    if (elements.newVersionBtn) elements.newVersionBtn.className = 'btn btn-primary'
+    if (elements.newVersionBtnText) elements.newVersionBtnText.textContent = 'Create New Version'
+
+    this.showSaveModal()
+  }
+
+  // Show info modal for structural changes in Development state
+  showStructuralChangeInfoModal(impact) {
+    const elements = this.getSaveModalElements()
+
+    if (!elements.modal) {
+      console.warn('[PlaygroundSaveController] No save modal found')
+      // Fallback to confirm dialog
+      if (confirm(`${impact.message}\n\nDo you want to continue?`)) {
+        this.performSave('update')
+      }
+      return
+    }
+
+    // Configure modal for structural change info (Development state)
+    if (elements.header) elements.header.className = 'modal-header bg-info text-white'
+    if (elements.title) elements.title.innerHTML = '<i class="bi bi-info-circle me-2"></i>Structural Change Detected'
+    if (elements.message) elements.message.textContent = impact.message
+
+    // Hide info box (the message already explains it)
+    if (elements.info) elements.info.style.display = 'none'
+
+    // Show only update button (since we're in Development state, update is allowed)
+    if (elements.updateBtn) {
+      elements.updateBtn.style.display = ''
+      elements.updateBtn.className = 'btn btn-primary'
+    }
+    // Also show new version as secondary option
+    if (elements.newVersionBtn) elements.newVersionBtn.className = 'btn btn-outline-secondary'
+    if (elements.newVersionBtnText) elements.newVersionBtnText.textContent = 'Save as New Version'
+
+    this.showSaveModal()
+  }
+
+  // Show modal with both options (update or new version)
+  // eslint-disable-next-line no-unused-vars
+  showChoiceModal(_impact) {
+    const elements = this.getSaveModalElements()
+
+    if (!elements.modal) {
+      console.warn('[PlaygroundSaveController] No save modal found')
+      // Fallback to direct update
+      this.performSave('update')
+      return
+    }
+
+    // Configure modal for choice
+    if (elements.header) elements.header.className = 'modal-header'
+    if (elements.title) elements.title.innerHTML = '<i class="bi bi-save me-2"></i>Save Changes'
+    if (elements.message) elements.message.textContent = 'How would you like to save your changes?'
+
+    // Hide info box
+    if (elements.info) elements.info.style.display = 'none'
+
+    // Show both buttons with standard styling
+    if (elements.updateBtn) {
+      elements.updateBtn.style.display = ''
+      elements.updateBtn.className = 'btn btn-primary'
+    }
+    if (elements.newVersionBtn) elements.newVersionBtn.className = 'btn btn-outline-secondary'
+    if (elements.newVersionBtnText) elements.newVersionBtnText.textContent = 'Save as New Version'
+
+    this.showSaveModal()
+  }
+
+  showSaveModal() {
+    const modalEl = document.getElementById('saveModal')
+    if (!modalEl) return
+    const modal = new Modal(modalEl)
+    modal.show()
+  }
+
+  hideSaveModal() {
+    const modalEl = document.getElementById('saveModal')
+    if (!modalEl) return
+    const modal = Modal.getInstance(modalEl)
+    if (modal) modal.hide()
+  }
+
+  // Validate inputs before save
+  validateBeforeSave() {
     // Validate required outlets
     if (!this.hasPlaygroundPromptEditorOutlet) {
       console.error('[PlaygroundSaveController] Missing prompt editor outlet')
       this.showAlert('Missing prompt editor controller', 'danger')
-      return
+      return false
     }
 
     if (!this.hasPlaygroundModelConfigOutlet) {
       console.error('[PlaygroundSaveController] Missing model-config outlet')
       this.showAlert('Missing model-config controller', 'danger')
-      return
+      return false
     }
 
-    // Get prompt name - from input target (standalone mode) or value (editing existing prompt)
+    // Get prompt name
     const promptName = this.hasPromptNameTarget
       ? this.promptNameTarget.value.trim()
       : (this.promptNameValue || '')
-    console.log('[PlaygroundSaveController] Prompt name:', promptName)
 
     if (!promptName) {
       console.error('[PlaygroundSaveController] Prompt name is required')
       this.showAlert('Prompt name is required', 'warning')
-      return
+      return false
     }
 
-    // Check for unfilled variables
-    const hasUnfilled = this.hasPlaygroundVariablesOutlet &&
-      this.playgroundVariablesOutlet.hasUnfilledVariables()
-    if (hasUnfilled) {
-      const unfilled = this.playgroundVariablesOutlet.getUnfilledVariables()
-      console.warn('[PlaygroundSaveController] Unfilled variables:', unfilled)
+    return true
+  }
 
-      const proceed = confirm(
-        `The following variables are not filled:\n${unfilled.join(', ')}\n\nDo you want to save anyway?`
-      )
+  // Collect save data (shared between checkVersionImpact and performSave)
+  collectSaveData() {
+    if (!this.validateBeforeSave()) return null
 
-      if (!proceed) {
-        console.log('[PlaygroundSaveController] User cancelled save due to unfilled variables')
-        return
-      }
-    }
+    const promptName = this.hasPromptNameTarget
+      ? this.promptNameTarget.value.trim()
+      : (this.promptNameValue || '')
 
-    // Get base model config (includes assistant_id, metadata from hidden fields)
+    // Get base model config
     const modelConfig = this.playgroundModelConfigOutlet.getModelConfig()
 
     // Add tools data from tools controllers
@@ -210,8 +432,7 @@ export default class extends Controller {
       modelConfig.tool_config = toolConfig
     }
 
-    // Collect data - flat structure as expected by backend
-    const data = {
+    return {
       prompt_name: promptName,
       prompt_slug: this.hasPromptSlugTarget ? this.promptSlugTarget.value : '',
       system_prompt: this.playgroundPromptEditorOutlet.getSystemPrompt(),
@@ -219,9 +440,21 @@ export default class extends Controller {
       template_variables: this.hasPlaygroundVariablesOutlet
         ? this.playgroundVariablesOutlet.getVariables()
         : {},
-      model_config: modelConfig,
-      save_action: saveAction
+      model_config: modelConfig
     }
+  }
+
+  // Perform save operation
+  // @param saveAction [String] - 'draft', 'update', or 'new_version'
+  async performSave(saveAction) {
+    console.log('[PlaygroundSaveController] performSave() called with action:', saveAction)
+
+    // Collect data using shared method
+    const data = this.collectSaveData()
+    if (!data) return
+
+    // Add save action
+    data.save_action = saveAction
 
     // Add response schema if available
     if (this.hasPlaygroundResponseSchemaOutlet) {
@@ -338,6 +571,17 @@ export default class extends Controller {
   showSaveLoading(saveAction, isLoading) {
     console.log('[PlaygroundSaveController] Loading state for', saveAction, ':', isLoading)
 
+    // Handle the main save button (new UI)
+    if (this.hasSaveBtnTarget) {
+      this.saveBtnTarget.disabled = isLoading
+      if (isLoading) {
+        this.saveBtnTarget.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...'
+      } else {
+        this.saveBtnTarget.innerHTML = '<i class="bi bi-save"></i> Save'
+      }
+    }
+
+    // Handle legacy button targets (for standalone mode and backwards compatibility)
     const btnMap = {
       'draft': this.hasSaveDraftBtnTarget ? this.saveDraftBtnTarget : null,
       'update': this.hasSaveUpdateBtnTarget ? this.saveUpdateBtnTarget : null,

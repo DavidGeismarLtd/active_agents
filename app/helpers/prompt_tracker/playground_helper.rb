@@ -4,6 +4,54 @@ module PromptTracker
   # Helper methods for the Playground views.
   # Provides provider detection and tool availability methods.
   module PlaygroundHelper
+    # Returns a human-readable label for the version state.
+    #
+    # @param version [PromptVersion] the prompt version
+    # @return [String] "Production", "Testing", or "Development"
+    def version_state_label(version)
+      return "Development" if version.nil?
+
+      if version.production_state?
+        "Production"
+      elsif version.testing_state?
+        "Testing"
+      else
+        "Development"
+      end
+    end
+
+    # Returns Bootstrap badge CSS class for the version state.
+    #
+    # @param version [PromptVersion] the prompt version
+    # @return [String] Bootstrap badge class
+    def version_state_badge_class(version)
+      return "bg-success" if version.nil?
+
+      if version.production_state?
+        "bg-danger"
+      elsif version.testing_state?
+        "bg-warning text-dark"
+      else
+        "bg-success"
+      end
+    end
+
+    # Returns a description of what changes are allowed in the current state.
+    #
+    # @param version [PromptVersion] the prompt version
+    # @return [String] description of allowed changes
+    def version_state_description(version)
+      return "All changes are allowed." if version.nil?
+
+      if version.production_state?
+        "This version has production responses. Any changes will create a new version."
+      elsif version.testing_state?
+        "This version has tests or datasets. Structural changes (provider, API, model, tools, variables, response schema) will create a new version."
+      else
+        "All changes are allowed."
+      end
+    end
+
     # Check if the playground UI should show prompt editing capabilities.
     # Returns true if either system_prompt or user_prompt_template is supported.
     #

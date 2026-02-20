@@ -118,27 +118,30 @@ module PromptTracker
       end
 
       it "returns false when schema does not match version schema" do
-        dataset = version.datasets.create!(name: "test_dataset", schema: version.variables_schema)
+        # Build dataset with a different schema than the version's current schema
+        # (must bypass validation since schema mismatch is now blocked)
+        mismatched_schema = [
+          { "name" => "name", "type" => "string", "required" => true },
+          { "name" => "different_var", "type" => "string", "required" => false }
+        ]
+        dataset = version.datasets.build(name: "test_dataset", schema: mismatched_schema)
+        dataset.save(validate: false)
 
-        # Change version schema
-        version.update!(
-          variables_schema: [
-            { "name" => "name", "type" => "string", "required" => true },
-            { "name" => "different_var", "type" => "string", "required" => false }
-          ]
-        )
-
-        expect(dataset.reload.schema_valid?).to be false
+        expect(dataset.schema_valid?).to be false
       end
 
       it "returns false when version has no schema" do
-        # Create dataset with valid schema first
-        dataset = version.datasets.create!(name: "test_dataset", schema: version.variables_schema)
+        # Create a version without variables_schema
+        version_without_schema = create(:prompt_version, prompt: prompt, variables_schema: nil)
 
-        # Then update version to have no schema (making dataset invalid)
-        version.update!(variables_schema: [])
+        # Build dataset with some schema (must bypass validation)
+        dataset = version_without_schema.datasets.build(
+          name: "test_dataset",
+          schema: [ { "name" => "var1", "type" => "string", "required" => false } ]
+        )
+        dataset.save(validate: false)
 
-        expect(dataset.reload.schema_valid?).to be false
+        expect(dataset.schema_valid?).to be false
       end
     end
 

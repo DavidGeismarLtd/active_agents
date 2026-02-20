@@ -1,0 +1,29 @@
+<%# Save Button for Playground %>
+<%# Local variables:
+    - prompt: The prompt being edited (optional - nil in standalone mode)
+    - version: The version being edited (optional)
+%>
+
+<% if prompt %>
+  <%# Editing existing prompt - single Save button that checks version impact %>
+  <button id="save-btn"
+          type="button"
+          class="btn btn-primary"
+          data-playground-save-target="saveBtn"
+          data-action="click->playground-save#save">
+    <i class="bi bi-save"></i> Save
+  </button>
+<% else %>
+  <%# Standalone mode - Create Prompt %>
+  <button id="save-draft-btn"
+          class="btn btn-primary"
+          data-playground-save-target="saveDraftBtn"
+          data-action="click->playground-save#saveDraft">
+    <i class="bi bi-save"></i> Create Prompt
+  </button>
+  <a href="<%= testing_root_path %>" class="btn btn-outline-secondary">
+    <i class="bi bi-x-circle"></i>
+    Cancel
+  </a>
+<% end %>
+

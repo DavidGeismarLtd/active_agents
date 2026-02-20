@@ -133,6 +133,61 @@ module PromptTracker
           expect(result.success?).to be true
           expect(result.action).to eq(:created)
           expect(result.version.id).not_to eq(existing_version.id)
+          expect(result.version_created_reason).to eq(:production_immutable)
+        end
+
+        it "creates new version with structural_change reason when tests exist and structural fields change" do
+          existing_version.tests.create!(name: "Test case")
+          params_with_structural_change = valid_params.merge(
+            save_action: "update",
+            model_config: { "provider" => "anthropic", "model" => "claude-3" }
+          )
+
+          result = described_class.call(
+            params: params_with_structural_change,
+            prompt: prompt,
+            prompt_version: existing_version
+          )
+
+          expect(result.success?).to be true
+          expect(result.action).to eq(:created)
+          expect(result.version.id).not_to eq(existing_version.id)
+          expect(result.version_created_reason).to eq(:structural_change_with_tests)
+        end
+
+        it "updates existing version when tests exist but only content fields change" do
+          # Create version with a user_prompt that has a variable so we have a proper variables_schema
+          existing_version.update!(
+            user_prompt: "Hello {{name}}",
+            model_config: { "provider" => "openai", "model" => "gpt-4o" }
+          )
+          existing_version.reload # Clear dirty tracking and let variables_schema be extracted
+          existing_version.tests.create!(name: "Test case")
+
+          # Capture the exact values before modifying
+          current_variables_schema = existing_version.variables_schema
+          current_response_schema = existing_version.response_schema
+          current_model_config = existing_version.model_config
+
+          # Change only the text content, keeping the same variable
+          params_content_change = valid_params.merge(
+            save_action: "update",
+            user_prompt: "Greetings {{name}}, how are you?", # Different text, same variable
+            model_config: current_model_config, # Same as existing
+            variables_schema: current_variables_schema, # Preserve existing
+            response_schema: current_response_schema # Preserve existing
+          )
+
+          result = described_class.call(
+            params: params_content_change,
+            prompt: prompt,
+            prompt_version: existing_version
+          )
+
+          expect(result.success?).to be true
+          expect(result.action).to eq(:updated)
+          expect(result.version.id).to eq(existing_version.id)
+          expect(result.version_created_reason).to be_nil
         end
 
         it "creates new version when save_action is new_version" do
@@ -252,13 +307,14 @@ module PromptTracker
     end
 
     describe "Result object" do
-      it "has the expected attributes" do
+      it "has the expected attributes including version_created_reason" do
         result = described_class::Result.new(
           success?: true,
           action: :created,
           prompt: nil,
           version: nil,
-          errors: []
+          errors: [],
+          version_created_reason: :production_immutable
         )
 
         expect(result).to respond_to(:success?)
@@ -266,6 +322,21 @@ module PromptTracker
         expect(result).to respond_to(:prompt)
         expect(result).to respond_to(:version)
         expect(result).to respond_to(:errors)
+        expect(result).to respond_to(:version_created_reason)
+        expect(result.version_created_reason).to eq(:production_immutable)
+      end
+
+      it "allows nil version_created_reason" do
+        result = described_class::Result.new(
+          success?: true,
+          action: :updated,
+          prompt: nil,
+          version: nil,
+          errors: [],
+          version_created_reason: nil
+        )
+
+        expect(result.version_created_reason).to be_nil
       end
     end
   end
