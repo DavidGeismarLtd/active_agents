@@ -228,15 +228,21 @@ module PromptTracker
       Rails.logger.debug "Default provider: #{default_provider_value}"
       Rails.logger.debug "Default API: #{default_api_value}"
 
+      # Resolve current provider with fallbacks
+      # When no providers are enabled, fall back to openai as a sensible default for UI display
       current_provider = version&.model_config&.dig(:provider) ||
                         version&.model_config&.dig("provider") ||
                         default_provider_value&.to_s ||
-                        available_providers_list.first.to_s
+                        available_providers_list.first&.to_s ||
+                        "openai"
 
+      # Resolve current API with fallbacks
+      # When no APIs are configured, fall back to chat_completions as a sensible default
       current_api = version&.model_config&.dig(:api) ||
                    version&.model_config&.dig("api") ||
                    default_api_value&.to_s ||
-                   default_api_for_provider(current_provider.to_sym)&.to_s
+                   default_api_for_provider(current_provider.to_sym)&.to_s ||
+                   "chat_completions"
 
       Rails.logger.debug "Resolved current_provider: #{current_provider}"
       Rails.logger.debug "Resolved current_api: #{current_api}"

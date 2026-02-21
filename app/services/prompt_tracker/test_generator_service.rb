@@ -213,7 +213,7 @@ module PromptTracker
         2. **description**: Clear explanation of what this test validates
         3. **evaluator_configs**: Array of evaluators to run, each with:
            - **evaluator_key**: One of the available evaluator keys listed above
-           - **config**: Configuration object matching that evaluator's param_schema
+           - **config_json**: A JSON string of the configuration object matching that evaluator's param_schema (e.g., '{"keywords": ["hello"]}' or '{"min_length": 50}')
         4. **reasoning**: Why this test case is important
 
         ## GUIDELINES
@@ -289,13 +289,16 @@ module PromptTracker
 
       content = response_content.with_indifferent_access
 
+      # Validate response structure
+      validate_response_structure!(content)
+
       # If tests are strings (just names), expand them with a follow-up LLM call
-      if content[:tests]&.first.is_a?(String)
+      if content[:tests].first.is_a?(String)
         Rails.logger.info "[TestGeneratorService] Detected string test names, expanding with follow-up call"
         content = expand_string_tests(content)
       end
 
-      Rails.logger.info "[TestGeneratorService] Found #{content[:tests]&.size || 0} tests in response"
+      Rails.logger.info "[TestGeneratorService] Found #{content[:tests].size} tests in response"
       Rails.logger.debug "[TestGeneratorService] Overall reasoning: #{content[:overall_reasoning]}"
 
       created_tests = []
@@ -351,6 +354,20 @@ module PromptTracker
         overall_reasoning: content[:overall_reasoning],
         count: created_tests.size
       }
+    end
+
+    # Validate that the LLM response has the expected structure
+    #
+    # @param content [HashWithIndifferentAccess] the response content
+    # @raise [MalformedResponseError] if structure is invalid
+    def validate_response_structure!(content)
+      unless content[:tests].is_a?(Array)
+        raise MalformedResponseError, "LLM response missing 'tests' array (got #{content[:tests].class})"
+      end
+
+      if content[:tests].empty?
+        raise MalformedResponseError, "LLM response 'tests' array is empty"
+      end
     end
 
     # Parse config JSON string to hash
