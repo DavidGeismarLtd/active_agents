@@ -144,10 +144,12 @@ module PromptTracker
     #
     # @return [Hash] response with :text, :usage, :model, :raw keys
     def call
-      chat = build_chat
-      response = chat.ask(prompt)
+      with_dynamic_config do
+        chat = build_chat_instance
+        response = chat.ask(prompt)
 
-      normalize_response(response)
+        normalize_response(response)
+      end
     end
 
     # Execute the API call with structured output using RubyLLM::Schema
@@ -156,13 +158,29 @@ module PromptTracker
     def call_with_schema
       raise ArgumentError, "Schema is required for call_with_schema" unless schema
 
-      chat = build_chat.with_schema(schema)
-      response = chat.ask(prompt)
+      with_dynamic_config do
+        chat = build_chat_instance.with_schema(schema)
+        response = chat.ask(prompt)
 
-      normalize_schema_response(response)
+        normalize_schema_response(response)
+      end
     end
 
     private
+
+    # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
+    #
+    # @yield Block to execute with dynamic config
+    # @return [Object] Result of the block
+    def with_dynamic_config(&block)
+      config = PromptTracker.configuration
+
+      if config.dynamic_configuration?
+        RubyLLM.with_config(**config.ruby_llm_config, &block)
+      else
+        yield
+      end
+    end
 
     # Route to specialized services (OpenAI Responses/Assistants APIs)
     #
@@ -212,10 +230,10 @@ module PromptTracker
       end
     end
 
-    # Build a RubyLLM chat instance with configured parameters
+    # Build a RubyLLM chat instance with configured parameters (internal).
     #
     # @return [RubyLLM::Chat] configured chat instance
-    def build_chat
+    def build_chat_instance
       chat = RubyLLM.chat(model: model)
 
       # Apply temperature if specified

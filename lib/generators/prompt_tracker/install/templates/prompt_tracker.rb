@@ -4,11 +4,14 @@
 #
 # This file configures PromptTracker settings.
 # Structure:
-#   1. Core Settings (paths, auth)
+#   1. Core Settings (paths, auth, dynamic configuration)
 #   2. Providers (api_key, name, APIs, models - all in one place)
 #   3. Contexts (usage scenarios with defaults)
 #   4. Feature Flags
 #   5. Tool UI Metadata (optional)
+#
+# For multi-tenant applications with per-organization API keys,
+# see docs/dynamic_configuration.md for configuration_provider setup.
 
 PromptTracker.configure do |config|
   # ===========================================================================
@@ -27,6 +30,22 @@ PromptTracker.configure do |config|
   #   config.basic_auth_password = ENV["PROMPT_TRACKER_PASSWORD"]
   config.basic_auth_username = nil
   config.basic_auth_password = nil
+
+  # Dynamic Configuration Provider (for multi-tenant applications)
+  # Uncomment to enable per-request configuration based on your app's context.
+  # See docs/dynamic_configuration.md for detailed setup guide.
+  #
+  # config.configuration_provider = -> {
+  #   org = Current.organization
+  #   return {} unless org
+  #
+  #   {
+  #     providers: {
+  #       openai: { api_key: org.openai_api_key },
+  #       anthropic: { api_key: org.anthropic_api_key }
+  #     }
+  #   }
+  # }
 
   # ===========================================================================
   # 2. PROVIDERS

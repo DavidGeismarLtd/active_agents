@@ -105,17 +105,30 @@ module PromptTracker
       def call
         log_request
 
-        chat = build_chat
-        response = chat.ask(prompt)
+        with_dynamic_config do
+          chat = build_chat_instance
+          response = chat.ask(prompt)
 
-        log_response(response)
-        LlmResponseNormalizers::RubyLlm.normalize(response)
+          log_response(response)
+          LlmResponseNormalizers::RubyLlm.normalize(response)
+        end
       end
 
-      # Build a RubyLLM chat instance with all configurations
+      # Build a RubyLLM chat instance with all configurations.
+      # When called externally, wraps in dynamic config.
+      # When called from #call, dynamic config is already applied.
       #
       # @return [RubyLLM::Chat] Configured chat instance
       def build_chat
+        with_dynamic_config { build_chat_instance }
+      end
+
+      private
+
+      # Build the actual chat instance (internal, without config wrapper)
+      #
+      # @return [RubyLLM::Chat] Configured chat instance
+      def build_chat_instance
         chat = RubyLLM.chat(model: model)
         chat = chat.with_instructions(system) if system.present?
         chat = chat.with_temperature(temperature) if temperature
@@ -125,7 +138,21 @@ module PromptTracker
         chat
       end
 
-      private
+      # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
+      # Uses RubyLLM.with_config to apply per-request API keys.
+      # If already inside a with_config block, just yields to avoid nesting.
+      #
+      # @yield Block to execute with dynamic config
+      # @return [Object] Result of the block
+      def with_dynamic_config(&block)
+        config = PromptTracker.configuration
+
+        if config.dynamic_configuration?
+          RubyLLM.with_config(**config.ruby_llm_config, &block)
+        else
+          yield
+        end
+      end
 
       # Apply additional parameters (max_tokens)
       #

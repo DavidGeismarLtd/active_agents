@@ -416,5 +416,219 @@ module PromptTracker
         end
       end
     end
+
+    # =========================================================================
+    # Dynamic Configuration (configuration_provider)
+    # =========================================================================
+
+    describe "#configuration_provider" do
+      it "defaults to nil" do
+        expect(config.configuration_provider).to be_nil
+      end
+
+      it "can be set to a Proc" do
+        provider = -> { { providers: { openai: { api_key: "dynamic-key" } } } }
+        config.configuration_provider = provider
+        expect(config.configuration_provider).to eq(provider)
+      end
+    end
+
+    describe "#dynamic_configuration?" do
+      it "returns false when configuration_provider is nil" do
+        config.configuration_provider = nil
+        expect(config.dynamic_configuration?).to be false
+      end
+
+      it "returns true when configuration_provider is set" do
+        config.configuration_provider = -> { {} }
+        expect(config.dynamic_configuration?).to be true
+      end
+    end
+
+    describe "#effective_providers" do
+      context "without configuration_provider" do
+        before do
+          config.providers = { openai: { api_key: "static-key" } }
+        end
+
+        it "returns static providers" do
+          expect(config.effective_providers).to eq({ openai: { api_key: "static-key" } })
+        end
+      end
+
+      context "with configuration_provider" do
+        before do
+          config.providers = { openai: { api_key: "static-key" } }
+          config.configuration_provider = -> {
+            { providers: { openai: { api_key: "dynamic-key" }, anthropic: { api_key: "anthropic-key" } } }
+          }
+        end
+
+        it "returns dynamic providers" do
+          expect(config.effective_providers).to eq({
+            openai: { api_key: "dynamic-key" },
+            anthropic: { api_key: "anthropic-key" }
+          })
+        end
+
+        it "affects api_key_for" do
+          expect(config.api_key_for(:openai)).to eq("dynamic-key")
+          expect(config.api_key_for(:anthropic)).to eq("anthropic-key")
+        end
+
+        it "affects enabled_providers" do
+          expect(config.enabled_providers).to contain_exactly(:openai, :anthropic)
+        end
+
+        it "affects provider_configured?" do
+          expect(config.provider_configured?(:openai)).to be true
+          expect(config.provider_configured?(:anthropic)).to be true
+        end
+      end
+
+      context "when configuration_provider returns nil for providers" do
+        before do
+          config.providers = { openai: { api_key: "static-key" } }
+          config.configuration_provider = -> { { contexts: {} } }
+        end
+
+        it "falls back to static providers" do
+          expect(config.effective_providers).to eq({ openai: { api_key: "static-key" } })
+        end
+      end
+    end
+
+    describe "#effective_contexts" do
+      context "without configuration_provider" do
+        before do
+          config.contexts = { playground: { default_model: "gpt-4o" } }
+        end
+
+        it "returns static contexts" do
+          expect(config.effective_contexts).to eq({ playground: { default_model: "gpt-4o" } })
+        end
+      end
+
+      context "with configuration_provider" do
+        before do
+          config.contexts = { playground: { default_model: "gpt-4o" } }
+          config.configuration_provider = -> {
+            { contexts: { playground: { default_model: "claude-3" }, llm_judge: { default_model: "gpt-4o" } } }
+          }
+        end
+
+        it "returns dynamic contexts" do
+          expect(config.effective_contexts).to eq({
+            playground: { default_model: "claude-3" },
+            llm_judge: { default_model: "gpt-4o" }
+          })
+        end
+
+        it "affects context_default" do
+          expect(config.context_default(:playground, :model)).to eq("claude-3")
+          expect(config.context_default(:llm_judge, :model)).to eq("gpt-4o")
+        end
+      end
+
+      context "when configuration_provider returns nil for contexts" do
+        before do
+          config.contexts = { playground: { default_model: "gpt-4o" } }
+          config.configuration_provider = -> { { providers: {} } }
+        end
+
+        it "falls back to static contexts" do
+          expect(config.effective_contexts).to eq({ playground: { default_model: "gpt-4o" } })
+        end
+      end
+    end
+
+    describe "#effective_features" do
+      context "without configuration_provider" do
+        before do
+          config.features = { openai_assistant_sync: true }
+        end
+
+        it "returns static features" do
+          expect(config.effective_features).to eq({ openai_assistant_sync: true })
+        end
+      end
+
+      context "with configuration_provider" do
+        before do
+          config.features = { openai_assistant_sync: false }
+          config.configuration_provider = -> {
+            { features: { openai_assistant_sync: true, new_feature: true } }
+          }
+        end
+
+        it "returns dynamic features" do
+          expect(config.effective_features).to eq({
+            openai_assistant_sync: true,
+            new_feature: true
+          })
+        end
+
+        it "affects feature_enabled?" do
+          expect(config.feature_enabled?(:openai_assistant_sync)).to be true
+          expect(config.feature_enabled?(:new_feature)).to be true
+        end
+      end
+
+      context "when configuration_provider returns nil for features" do
+        before do
+          config.features = { openai_assistant_sync: true }
+          config.configuration_provider = -> { { providers: {} } }
+        end
+
+        it "falls back to static features" do
+          expect(config.effective_features).to eq({ openai_assistant_sync: true })
+        end
+      end
+    end
+
+    describe "#ruby_llm_config" do
+      it "returns empty hash when no providers configured" do
+        expect(config.ruby_llm_config).to eq({})
+      end
+
+      it "maps provider api_keys to RubyLLM config keys" do
+        config.providers = {
+          openai: { api_key: "sk-openai" },
+          anthropic: { api_key: "sk-anthropic" },
+          google: { api_key: "google-key" }
+        }
+
+        result = config.ruby_llm_config
+
+        expect(result[:openai_api_key]).to eq("sk-openai")
+        expect(result[:anthropic_api_key]).to eq("sk-anthropic")
+        expect(result[:gemini_api_key]).to eq("google-key")
+      end
+
+      it "uses effective_providers when configuration_provider is set" do
+        config.providers = { openai: { api_key: "static-key" } }
+        config.configuration_provider = -> {
+          { providers: { openai: { api_key: "dynamic-key" } } }
+        }
+
+        result = config.ruby_llm_config
+
+        expect(result[:openai_api_key]).to eq("dynamic-key")
+      end
+
+      it "excludes providers with nil or blank api_keys" do
+        config.providers = {
+          openai: { api_key: "sk-openai" },
+          anthropic: { api_key: nil },
+          google: { api_key: "" }
+        }
+
+        result = config.ruby_llm_config
+
+        expect(result).to have_key(:openai_api_key)
+        expect(result).not_to have_key(:anthropic_api_key)
+        expect(result).not_to have_key(:gemini_api_key)
+      end
+    end
   end
 end

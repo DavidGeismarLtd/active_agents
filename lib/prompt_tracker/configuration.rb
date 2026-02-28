@@ -3,7 +3,7 @@
 module PromptTracker
   # Configuration for PromptTracker.
   #
-  # @example Configure in an initializer
+  # @example Configure in an initializer (static configuration)
   #   PromptTracker.configure do |config|
   #     config.basic_auth_username = "admin"
   #     config.basic_auth_password = "secret"
@@ -17,6 +17,26 @@ module PromptTracker
   #
   #     config.contexts = {
   #       playground: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" }
+  #     }
+  #   end
+  #
+  # @example Configure with dynamic configuration provider (multi-tenant)
+  #   PromptTracker.configure do |config|
+  #     # Static settings that don't change per-request
+  #     config.basic_auth_username = ENV["PROMPT_TRACKER_USERNAME"]
+  #     config.basic_auth_password = ENV["PROMPT_TRACKER_PASSWORD"]
+  #
+  #     # Dynamic configuration provider - called at runtime for each request
+  #     # Return a hash with :providers and/or :contexts keys
+  #     config.configuration_provider = -> {
+  #       org = Current.organization  # Your request-scoped context
+  #       {
+  #         providers: {
+  #           openai: { api_key: org.openai_api_key },
+  #           anthropic: { api_key: org.anthropic_api_key }
+  #         },
+  #         contexts: org.prompt_tracker_contexts
+  #       }
   #     }
   #   end
   #
@@ -76,6 +96,27 @@ module PromptTracker
     #   }
     attr_accessor :builtin_tools
 
+    # Dynamic configuration provider for multi-tenant applications.
+    # When set, this proc/lambda is called at runtime to get context-specific
+    # configuration (API keys, contexts, etc.) instead of using static values.
+    #
+    # The provider should return a Hash with optional :providers and :contexts keys.
+    # These will override the static @providers and @contexts values.
+    #
+    # @return [Proc, nil] callable that returns dynamic configuration hash
+    # @example
+    #   config.configuration_provider = -> {
+    #     org = Current.organization
+    #     {
+    #       providers: {
+    #         openai: { api_key: org.openai_api_key },
+    #         anthropic: { api_key: org.anthropic_api_key }
+    #       },
+    #       contexts: org.prompt_tracker_contexts
+    #     }
+    #   }
+    attr_accessor :configuration_provider
+
     # Initialize with default values.
     def initialize
       @basic_auth_username = nil
@@ -84,12 +125,49 @@ module PromptTracker
       @contexts = {}
       @features = {}
       @builtin_tools = default_builtin_tools
+      @configuration_provider = nil
     end
 
     # Check if basic authentication is enabled.
     # @return [Boolean] true if both username and password are set
     def basic_auth_enabled?
       basic_auth_username.present? && basic_auth_password.present?
+    end
+
+    # Check if dynamic configuration is enabled.
+    # @return [Boolean] true if a configuration_provider is set
+    def dynamic_configuration?
+      @configuration_provider.present?
+    end
+
+    # Get the effective providers configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @providers.
+    # @return [Hash] hash of provider symbol => provider config hash
+    def effective_providers
+      return @providers unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:providers] || @providers
+    end
+
+    # Get the effective contexts configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @contexts.
+    # @return [Hash] hash of context symbol => defaults hash
+    def effective_contexts
+      return @contexts unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:contexts] || @contexts
+    end
+
+    # Get the effective features configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @features.
+    # @return [Hash] hash of feature symbol => boolean
+    def effective_features
+      return @features unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:features] || @features
     end
 
     # =========================================================================
@@ -100,7 +178,7 @@ module PromptTracker
     # @param provider [Symbol] the provider name
     # @return [Boolean] true if the provider has an API key
     def provider_configured?(provider)
-      key = providers.dig(provider.to_sym, :api_key)
+      key = effective_providers.dig(provider.to_sym, :api_key)
       key.present?
     end
 
@@ -108,13 +186,13 @@ module PromptTracker
     # @param provider [Symbol] the provider name
     # @return [String, nil] the API key or nil if not configured
     def api_key_for(provider)
-      providers.dig(provider.to_sym, :api_key)
+      effective_providers.dig(provider.to_sym, :api_key)
     end
 
     # Get all providers that have API keys configured.
     # @return [Array<Symbol>] list of configured provider symbols
     def enabled_providers
-      providers.select { |_, config| config[:api_key].present? }.keys
+      effective_providers.select { |_, config| config[:api_key].present? }.keys
     end
 
     # Get the display name for a provider.
@@ -122,7 +200,7 @@ module PromptTracker
     # @param provider [Symbol] the provider key
     # @return [String] the provider display name
     def provider_name(provider)
-      providers.dig(provider.to_sym, :name) ||
+      effective_providers.dig(provider.to_sym, :name) ||
         ProviderDefaults.name_for(provider) ||
         provider.to_s.titleize
     end
@@ -133,7 +211,7 @@ module PromptTracker
     # @return [Array<Hash>] array of API hashes with :key, :name, :default, :capabilities, :description
     def apis_for(provider)
       # Use explicit apis config if present, otherwise use ProviderDefaults
-      apis_config = providers.dig(provider.to_sym, :apis) || ProviderDefaults.apis_for(provider)
+      apis_config = effective_providers.dig(provider.to_sym, :apis) || ProviderDefaults.apis_for(provider)
       return [] if apis_config.empty?
 
       apis_config.map do |api_key, api_config|
@@ -193,7 +271,7 @@ module PromptTracker
     # @param attribute [Symbol] the attribute (:provider, :api, :model)
     # @return [Object, nil] the default value or nil
     def context_default(context, attribute)
-      contexts.dig(context.to_sym, :"default_#{attribute}")
+      effective_contexts.dig(context.to_sym, :"default_#{attribute}")
     end
 
     # Get the default provider for a context.
@@ -232,7 +310,7 @@ module PromptTracker
     # @param feature [Symbol] the feature name
     # @return [Boolean] true if the feature is enabled
     def feature_enabled?(feature)
-      features[feature.to_sym] == true
+      effective_features[feature.to_sym] == true
     end
 
     # =========================================================================
@@ -313,6 +391,37 @@ module PromptTracker
       return true if model_id.nil?  # Default to true if no model specified
 
       RubyLlmModelAdapter.capabilities_for(model_id).include?(:function_calling)
+    end
+
+    # Build RubyLLM configuration hash from current effective providers.
+    # Used for per-request RubyLLM configuration when dynamic_configuration? is true.
+    #
+    # @return [Hash] hash suitable for RubyLLM.with_config
+    # @example
+    #   config.ruby_llm_config
+    #   # => { openai_api_key: "sk-...", anthropic_api_key: "sk-..." }
+    def ruby_llm_config
+      provider_key_mapping = {
+        openai: :openai_api_key,
+        anthropic: :anthropic_api_key,
+        google: :gemini_api_key,
+        gemini: :gemini_api_key,
+        deepseek: :deepseek_api_key,
+        mistral: :mistral_api_key,
+        perplexity: :perplexity_api_key,
+        openrouter: :openrouter_api_key,
+        xai: :xai_api_key
+      }
+
+      config_hash = {}
+      providers_config = effective_providers
+
+      provider_key_mapping.each do |provider, config_key|
+        api_key = providers_config.dig(provider, :api_key)
+        config_hash[config_key] = api_key if api_key.present?
+      end
+
+      config_hash
     end
 
     private
