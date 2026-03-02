@@ -3,7 +3,7 @@
 module PromptTracker
   module Monitoring
     # Controller for managing human evaluations in monitoring context
-    class HumanEvaluationsController < ApplicationController
+    class HumanEvaluationsController < BaseController
       before_action :set_evaluation, only: [ :create ], if: -> { params[:evaluation_id].present? }
       before_action :set_llm_response, only: [ :create ], if: -> { params[:llm_response_id].present? }
 

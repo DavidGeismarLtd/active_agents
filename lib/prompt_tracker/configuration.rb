@@ -80,7 +80,10 @@ module PromptTracker
     # Feature flags.
     # @return [Hash] hash of feature symbol => boolean
     # @example
-    #   { openai_assistant_sync: true }
+    #   {
+    #     monitoring: true,            # Enable the Monitoring section (tracked calls, auto-evaluations)
+    #     openai_assistant_sync: true  # Show "Sync OpenAI Assistants" button in Testing Dashboard
+    #   }
     attr_accessor :features
 
     # Built-in tools metadata (for Response API and Assistants API).

@@ -138,11 +138,13 @@
           </li>
 
           <!-- Monitoring Section (Green) -->
-          <li class="nav-item">
-            <%= link_to monitoring_root_path, class: "nav-link #{'active' if controller_path.start_with?('prompt_tracker/monitoring')} pt-nav-monitoring" do %>
-              <i class="bi bi-activity"></i> Monitoring
-            <% end %>
-          </li>
+          <% if PromptTracker.configuration.feature_enabled?(:monitoring) %>
+            <li class="nav-item">
+              <%= link_to monitoring_root_path, class: "nav-link #{'active' if controller_path.start_with?('prompt_tracker/monitoring')} pt-nav-monitoring" do %>
+                <i class="bi bi-activity"></i> Monitoring
+              <% end %>
+            </li>
+          <% end %>
 
 
         </ul>

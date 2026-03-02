@@ -3,7 +3,7 @@
 module PromptTracker
   module Monitoring
     # Controller for viewing tracked LLM responses (runtime calls from all environments)
-    class LlmResponsesController < ApplicationController
+    class LlmResponsesController < BaseController
       # GET /monitoring/responses
       # List all tracked LLM responses with filtering
       def index

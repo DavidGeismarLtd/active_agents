@@ -4,7 +4,7 @@ module PromptTracker
   module Monitoring
     # Controller for viewing prompt versions in monitoring context
     # Shows tracked calls and evaluations for a specific version
-    class PromptVersionsController < ApplicationController
+    class PromptVersionsController < BaseController
       # GET /monitoring/prompts/:prompt_id/versions/:id
       # Show prompt version with all tracked calls and evaluations
       def show

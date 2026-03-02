@@ -101,6 +101,7 @@ PromptTracker::Engine.routes.draw do
 
   # ========================================
   # MONITORING SECTION (Green) - Runtime tracking
+  # Can be disabled via config.features[:monitoring] = false
   # ========================================
   namespace :monitoring do
     get "/", to: "dashboard#index", as: :root

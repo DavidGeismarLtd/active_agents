@@ -152,6 +152,7 @@ PromptTracker.configure do |config|
   # 4. FEATURE FLAGS
   # ===========================================================================
   config.features = {
+    monitoring: true,             # Enable the Monitoring section (tracked calls, auto-evaluations)
     openai_assistant_sync: false  # Show "Sync OpenAI Assistants" button in Testing Dashboard
   }
 

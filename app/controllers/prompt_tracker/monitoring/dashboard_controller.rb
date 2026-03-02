@@ -10,7 +10,7 @@ module PromptTracker
     # - Quality metrics
     # - Alerts for failing evaluations
     #
-    class DashboardController < ApplicationController
+    class DashboardController < BaseController
       def index
         # Only show tracked calls (not test runs)
         @recent_responses = LlmResponse.tracked_calls

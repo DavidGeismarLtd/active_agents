@@ -3,7 +3,7 @@
 module PromptTracker
   module Monitoring
     # Controller for viewing tracked evaluations (runtime calls from all environments)
-    class EvaluationsController < ApplicationController
+    class EvaluationsController < BaseController
       # GET /monitoring/evaluations
       # List all tracked evaluations with filtering
       def index
