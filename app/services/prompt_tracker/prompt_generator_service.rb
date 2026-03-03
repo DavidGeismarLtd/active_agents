@@ -77,6 +77,21 @@ module PromptTracker
       PromptTracker.configuration.default_temperature_for(:prompt_generation) || FALLBACK_TEMPERATURE
     end
 
+    # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
+    # Uses RubyLLM.with_config to apply per-request API keys for multi-tenant apps.
+    #
+    # @yield Block to execute with dynamic config
+    # @return [Object] Result of the block
+    def with_dynamic_config(&block)
+      config = PromptTracker.configuration
+
+      if config.dynamic_configuration?
+        RubyLLM.with_config(**config.ruby_llm_config, &block)
+      else
+        yield
+      end
+    end
+
     def understand_and_expand
       prompt = <<~PROMPT
         You are an expert prompt engineer. A user has provided a brief description of what they want their prompt to do.
@@ -94,9 +109,11 @@ module PromptTracker
         Provide a comprehensive expansion of the requirements in 2-3 paragraphs.
       PROMPT
 
-      chat = RubyLLM.chat(model: model).with_temperature(temperature)
-      response = chat.ask(prompt)
-      response.content
+      with_dynamic_config do
+        chat = RubyLLM.chat(model: model).with_temperature(temperature)
+        response = chat.ask(prompt)
+        response.content
+      end
     end
 
     def propose_variables(requirements)
@@ -114,25 +131,29 @@ module PromptTracker
         Return ONLY the variable names, one per line, nothing else.
       PROMPT
 
-      chat = RubyLLM.chat(model: model).with_temperature(temperature)
-      response = chat.ask(prompt)
+      with_dynamic_config do
+        chat = RubyLLM.chat(model: model).with_temperature(temperature)
+        response = chat.ask(prompt)
 
-      # Parse variable names from response
-      response.content.split("\n").map(&:strip).reject(&:empty?).map { |v| v.gsub(/^-\s*/, "") }
+        # Parse variable names from response
+        response.content.split("\n").map(&:strip).reject(&:empty?).map { |v| v.gsub(/^-\s*/, "") }
+      end
     end
 
     def generate_prompts(requirements, variables)
       schema = build_generation_schema
       prompt = build_generation_prompt(requirements, variables)
 
-      chat = RubyLLM.chat(model: model)
-        .with_temperature(temperature)
-        .with_schema(schema)
+      with_dynamic_config do
+        chat = RubyLLM.chat(model: model)
+          .with_temperature(temperature)
+          .with_schema(schema)
 
-      response = chat.ask(prompt)
+        response = chat.ask(prompt)
 
-      # Response.content is a hash with the structured data
-      parse_generation_response(response.content, variables)
+        # Response.content is a hash with the structured data
+        parse_generation_response(response.content, variables)
+      end
     end
 
     def build_generation_prompt(requirements, variables)

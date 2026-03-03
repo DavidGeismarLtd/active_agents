@@ -124,6 +124,68 @@ module PromptTracker
 
         expect(result[:variables]).to eq([])
       end
+
+      context 'with dynamic_configuration' do
+        let(:config_provider) do
+          -> {
+            {
+              providers: {
+                openai: { api_key: 'dynamic-api-key' }
+              },
+              contexts: {
+                prompt_generation: {
+                  default_model: 'gpt-4o',
+                  default_temperature: 0.9
+                }
+              }
+            }
+          }
+        end
+
+        before do
+          PromptTracker.configuration.configuration_provider = config_provider
+        end
+
+        after do
+          PromptTracker.configuration.configuration_provider = nil
+        end
+
+        it 'detects dynamic_configuration is enabled' do
+          # Skip verification of RubyLLM.with_config (it's a gem method)
+          without_partial_double_verification do
+            allow(RubyLLM).to receive(:with_config).and_yield
+          end
+
+          allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
+
+          expect(PromptTracker.configuration.dynamic_configuration?).to be true
+          described_class.generate(description: description)
+        end
+
+        it 'uses the dynamically configured model' do
+          # Skip verification of RubyLLM.with_config (it's a gem method)
+          without_partial_double_verification do
+            allow(RubyLLM).to receive(:with_config).and_yield
+          end
+
+          expect(RubyLLM).to receive(:chat).with(model: 'gpt-4o').at_least(:once).and_return(mock_chat)
+          allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
+
+          described_class.generate(description: description)
+        end
+
+        it 'uses the dynamically configured temperature' do
+          # Skip verification of RubyLLM.with_config (it's a gem method)
+          without_partial_double_verification do
+            allow(RubyLLM).to receive(:with_config).and_yield
+          end
+
+          expect(mock_chat).to receive(:with_temperature).with(0.9).at_least(:once).and_return(mock_chat)
+          allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
+
+          described_class.generate(description: description)
+        end
+      end
     end
   end
 end
