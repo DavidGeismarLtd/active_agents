@@ -82,6 +82,32 @@ module PromptTracker
         ).build_chat
       end
 
+      # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
+      # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
+      # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
+      #
+      # @example Usage in other services
+      #   LlmClients::RubyLlmService.with_dynamic_config do |llm|
+      #     chat = llm.chat(model: "gpt-4o")
+      #     response = chat.ask("Hello!")
+      #   end
+      #
+      # @yield [llm] Block to execute with the chat source
+      # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
+      # @return [Object] Result of the block
+      def self.with_dynamic_config(&block)
+        config = PromptTracker.configuration
+
+        if config.dynamic_configuration?
+          ctx = RubyLLM.context do |c|
+            config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
+          end
+          yield(ctx)
+        else
+          yield(RubyLLM)
+        end
+      end
+
       attr_reader :model, :prompt, :system, :tools, :tool_config,
                   :mock_function_outputs, :temperature, :max_tokens, :options
 
@@ -139,24 +165,9 @@ module PromptTracker
         chat
       end
 
-      # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
-      # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
-      # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
-      #
-      # @yield [llm] Block to execute with the chat source
-      # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
-      # @return [Object] Result of the block
-      def with_dynamic_config
-        config = PromptTracker.configuration
-
-        if config.dynamic_configuration?
-          ctx = RubyLLM.context do |c|
-            config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
-          end
-          yield(ctx)
-        else
-          yield(RubyLLM)
-        end
+      # Delegate to class method for DRY
+      def with_dynamic_config(&block)
+        self.class.with_dynamic_config(&block)
       end
 
       # Apply additional parameters (max_tokens)

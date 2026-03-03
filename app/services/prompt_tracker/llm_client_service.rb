@@ -144,7 +144,7 @@ module PromptTracker
     #
     # @return [Hash] response with :text, :usage, :model, :raw keys
     def call
-      with_dynamic_config do |llm|
+      LlmClients::RubyLlmService.with_dynamic_config do |llm|
         chat = build_chat_instance(llm)
         response = chat.ask(prompt)
 
@@ -158,7 +158,7 @@ module PromptTracker
     def call_with_schema
       raise ArgumentError, "Schema is required for call_with_schema" unless schema
 
-      with_dynamic_config do |llm|
+      LlmClients::RubyLlmService.with_dynamic_config do |llm|
         chat = build_chat_instance(llm).with_schema(schema)
         response = chat.ask(prompt)
 
@@ -167,26 +167,6 @@ module PromptTracker
     end
 
     private
-
-    # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
-    # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
-    # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
-    #
-    # @yield [llm] Block to execute with the chat source
-    # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
-    # @return [Object] Result of the block
-    def with_dynamic_config
-      config = PromptTracker.configuration
-
-      if config.dynamic_configuration?
-        ctx = RubyLLM.context do |c|
-          config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
-        end
-        yield(ctx)
-      else
-        yield(RubyLLM)
-      end
-    end
 
     # Route to specialized services (OpenAI Responses/Assistants APIs)
     #
