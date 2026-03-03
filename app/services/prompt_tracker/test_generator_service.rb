@@ -58,18 +58,21 @@ module PromptTracker
       Rails.logger.debug "[TestGeneratorService] Generation prompt:\n#{prompt}"
 
       Rails.logger.info "[TestGeneratorService] Calling LLM with model: #{configured_model}, temperature: #{configured_temperature}"
-      chat = RubyLLM.chat(model: configured_model)
-        .with_temperature(configured_temperature)
-        .with_schema(build_generation_schema)
 
-      response = chat.ask(prompt)
-      Rails.logger.info "[TestGeneratorService] LLM response received"
-      Rails.logger.debug "[TestGeneratorService] Response content: #{response.content.inspect}"
+      LlmClients::RubyLlmService.with_dynamic_config do |llm|
+        chat = llm.chat(model: configured_model)
+          .with_temperature(configured_temperature)
+          .with_schema(build_generation_schema)
 
-      result = parse_and_create_tests(response.content)
-      Rails.logger.info "[TestGeneratorService] Created #{result[:count]} tests"
+        response = chat.ask(prompt)
+        Rails.logger.info "[TestGeneratorService] LLM response received"
+        Rails.logger.debug "[TestGeneratorService] Response content: #{response.content.inspect}"
 
-      result
+        result = parse_and_create_tests(response.content)
+        Rails.logger.info "[TestGeneratorService] Created #{result[:count]} tests"
+
+        result
+      end
     end
 
     private
@@ -410,14 +413,16 @@ module PromptTracker
 
       Rails.logger.info "[TestGeneratorService] Making follow-up call to expand test names"
 
-      chat = RubyLLM.chat(model: configured_model)
-        .with_temperature(configured_temperature)
-        .with_schema(build_generation_schema)
+      LlmClients::RubyLlmService.with_dynamic_config do |llm|
+        chat = llm.chat(model: configured_model)
+          .with_temperature(configured_temperature)
+          .with_schema(build_generation_schema)
 
-      response = chat.ask(prompt)
-      Rails.logger.debug "[TestGeneratorService] Expanded response: #{response.content.inspect}"
+        response = chat.ask(prompt)
+        Rails.logger.debug "[TestGeneratorService] Expanded response: #{response.content.inspect}"
 
-      response.content.with_indifferent_access
+        response.content.with_indifferent_access
+      end
     end
   end
 end
