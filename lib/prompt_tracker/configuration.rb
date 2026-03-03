@@ -319,7 +319,8 @@ module PromptTracker
     # @param context [Symbol] the context name
     # @return [Float, nil] the default temperature or nil
     def default_temperature_for(context)
-      context_default(context, :temperature)
+      value = context_default(context, :temperature)
+      value&.to_f
     end
 
     # =========================================================================

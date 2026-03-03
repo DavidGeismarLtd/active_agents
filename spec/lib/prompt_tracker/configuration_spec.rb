@@ -269,6 +269,29 @@ module PromptTracker
       end
     end
 
+    describe "#default_temperature_for" do
+      it "returns the default temperature as a float" do
+        config.contexts = {
+          test_generation: { default_temperature: 0.7 }
+        }
+        expect(config.default_temperature_for(:test_generation)).to eq(0.7)
+        expect(config.default_temperature_for(:test_generation)).to be_a(Float)
+      end
+
+      it "converts string temperature to float" do
+        config.contexts = {
+          test_generation: { default_temperature: "0.9" }
+        }
+        expect(config.default_temperature_for(:test_generation)).to eq(0.9)
+        expect(config.default_temperature_for(:test_generation)).to be_a(Float)
+      end
+
+      it "returns nil for unknown context" do
+        config.contexts = {}
+        expect(config.default_temperature_for(:unknown)).to be_nil
+      end
+    end
+
     describe "#feature_enabled?" do
       before do
         config.features = {
