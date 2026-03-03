@@ -33,6 +33,7 @@ module PromptTracker
     end
 
     def generate
+      log_configuration
       expanded_requirements = understand_and_expand
       variables = propose_variables(expanded_requirements)
       generate_prompts(expanded_requirements, variables)
@@ -41,6 +42,28 @@ module PromptTracker
     private
 
     attr_reader :description
+
+    # Log the configuration being used for debugging
+    def log_configuration
+      config = PromptTracker.configuration
+      configured_model = config.default_model_for(:prompt_generation)
+      configured_temp = config.default_temperature_for(:prompt_generation)
+
+      Rails.logger.info "[PromptTracker::PromptGeneratorService] Configuration loaded"
+      Rails.logger.info "  - dynamic_configuration: #{config.dynamic_configuration?}"
+      Rails.logger.info "  - configured model: #{configured_model.inspect}"
+      Rails.logger.info "  - configured temperature: #{configured_temp.inspect}"
+      Rails.logger.info "  - using model: #{model}"
+      Rails.logger.info "  - using temperature: #{temperature}"
+
+      if configured_model.nil?
+        Rails.logger.warn "[PromptTracker::PromptGeneratorService] No model configured for :prompt_generation context, using fallback: #{FALLBACK_MODEL}"
+      end
+
+      if configured_temp.nil?
+        Rails.logger.warn "[PromptTracker::PromptGeneratorService] No temperature configured for :prompt_generation context, using fallback: #{FALLBACK_TEMPERATURE}"
+      end
+    end
 
     # Get the model from configuration, respecting dynamic_configuration
     # @return [String] model ID
