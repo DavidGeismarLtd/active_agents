@@ -105,8 +105,8 @@ module PromptTracker
       def call
         log_request
 
-        with_dynamic_config do
-          chat = build_chat_instance
+        with_dynamic_config do |llm|
+          chat = build_chat_instance(llm)
           response = chat.ask(prompt)
 
           log_response(response)
@@ -120,16 +120,17 @@ module PromptTracker
       #
       # @return [RubyLLM::Chat] Configured chat instance
       def build_chat
-        with_dynamic_config { build_chat_instance }
+        with_dynamic_config { |llm| build_chat_instance(llm) }
       end
 
       private
 
       # Build the actual chat instance (internal, without config wrapper)
       #
+      # @param llm [Module, RubyLLM::Context] Chat source that responds to .chat(model:)
       # @return [RubyLLM::Chat] Configured chat instance
-      def build_chat_instance
-        chat = RubyLLM.chat(model: model)
+      def build_chat_instance(llm)
+        chat = llm.chat(model: model)
         chat = chat.with_instructions(system) if system.present?
         chat = chat.with_temperature(temperature) if temperature
         chat = apply_params(chat)
@@ -139,18 +140,22 @@ module PromptTracker
       end
 
       # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
-      # Uses RubyLLM.with_config to apply per-request API keys.
-      # If already inside a with_config block, just yields to avoid nesting.
+      # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
+      # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
       #
-      # @yield Block to execute with dynamic config
+      # @yield [llm] Block to execute with the chat source
+      # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
       # @return [Object] Result of the block
-      def with_dynamic_config(&block)
+      def with_dynamic_config
         config = PromptTracker.configuration
 
         if config.dynamic_configuration?
-          RubyLLM.with_config(**config.ruby_llm_config, &block)
+          ctx = RubyLLM.context do |c|
+            config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
+          end
+          yield(ctx)
         else
-          yield
+          yield(RubyLLM)
         end
       end
 

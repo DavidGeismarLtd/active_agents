@@ -78,17 +78,22 @@ module PromptTracker
     end
 
     # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
-    # Uses RubyLLM.with_config to apply per-request API keys for multi-tenant apps.
+    # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
+    # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
     #
-    # @yield Block to execute with dynamic config
+    # @yield [llm] Block to execute with the chat source
+    # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
     # @return [Object] Result of the block
-    def with_dynamic_config(&block)
+    def with_dynamic_config
       config = PromptTracker.configuration
 
       if config.dynamic_configuration?
-        RubyLLM.with_config(**config.ruby_llm_config, &block)
+        ctx = RubyLLM.context do |c|
+          config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
+        end
+        yield(ctx)
       else
-        yield
+        yield(RubyLLM)
       end
     end
 
@@ -109,8 +114,8 @@ module PromptTracker
         Provide a comprehensive expansion of the requirements in 2-3 paragraphs.
       PROMPT
 
-      with_dynamic_config do
-        chat = RubyLLM.chat(model: model).with_temperature(temperature)
+      with_dynamic_config do |llm|
+        chat = llm.chat(model: model).with_temperature(temperature)
         response = chat.ask(prompt)
         response.content
       end
@@ -131,8 +136,8 @@ module PromptTracker
         Return ONLY the variable names, one per line, nothing else.
       PROMPT
 
-      with_dynamic_config do
-        chat = RubyLLM.chat(model: model).with_temperature(temperature)
+      with_dynamic_config do |llm|
+        chat = llm.chat(model: model).with_temperature(temperature)
         response = chat.ask(prompt)
 
         # Parse variable names from response
@@ -144,8 +149,8 @@ module PromptTracker
       schema = build_generation_schema
       prompt = build_generation_prompt(requirements, variables)
 
-      with_dynamic_config do
-        chat = RubyLLM.chat(model: model)
+      with_dynamic_config do |llm|
+        chat = llm.chat(model: model)
           .with_temperature(temperature)
           .with_schema(schema)
 

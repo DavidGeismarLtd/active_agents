@@ -144,8 +144,8 @@ module PromptTracker
     #
     # @return [Hash] response with :text, :usage, :model, :raw keys
     def call
-      with_dynamic_config do
-        chat = build_chat_instance
+      with_dynamic_config do |llm|
+        chat = build_chat_instance(llm)
         response = chat.ask(prompt)
 
         normalize_response(response)
@@ -158,8 +158,8 @@ module PromptTracker
     def call_with_schema
       raise ArgumentError, "Schema is required for call_with_schema" unless schema
 
-      with_dynamic_config do
-        chat = build_chat_instance.with_schema(schema)
+      with_dynamic_config do |llm|
+        chat = build_chat_instance(llm).with_schema(schema)
         response = chat.ask(prompt)
 
         normalize_schema_response(response)
@@ -169,16 +169,22 @@ module PromptTracker
     private
 
     # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
+    # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
+    # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
     #
-    # @yield Block to execute with dynamic config
+    # @yield [llm] Block to execute with the chat source
+    # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
     # @return [Object] Result of the block
-    def with_dynamic_config(&block)
+    def with_dynamic_config
       config = PromptTracker.configuration
 
       if config.dynamic_configuration?
-        RubyLLM.with_config(**config.ruby_llm_config, &block)
+        ctx = RubyLLM.context do |c|
+          config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
+        end
+        yield(ctx)
       else
-        yield
+        yield(RubyLLM)
       end
     end
 
@@ -232,9 +238,10 @@ module PromptTracker
 
     # Build a RubyLLM chat instance with configured parameters (internal).
     #
+    # @param llm [Module, RubyLLM::Context] Chat source that responds to .chat(model:)
     # @return [RubyLLM::Chat] configured chat instance
-    def build_chat_instance
-      chat = RubyLLM.chat(model: model)
+    def build_chat_instance(llm)
+      chat = llm.chat(model: model)
 
       # Apply temperature if specified
       chat = chat.with_temperature(temperature) if temperature

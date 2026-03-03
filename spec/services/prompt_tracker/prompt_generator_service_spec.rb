@@ -150,12 +150,16 @@ module PromptTracker
           PromptTracker.configuration.configuration_provider = nil
         end
 
-        it 'detects dynamic_configuration is enabled' do
-          # Skip verification of RubyLLM.with_config (it's a gem method)
-          without_partial_double_verification do
-            allow(RubyLLM).to receive(:with_config).and_yield
-          end
+        let(:mock_context) { double("RubyLLM::Context") }
+        let(:mock_config_block) { double("config_block").as_null_object }
 
+        before do
+          # RubyLLM.context yields a config block for setting API keys, then returns a context
+          allow(RubyLLM).to receive(:context).and_yield(mock_config_block).and_return(mock_context)
+          allow(mock_context).to receive(:chat).and_return(mock_chat)
+        end
+
+        it 'detects dynamic_configuration is enabled' do
           allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
 
           expect(PromptTracker.configuration.dynamic_configuration?).to be true
@@ -163,23 +167,13 @@ module PromptTracker
         end
 
         it 'uses the dynamically configured model' do
-          # Skip verification of RubyLLM.with_config (it's a gem method)
-          without_partial_double_verification do
-            allow(RubyLLM).to receive(:with_config).and_yield
-          end
-
-          expect(RubyLLM).to receive(:chat).with(model: 'gpt-4o').at_least(:once).and_return(mock_chat)
+          expect(mock_context).to receive(:chat).with(model: 'gpt-4o').at_least(:once).and_return(mock_chat)
           allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
 
           described_class.generate(description: description)
         end
 
         it 'uses the dynamically configured temperature' do
-          # Skip verification of RubyLLM.with_config (it's a gem method)
-          without_partial_double_verification do
-            allow(RubyLLM).to receive(:with_config).and_yield
-          end
-
           expect(mock_chat).to receive(:with_temperature).with(0.9).at_least(:once).and_return(mock_chat)
           allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
 

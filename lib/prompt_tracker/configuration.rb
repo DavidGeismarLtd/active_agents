@@ -398,8 +398,9 @@ module PromptTracker
 
     # Build RubyLLM configuration hash from current effective providers.
     # Used for per-request RubyLLM configuration when dynamic_configuration? is true.
+    # Applied to a RubyLLM::Context via context.public_send("#{key}=", value).
     #
-    # @return [Hash] hash suitable for RubyLLM.with_config
+    # @return [Hash] hash of RubyLLM config attribute names to values
     # @example
     #   config.ruby_llm_config
     #   # => { openai_api_key: "sk-...", anthropic_api_key: "sk-..." }
