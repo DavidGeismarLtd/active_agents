@@ -96,15 +96,20 @@ module PromptTracker
     def broadcast_prepend_to_dataset
       partial_path, locals = row_partial_and_locals
 
-      broadcast_prepend_to(
-        "dataset_#{dataset_id}_rows",
-        target: "dataset-rows",
+      # Render with ApplicationController to include helpers (especially engine_path for multi-tenant support)
+      row_html = PromptTracker::ApplicationController.render(
         partial: partial_path,
         locals: locals.merge(skip_modal: true)  # Don't render modal in broadcast - it breaks form structure
       )
 
+      Turbo::StreamsChannel.broadcast_prepend_to(
+        "dataset_#{dataset_id}_rows",
+        target: "dataset-rows",
+        html: row_html
+      )
+
       # Update row count
-      broadcast_update_to(
+      Turbo::StreamsChannel.broadcast_update_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-row-count",
         html: dataset.dataset_rows.count.to_s
@@ -112,7 +117,7 @@ module PromptTracker
 
       # Remove empty state if this is the first row
       if dataset.dataset_rows.count == 1
-        broadcast_remove_to(
+        Turbo::StreamsChannel.broadcast_remove_to(
           "dataset_#{dataset_id}_rows",
           target: "empty-state"
         )
@@ -127,30 +132,35 @@ module PromptTracker
 
       partial_path, locals = row_partial_and_locals
 
-      broadcast_replace_to(
-        "dataset_#{dataset_id}_rows",
-        target: "dataset-row-#{id}",
+      # Render with ApplicationController to include helpers (especially engine_path for multi-tenant support)
+      row_html = PromptTracker::ApplicationController.render(
         partial: partial_path,
         locals: locals.merge(skip_modal: true)
+      )
+
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "dataset_#{dataset_id}_rows",
+        target: "dataset-row-#{id}",
+        html: row_html
       )
     end
 
     # Broadcast remove from dataset rows table
     def broadcast_remove_to_dataset
-      broadcast_remove_to(
+      Turbo::StreamsChannel.broadcast_remove_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-row-#{id}"
       )
 
       # Update row count
-      broadcast_update_to(
+      Turbo::StreamsChannel.broadcast_update_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-row-count",
         html: dataset.dataset_rows.count.to_s
       )
 
       # Remove the edit modal for this row
-      broadcast_remove_to(
+      Turbo::StreamsChannel.broadcast_remove_to(
         "dataset_#{dataset_id}_rows",
         target: "editRowModal-#{id}"
       )
