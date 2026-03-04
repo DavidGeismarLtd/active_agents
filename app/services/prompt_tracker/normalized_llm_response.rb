@@ -121,5 +121,6 @@ module PromptTracker
   end
 
   # Alias for backward compatibility during migration
-  NormalizedResponse = NormalizedLlmResponse
+  # Use const_set to avoid "already initialized constant" warnings on reload
+  const_set(:NormalizedResponse, NormalizedLlmResponse) unless const_defined?(:NormalizedResponse)
 end

@@ -3,6 +3,7 @@ module PromptTracker
     include PromptTracker::Concerns::BasicAuthentication
 
     # Make helpers available in all views (including background job rendering)
+    helper UrlHelper
     helper DatasetsHelper
     helper TestsHelper
 

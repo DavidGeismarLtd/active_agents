@@ -27,7 +27,7 @@ PromptTracker.configure do |config|
   #
   # A provider is only enabled if api_key is present.
   config.providers = {
-    openai: { api_key: ENV["OPENAI_API_KEY"] },
+    openai: { api_key: ENV["OPENAI_LOUNA_API_KEY"] },
     anthropic: { api_key: ENV["ANTHROPIC_API_KEY"] },
     google: { api_key: ENV["GOOGLE_API_KEY"] }
   }
