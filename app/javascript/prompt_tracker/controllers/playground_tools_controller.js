@@ -21,7 +21,21 @@ export default class extends Controller {
   connect() {
     // Defer initial update to ensure DOM is fully ready
     requestAnimationFrame(() => {
+      this.initializeToolCardStates()
       this.updatePanelVisibility()
+    })
+  }
+
+  /**
+   * Initialize tool card states on page load
+   * Apply 'active' class to cards with checked checkboxes
+   */
+  initializeToolCardStates() {
+    const checkboxes = this.getCheckboxes()
+    checkboxes.forEach(checkbox => {
+      if (checkbox.checked) {
+        this.updateToolCardState(checkbox)
+      }
     })
   }
 
@@ -39,14 +53,30 @@ export default class extends Controller {
 
     console.log(`[PlaygroundToolsController] Updating tools:`, tools)
 
+    // Save current checked state before clearing
+    const currentState = {}
+    this.getCheckboxes().forEach(checkbox => {
+      currentState[checkbox.dataset.toolId] = checkbox.checked
+    })
+
     // Clear existing tool cards
     this.toolCardsContainerTarget.innerHTML = ''
 
     // Render new tool cards
     if (tools && tools.length > 0) {
       tools.forEach(tool => {
-        const cardHtml = this.buildToolCardHtml(tool)
+        const cardHtml = this.buildToolCardHtml(tool, currentState[tool.id] || false)
         this.toolCardsContainerTarget.insertAdjacentHTML('beforeend', cardHtml)
+      })
+
+      // Restore active state for checked tools
+      requestAnimationFrame(() => {
+        this.getCheckboxes().forEach(checkbox => {
+          if (checkbox.checked) {
+            this.updateToolCardState(checkbox)
+          }
+        })
+        this.updatePanelVisibility()
       })
     } else {
       // Show "no tools" message
@@ -58,21 +88,21 @@ export default class extends Controller {
           </div>
         </div>
       `
+      this.updatePanelVisibility()
     }
-
-    // Reset configuration panels visibility (collapse them since tools are unchecked)
-    this.updatePanelVisibility()
   }
 
   /**
    * Build HTML for a single tool card
    * @param {Object} tool - Tool object with id, name, description, icon, configurable
+   * @param {boolean} isChecked - Whether the checkbox should be checked
    * @returns {string} HTML string for the tool card
    * @private
    */
-  buildToolCardHtml(tool) {
+  buildToolCardHtml(tool, isChecked = false) {
     const checkboxId = `tool_${tool.id}`
     const configurable = tool.configurable === true
+    const checkedAttr = isChecked ? 'checked' : ''
 
     return `
       <div class="col-md-3">
@@ -85,7 +115,8 @@ export default class extends Controller {
                  data-playground-tools-target="toolCheckbox"
                  data-tool-id="${tool.id}"
                  data-configurable="${configurable}"
-                 data-action="change->playground-tools#onToolToggle">
+                 data-action="change->playground-tools#onToolToggle"
+                 ${checkedAttr}>
           <i class="bi bi-check-circle-fill check-indicator"></i>
           <div class="text-center">
             <i class="bi ${tool.icon} tool-icon d-block mb-2"></i>
