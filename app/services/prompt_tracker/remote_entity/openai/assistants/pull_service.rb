@@ -68,9 +68,10 @@ module PromptTracker
 
           private
 
-          # Extract assistant_id from model_config
+          # Extract assistant_id from model_config metadata
           def extract_assistant_id
-            model_config[:assistant_id] || model_config["assistant_id"]
+            model_config.dig(:metadata, :assistant_id) ||
+              model_config.dig("metadata", "assistant_id")
           end
 
           # Fetch vector store names from OpenAI for display purposes.

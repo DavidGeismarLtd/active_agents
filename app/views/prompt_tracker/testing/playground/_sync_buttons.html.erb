@@ -6,7 +6,7 @@
     - synced_at: Last sync timestamp
 %>
 <% if is_remote_entity_linked && version %>
-  <% assistant_id = version.model_config&.dig("assistant_id") %>
+  <% assistant_id = version.model_config&.dig("metadata", "assistant_id") %>
 
   <div class="btn-group ms-2"
        role="group"

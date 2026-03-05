@@ -74,7 +74,7 @@
        data-playground-save-current-version-number-value="<%= @prompt_version.version_number %>"
        data-playground-sync-push-url-value="<%= push_to_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
        data-playground-sync-pull-url-value="<%= pull_from_remote_testing_prompt_prompt_version_playground_path(@prompt, @prompt_version) %>"
-       <% assistant_id = @prompt_version.model_config&.dig(:assistant_id) %>
+       <% assistant_id = @prompt_version.model_config&.dig(:metadata, :assistant_id) %>
        <% if assistant_id.present? %>
          data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
        <% end %>
@@ -93,7 +93,7 @@
        <% if @version %>
          data-playground-save-version-id-value="<%= @version.id %>"
          data-playground-save-current-version-number-value="<%= @version.version_number %>"
-         <% assistant_id = @version.model_config&.dig(:assistant_id) %>
+         <% assistant_id = @version.model_config&.dig(:metadata, :assistant_id) %>
          <% if assistant_id.present? %>
            data-playground-sync-remote-entity-id-value="<%= assistant_id %>"
          <% end %>

@@ -27,12 +27,11 @@ module PromptTracker
       #   # => {
       #   #   provider: "openai",
       #   #   api: "assistants",
-      #   #   assistant_id: "asst_abc123",
       #   #   model: "gpt-4o",
       #   #   tools: ["file_search"],  # ← normalized to string array
       #   #   tool_config: {"file_search" => {"vector_store_ids" => ["vs_123"]}},  # ← unified UI format
       #   #   tool_resources: {"file_search" => {"vector_store_ids" => ["vs_123"]}},  # ← original API format
-      #   #   ...
+      #   #   metadata: {assistant_id: "asst_abc123", ...}  # ← assistant_id stored in metadata
       #   # }
       #
       class ModelConfigNormalizer
@@ -55,7 +54,6 @@ module PromptTracker
           {
             provider: "openai",
             api: "assistants",
-            assistant_id: assistant_data["id"],
             model: assistant_data["model"],
             temperature: assistant_data["temperature"] || 0.7,
             top_p: assistant_data["top_p"] || 1.0,
@@ -164,6 +162,7 @@ module PromptTracker
         # @return [Hash] metadata hash
         def build_metadata
           {
+            assistant_id: assistant_data["id"],
             name: assistant_data["name"],
             description: assistant_data["description"],
             synced_at: Time.current.iso8601

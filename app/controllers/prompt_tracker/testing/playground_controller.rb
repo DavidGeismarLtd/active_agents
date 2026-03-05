@@ -250,8 +250,8 @@ module PromptTracker
       version_to_push.assign_attributes(update_params)
 
       # Determine if this is a create or update operation
-      assistant_id = version_to_push.model_config&.dig(:assistant_id) ||
-                     version_to_push.model_config&.dig("assistant_id")
+      assistant_id = version_to_push.model_config&.dig(:metadata, :assistant_id) ||
+                     version_to_push.model_config&.dig("metadata", "assistant_id")
 
       # Call the appropriate push service
       result = if assistant_id.present?
@@ -288,8 +288,8 @@ module PromptTracker
       version_to_update = @prompt_version || @version
 
       # Check if assistant_id exists
-      assistant_id = version_to_update.model_config&.dig(:assistant_id) ||
-                     version_to_update.model_config&.dig("assistant_id")
+      assistant_id = version_to_update.model_config&.dig(:metadata, :assistant_id) ||
+                     version_to_update.model_config&.dig("metadata", "assistant_id")
 
       unless assistant_id.present?
         render json: { success: false, error: "No remote assistant linked" }, status: :unprocessable_entity

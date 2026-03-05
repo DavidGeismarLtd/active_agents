@@ -18,14 +18,13 @@ import { Controller } from "@hotwired/stimulus"
  * - model: Model dropdown
  * - temperature: Temperature input
  * - maxTokens: Max tokens input
- * - assistantId: Hidden field for OpenAI assistant_id (preserved during save)
- * - metadata: Hidden field for sync metadata JSON (preserved during save)
+ * - metadata: Hidden field for sync metadata JSON (includes assistant_id, preserved during save)
  *
  * @public_methods
  * - getModelConfig(): Returns the current model configuration object
  */
 export default class extends Controller {
-  static targets = ["provider", "api", "model", "temperature", "maxTokens", "assistantId", "metadata"]
+  static targets = ["provider", "api", "model", "temperature", "maxTokens", "metadata"]
 
   connect() {
     console.log("[PlaygroundModelConfigController] Connected")
@@ -34,7 +33,6 @@ export default class extends Controller {
     console.log("[PlaygroundModelConfigController] Has model target?", this.hasModelTarget)
     console.log("[PlaygroundModelConfigController] Has temperature target?", this.hasTemperatureTarget)
     console.log("[PlaygroundModelConfigController] Has maxTokens target?", this.hasMaxTokensTarget)
-    console.log("[PlaygroundModelConfigController] Has assistantId target?", this.hasAssistantIdTarget)
     console.log("[PlaygroundModelConfigController] Has metadata target?", this.hasMetadataTarget)
   }
 
@@ -56,12 +54,7 @@ export default class extends Controller {
       config.max_tokens = parseInt(this.maxTokensTarget.value)
     }
 
-    // Preserve assistant_id from hidden field (for OpenAI Assistants sync)
-    if (this.hasAssistantIdTarget && this.assistantIdTarget.value) {
-      config.assistant_id = this.assistantIdTarget.value
-    }
-
-    // Preserve metadata from hidden field (stored as JSON)
+    // Preserve metadata from hidden field (stored as JSON, includes assistant_id)
     if (this.hasMetadataTarget && this.metadataTarget.value) {
       try {
         config.metadata = JSON.parse(this.metadataTarget.value)
