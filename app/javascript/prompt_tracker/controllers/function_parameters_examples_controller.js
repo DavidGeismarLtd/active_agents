@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { Modal } from "bootstrap"
 
 /**
  * Function Parameters Examples Controller
@@ -113,11 +114,11 @@ export default class extends Controller {
    */
   closeModal() {
     // Try to get existing instance first
-    let modal = bootstrap.Modal.getInstance(this.element)
+    let modal = Modal.getInstance(this.element)
 
     // If no instance exists, create one
     if (!modal) {
-      modal = new bootstrap.Modal(this.element)
+      modal = new Modal(this.element)
     }
 
     modal.hide()
