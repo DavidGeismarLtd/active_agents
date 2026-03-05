@@ -91,8 +91,8 @@ module PromptTracker
 
     private
 
-    # Broadcast prepend to dataset rows table
-    # Uses prepend to show newest rows first (most recent at top)
+    # Broadcast append to dataset rows table
+    # Uses append to show rows in creation order (1, 2, 3...)
     def broadcast_prepend_to_dataset
       partial_path, locals = row_partial_and_locals
 
@@ -102,7 +102,7 @@ module PromptTracker
         locals: locals.merge(skip_modal: true)  # Don't render modal in broadcast - it breaks form structure
       )
 
-      Turbo::StreamsChannel.broadcast_prepend_to(
+      Turbo::StreamsChannel.broadcast_append_to(
         "dataset_#{dataset_id}_rows",
         target: "dataset-rows",
         html: row_html
