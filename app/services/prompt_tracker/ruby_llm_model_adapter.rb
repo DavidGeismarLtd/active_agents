@@ -48,7 +48,9 @@ module PromptTracker
         ruby_llm_provider = PROVIDER_MAPPING[provider.to_sym]
         return [] unless ruby_llm_provider
 
-        chat_models(ruby_llm_provider).map { |m| normalize_model(m) }
+        chat_models(ruby_llm_provider)
+          .reject { |m| convenience_alias?(m, provider) }
+          .map { |m| normalize_model(m) }
       end
 
       # Find a specific model by ID across all providers.
@@ -62,6 +64,8 @@ module PromptTracker
         return nil unless model
 
         normalize_model(model)
+      rescue RubyLLM::ModelNotFoundError
+        nil
       end
 
       # Get capabilities for a specific model.
@@ -106,6 +110,31 @@ module PromptTracker
       def audio_only_model?(model)
         (model.id.include?("tts") || model.id.include?("whisper")) &&
           !model.modalities.output.include?("text")
+      end
+
+      # Check if a model is a RubyLLM convenience alias that doesn't work with provider APIs.
+      #
+      # RubyLLM provides convenience aliases like "chatgpt-4o-latest" for cross-provider
+      # compatibility, but individual provider APIs don't accept these aliases.
+      # This method filters them out so users only see models that actually work.
+      #
+      # @param model [RubyLLM::Model::Info] the model object
+      # @param provider [Symbol] the provider key
+      # @return [Boolean] true if this is a convenience alias that should be filtered
+      def convenience_alias?(model, provider)
+        case provider.to_sym
+        when :openai
+          # OpenAI doesn't accept chatgpt-* aliases (e.g., chatgpt-4o-latest)
+          # These are RubyLLM convenience aliases that map to gpt-* models
+          model.id.start_with?("chatgpt-")
+        when :anthropic
+          # Anthropic doesn't accept *-latest aliases in direct API calls
+          # Use the dated versions instead (e.g., claude-3-5-sonnet-20241022)
+          model.id.end_with?("-latest")
+        else
+          # Other providers: no known alias issues
+          false
+        end
       end
 
       # Normalize a RubyLLM model to PromptTracker's format.
