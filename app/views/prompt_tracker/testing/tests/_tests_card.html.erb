@@ -54,11 +54,11 @@
       </ul>
     </div>
 
-    <% if tests.any? %>
-      <%= render "prompt_tracker/testing/tests/tests_table", tests: tests, testable_param: testable %>
-    <% else %>
-      <!-- Empty state -->
-      <div class="text-center py-5">
+    <%= render "prompt_tracker/testing/tests/tests_table", tests: tests, testable_param: testable %>
+
+    <% if tests.empty? %>
+      <!-- Empty state - will be removed via Turbo Stream when first test is created -->
+      <div class="text-center py-5" id="empty-state-tests">
         <i class="bi bi-flask" style="font-size: 3rem; color: #ccc;"></i>
         <p class="text-muted mt-3">No tests yet. Create your first test to validate this <%= testable.class.name.demodulize.underscore.humanize.downcase %>.</p>
       </div>
