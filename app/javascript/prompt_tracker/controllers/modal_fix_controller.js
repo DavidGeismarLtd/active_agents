@@ -77,4 +77,17 @@ export default class extends Controller {
       }
     })
   }
+
+  /**
+   * Close all modals managed by this controller
+   * Useful for closing modals after form submission
+   */
+  closeModal() {
+    this.modalTargets.forEach(modal => {
+      const bsModal = bootstrap.Modal.getInstance(modal)
+      if (bsModal) {
+        bsModal.hide()
+      }
+    })
+  }
 }

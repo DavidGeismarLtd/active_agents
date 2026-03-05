@@ -83,6 +83,7 @@ module PromptTracker
     end
 
     after_save :sync_evaluator_configs_from_json
+    after_create_commit :broadcast_prepend_to_testable
 
     # Scopes
     scope :enabled, -> { where(enabled: true) }
@@ -190,6 +191,28 @@ module PromptTracker
       end
 
       @evaluator_configs_json = nil
+    end
+
+    # Broadcast prepend to testable's tests table
+    # Uses prepend to show newest tests first (most recent at top)
+    def broadcast_prepend_to_testable
+      row_html = PromptTracker::ApplicationController.render(
+        partial: testable.test_row_partial,
+        locals: testable.test_row_locals(self)
+      )
+
+      Turbo::StreamsChannel.broadcast_prepend_to(
+        testable.testable_stream_name,
+        target: "tests-tbody",
+        html: row_html
+      )
+
+      # Update test count
+      Turbo::StreamsChannel.broadcast_update_to(
+        testable.testable_stream_name,
+        target: "tests-count",
+        html: testable.tests.count.to_s
+      )
     end
   end
 end
