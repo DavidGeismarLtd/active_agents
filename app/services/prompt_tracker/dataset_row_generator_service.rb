@@ -84,6 +84,7 @@ module PromptTracker
       schema_description = format_schema_for_prompt
       prompt_context = build_prompt_context
       function_context = build_function_context
+      conversational_context = build_conversational_context
 
       prompt = <<~PROMPT
         You are a test data generator for an LLM prompt testing system.
@@ -96,6 +97,8 @@ module PromptTracker
         #{schema_description}
 
         #{function_context}
+
+        #{conversational_context}
 
         REQUIREMENTS:
         1. Generate exactly #{count} rows
@@ -206,6 +209,49 @@ module PromptTracker
       context_parts << ""
 
       context_parts.join("\n")
+    end
+
+    # Build context about conversational datasets
+    #
+    # @return [String] formatted conversational context
+    def build_conversational_context
+      return "" unless dataset.conversational?
+
+      <<~CONTEXT
+        ⚠️  CRITICAL - CONVERSATIONAL DATASET:
+        This is a conversational dataset for testing multi-turn conversations. The 'interlocutor_simulation_prompt' field is CRITICAL.
+
+        The 'interlocutor_simulation_prompt' MUST be a persona/role description for simulating the USER in a conversation.
+        It is NOT an assistant response. It is NOT a greeting. It is a SYSTEM PROMPT that describes how to roleplay as the user.
+
+        The interlocutor_simulation_prompt should:
+        - Describe WHO the user is (their role, situation, emotional state, background)
+        - Explain WHAT they want to accomplish in the conversation
+        - Include specific details they should mention if asked
+        - Describe their personality/tone (frustrated, curious, nervous, professional, etc.)
+        - Give guidance on how they should respond to the assistant
+        - Be written in third person ("You are a patient who...", not "I am a patient...")
+
+        ✅ GOOD EXAMPLE of interlocutor_simulation_prompt:
+        "You are a patient experiencing severe headaches for the past 3 days. You're worried it might be a migraine.
+        You want advice on whether to see a doctor immediately. If asked about symptoms, mention: throbbing pain on
+        the left side, sensitivity to light, and mild nausea. Be concerned but cooperative."
+
+        ✅ ANOTHER GOOD EXAMPLE:
+        "You are a frustrated customer who was charged twice for the same subscription. You noticed the duplicate
+        charge this morning. Start by explaining the issue, then ask for a refund. If asked for details, provide:
+        Order IDs #78901 and #78902, both charged on January 15th for $49.99 each. Be firm but professional."
+
+        ❌ BAD EXAMPLE (DO NOT DO THIS):
+        "Bonjour ! Je suis là pour t'assister. Voici quelques questions..."
+        (This is an assistant response, NOT a user persona description!)
+
+        ❌ ANOTHER BAD EXAMPLE (DO NOT DO THIS):
+        "Hello, I need help with my account."
+        (This is a user message, NOT a persona description. It should describe the persona, not be the actual message.)
+
+        The 'max_turns' field should be an integer between 3-10 representing how many conversation turns to simulate.
+      CONTEXT
     end
 
     # Check if the testable has function calling enabled
