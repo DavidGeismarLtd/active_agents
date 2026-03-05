@@ -49,6 +49,11 @@ module PromptTracker
     # @return [String, nil] the password
     attr_accessor :basic_auth_password
 
+    # Base ActiveRecord class to inherit from.
+    # Stored as a string constant name, e.g. "::ActiveRecord::Base".
+    # @return [String] the base record class name
+    attr_accessor :base_record_class
+
     # Provider definitions. Only api_key is required.
     # Provider name and APIs are auto-populated from ProviderDefaults.
     # Models are auto-populated from RubyLLM's model registry.
@@ -146,6 +151,7 @@ module PromptTracker
       @builtin_tools = default_builtin_tools
       @configuration_provider = nil
       @url_options_provider = nil
+      @base_record_class = "::ActiveRecord::Base"
     end
 
     # Check if basic authentication is enabled.
