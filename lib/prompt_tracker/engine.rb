@@ -55,6 +55,7 @@ module PromptTracker
         prompt_tracker/controllers/linked_filters_controller.js
         prompt_tracker/controllers/evaluator_config_form_controller.js
         prompt_tracker/controllers/playground_sync_visibility_controller.js
+        prompt_tracker/controllers/function_parameters_examples_controller.js
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)

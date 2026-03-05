@@ -45,11 +45,21 @@
     </div>
 
     <div class="mb-2">
-      <label class="form-label small mb-1">Parameters (JSON Schema)</label>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <label class="form-label small mb-0">Parameters (JSON Schema)</label>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#functionParametersExamplesModal"
+                data-function-index="<%= index %>">
+          <i class="bi bi-lightbulb"></i> Examples
+        </button>
+      </div>
       <textarea class="form-control form-control-sm font-monospace"
                 rows="4"
                 placeholder='{"type": "object", "properties": {...}, "required": [...]}'
                 data-playground-functions-target="functionParameters"
+                data-function-index="<%= index %>"
                 data-action="input->playground-functions#onFunctionChange"><%= (function['parameters'] || function[:parameters])&.to_json %></textarea>
       <div class="form-text small">
         Define parameters using JSON Schema format.
