@@ -148,6 +148,45 @@ module PromptTracker
         described_class.generate(prompt_version: prompt_version)
       end
 
+      context "when prompt version has vector stores configured" do
+        let(:prompt_version_with_vector_stores) do
+          create(:prompt_version,
+                 prompt: prompt,
+                 model_config: {
+                   "provider" => "openai",
+                   "api" => "assistants",
+                   "model" => "gpt-4o",
+                   "tools" => [ "file_search" ],
+                   "tool_config" => {
+                     "file_search" => {
+                       "vector_stores" => [
+                         { "id" => "vs_123", "name" => "Knowledge Base" },
+                         { "id" => "vs_456", "name" => "Documentation" }
+                       ]
+                     }
+                   }
+                 })
+        end
+
+        it "includes vector stores in the generation prompt" do
+          expect(mock_chat).to receive(:ask).with(
+            a_string_including("Vector Stores (File Search)")
+              .and(a_string_including("Knowledge Base"))
+              .and(a_string_including("vs_123"))
+          ).and_return(mock_response)
+
+          described_class.generate(prompt_version: prompt_version_with_vector_stores)
+        end
+
+        it "includes file_search guidelines in the prompt" do
+          expect(mock_chat).to receive(:ask).with(
+            a_string_including("If vector stores are configured, ALWAYS include at least one test with file_search evaluator")
+          ).and_return(mock_response)
+
+          described_class.generate(prompt_version: prompt_version_with_vector_stores)
+        end
+      end
+
       context "when evaluator key is not found in registry" do
         let(:mock_response_with_invalid) do
           double("response", content: {

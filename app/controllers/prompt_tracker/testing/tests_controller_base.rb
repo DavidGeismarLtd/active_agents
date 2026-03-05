@@ -108,6 +108,25 @@ module PromptTracker
                     notice: "Test deleted successfully."
       end
 
+      # DELETE /tests/batch_destroy
+      def batch_destroy
+        test_ids = params[:test_ids] || []
+
+        if test_ids.empty?
+          redirect_to testable_path,
+                      alert: "No tests selected for deletion."
+          return
+        end
+
+        tests = @testable.tests.where(id: test_ids)
+        deleted_count = tests.count
+
+        tests.destroy_all
+
+        redirect_to testable_path,
+                    notice: "#{deleted_count} test(s) deleted successfully."
+      end
+
       # POST /tests/:id/run
       def run
         run_mode = params[:run_mode] || "dataset"

@@ -49,6 +49,7 @@ module PromptTracker
       Rails.logger.debug "[TestGeneratorService] Variables: #{context[:variables]&.map { |v| v['name'] }&.join(', ') || 'none'}"
       Rails.logger.debug "[TestGeneratorService] Tools: #{context[:tools].presence || 'none'}"
       Rails.logger.debug "[TestGeneratorService] Functions: #{context[:functions]&.map { |f| f['name'] }&.join(', ') || 'none'}"
+      Rails.logger.debug "[TestGeneratorService] Vector Stores: #{context[:vector_stores]&.map { |vs| vs['name'] || vs['id'] }&.join(', ') || 'none'}"
 
       evaluator_schemas = build_evaluator_schemas
       Rails.logger.info "[TestGeneratorService] Available evaluators: #{evaluator_schemas.map { |e| e[:key] }.join(', ')}"
@@ -107,6 +108,7 @@ module PromptTracker
         model_config: prompt_version.model_config || {},
         tools: extract_tools,
         functions: extract_functions,
+        vector_stores: extract_vector_stores,
         response_schema: prompt_version.response_schema,
         api_type: prompt_version.api_type
       }
@@ -124,6 +126,13 @@ module PromptTracker
     # @return [Array] array of function definitions
     def extract_functions
       prompt_version.model_config&.dig("tool_config", "functions") || []
+    end
+
+    # Extract vector stores from model_config (for file_search tool)
+    #
+    # @return [Array] array of vector store definitions
+    def extract_vector_stores
+      prompt_version.model_config&.dig("tool_config", "file_search", "vector_stores") || []
     end
 
     # Build evaluator schemas from the registry for compatible evaluators
@@ -197,6 +206,9 @@ module PromptTracker
         **Functions Available**:
         #{format_functions(context[:functions])}
 
+        **Vector Stores (File Search)**:
+        #{format_vector_stores(context[:vector_stores])}
+
         **Structured Output Schema**: #{context[:response_schema].present? ? "Yes" : "No"}
         #{context[:response_schema].present? ? JSON.pretty_generate(context[:response_schema]) : ""}
 
@@ -223,10 +235,14 @@ module PromptTracker
 
         - Include at least one test for the "happy path" (normal expected usage)
         - Include edge cases (empty inputs, very long inputs, special characters)
-        - If tools are enabled (web_search, code_interpreter, file_search), add tests that verify tool usage
-        - If functions are defined, add tests with function_call evaluator
+        - If tools are enabled (web_search, code_interpreter, file_search), add tests that verify tool usage:
+          * For file_search with vector stores: use file_search evaluator to verify the assistant searches the knowledge base
+          * For web_search: use web_search evaluator to verify web search is used
+          * For functions: use function_call evaluator to verify correct function calls
+        - If vector stores are configured, ALWAYS include at least one test with file_search evaluator
+        - If functions are defined, ALWAYS include tests with function_call evaluator
         - If structured output is expected, add format evaluator
-        - Always include at least one llm_judge evaluator for quality assessment
+        - Always include at least one llm_judge or conversation_judge evaluator for quality assessment
         - Use keyword evaluator when specific terms must/must not appear
         - Use length evaluator when response length matters
 
@@ -256,6 +272,18 @@ module PromptTracker
       functions.map do |f|
         params = f["parameters"]&.dig("properties")&.keys&.join(", ") || "none"
         "- #{f['name']}: #{f['description'] || 'No description'} (params: #{params})"
+      end.join("\n")
+    end
+
+    # Format vector stores for display in the prompt
+    #
+    # @param vector_stores [Array] array of vector store definitions
+    # @return [String] formatted vector stores
+    def format_vector_stores(vector_stores)
+      return "None" if vector_stores.blank?
+
+      vector_stores.map do |vs|
+        "- #{vs['name'] || vs['id']} (ID: #{vs['id']})"
       end.join("\n")
     end
 
