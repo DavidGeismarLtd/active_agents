@@ -79,17 +79,27 @@ module PromptTracker
     # POST /testing/versions/:id/generate_tests
     # Generate tests with AI for this prompt version
     def generate_tests
-      result = TestGeneratorService.generate(
-        prompt_version: @version,
-        instructions: params[:instructions].presence
+      instructions = params[:instructions].presence
+
+      # Enqueue background job
+      GenerateTestsJob.perform_later(
+        @version.id,
+        instructions: instructions
       )
 
-      redirect_to testing_prompt_prompt_version_path(@version.prompt, @version),
-                  notice: "Generated #{result[:count]} test(s) successfully."
-    rescue TestGeneratorService::MalformedResponseError => e
-      Rails.logger.error "[TestGeneratorService] Malformed response: #{e.message}"
-      redirect_to testing_prompt_prompt_version_path(@version.prompt, @version),
-                  alert: "AI test generation failed: #{e.message}"
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update(
+            "test-generation-status",
+            partial: "prompt_tracker/testing/tests/generation_status",
+            locals: { status: "running", message: "Generating tests with AI..." }
+          )
+        end
+        format.html do
+          redirect_to testing_prompt_prompt_version_path(@version.prompt, @version),
+                      notice: "Generating tests in the background. Tests will appear shortly."
+        end
+      end
     end
 
     private

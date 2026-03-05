@@ -20,7 +20,10 @@
 
         <%= form_with url: generate_tests_testing_prompt_version_path(version),
                       method: :post,
-                      data: { turbo: false } do |f| %>
+                      data: {
+                        turbo: true,
+                        action: "turbo:submit-end->modal-fix#closeModal"
+                      } do |f| %>
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label">Instructions (optional)</label>
@@ -74,4 +77,3 @@
     </div>
   </div>
 </div>
-

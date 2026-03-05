@@ -367,6 +367,12 @@ module PromptTracker
           config = parse_config(config_json)
           Rails.logger.debug "[TestGeneratorService] Parsed config: #{config.inspect}"
 
+          # Enhance file_search evaluator config with vector_store_ids from model_config
+          if evaluator_key == "file_search"
+            config = enhance_file_search_config(config)
+            Rails.logger.debug "[TestGeneratorService] Enhanced file_search config: #{config.inspect}"
+          end
+
           evaluator_config = test.evaluator_configs.create!(
             evaluator_type: registry_entry[:evaluator_class].name,
             config: config,
@@ -451,6 +457,21 @@ module PromptTracker
 
         response.content.with_indifferent_access
       end
+    end
+
+    # Enhance file_search evaluator config with vector_store_ids from model_config
+    #
+    # @param config [Hash] the evaluator config
+    # @return [Hash] the enhanced config with vector_store_ids
+    def enhance_file_search_config(config)
+      vector_stores = extract_vector_stores
+      return config if vector_stores.blank?
+
+      # Extract vector store IDs
+      vector_store_ids = vector_stores.map { |vs| vs["id"] }.compact
+
+      # Add vector_store_ids to config
+      config.merge(vector_store_ids: vector_store_ids)
     end
   end
 end

@@ -23,7 +23,7 @@
       <% if tests.any? %>
         <%= render "prompt_tracker/testing/tests/tests_column_visibility_dropdown", tests: tests, testable_param: testable %>
         <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#runAllTestsModal">
-          <i class="bi bi-play-circle"></i> Run All (<%= tests.count %>)
+          <i class="bi bi-play-circle"></i> Run All (<span id="tests-count"><%= tests.count %></span>)
         </button>
       <% end %>
       <%# AI Generate button - only for PromptVersions %>
@@ -39,6 +39,11 @@
   </div>
 
   <div class="card-body">
+    <!-- Test Generation Status -->
+    <div id="test-generation-status">
+      <%= render "prompt_tracker/testing/tests/generation_status", status: "idle", message: "" %>
+    </div>
+
     <!-- Info Alert -->
     <div class="alert alert-info mb-3">
       <h6 class="alert-heading"><i class="bi bi-info-circle"></i> How Tests Work</h6>

@@ -33,7 +33,7 @@
           <% end %>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="tests-tbody">
         <% tests.each do |test| %>
           <%= render test.testable.test_row_partial, test: test %>
           <tr class="collapse" id="test-runs-<%= test.id %>">
