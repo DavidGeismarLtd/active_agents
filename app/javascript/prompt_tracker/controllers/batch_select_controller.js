@@ -2,12 +2,17 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Batch Select Stimulus Controller
- * Handles select all/one functionality for batch operations on dataset rows
+ * Handles select all/one functionality for batch operations (dataset rows, tests, etc.)
+ *
+ * Values:
+ * - batchDeleteUrl: URL to submit batch delete requests to
+ * - paramName: Parameter name for IDs (default: "row_ids[]", can be "test_ids[]", etc.)
  */
 export default class extends Controller {
   static targets = ["selectAll", "checkbox", "batchActions", "selectedCount", "form"]
   static values = {
-    batchDeleteUrl: String
+    batchDeleteUrl: String,
+    paramName: { type: String, default: "row_ids[]" }
   }
 
   connect() {
@@ -74,7 +79,7 @@ export default class extends Controller {
    */
   batchDelete(event) {
     event.preventDefault()
-    
+
     const selectedIds = this.selectedIds
     if (selectedIds.length === 0) {
       alert("No rows selected for deletion.")
@@ -111,11 +116,11 @@ export default class extends Controller {
     methodInput.value = "delete"
     form.appendChild(methodInput)
 
-    // Add selected row IDs
+    // Add selected IDs using the configured parameter name
     selectedIds.forEach(id => {
       const input = document.createElement("input")
       input.type = "hidden"
-      input.name = "row_ids[]"
+      input.name = this.paramNameValue
       input.value = id
       form.appendChild(input)
     })
@@ -124,4 +129,3 @@ export default class extends Controller {
     form.submit()
   }
 }
-

@@ -1,6 +1,13 @@
 <% version ||= test.testable %>
 <% prompt ||= version.prompt %>
 <tr id="test_row_<%= test.id %>">
+  <td>
+    <input type="checkbox"
+           class="form-check-input"
+           data-batch-select-target="checkbox"
+           data-action="batch-select#toggle"
+           value="<%= test.id %>">
+  </td>
   <%= render "prompt_tracker/testing/tests/cells/name", test: test %>
   <%= render "prompt_tracker/testing/tests/prompt_versions/cells/template", test: test, version: version %>
   <%= render "prompt_tracker/testing/tests/cells/evaluator_configs", test: test %>

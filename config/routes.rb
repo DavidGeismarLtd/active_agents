@@ -79,6 +79,7 @@ PromptTracker::Engine.routes.draw do
       resources :tests, only: [ :create, :update, :destroy ] do
         collection do
           post :run_all
+          delete :batch_destroy
         end
         member do
           post :run

@@ -1,26 +1,50 @@
 <% testable = tests.first&.testable || testable_param %>
-<div class="table-responsive">
-  <table class="table table-hover">
-    <thead>
-      <tr>
-        <% testable.test_table_headers.each do |header| %>
-          <th style="width: <%= header[:width] %>;" data-column="<%= header[:key] %>" class="<%= 'text-end' if header[:align] == 'end' %>">
-            <%= header[:label] %>
+<div data-controller="batch-select"
+     data-batch-select-batch-delete-url-value="<%= batch_destroy_testing_prompt_version_tests_path(testable) %>"
+     data-batch-select-param-name-value="test_ids[]">
+
+  <!-- Batch Actions Bar -->
+  <div class="d-flex align-items-center justify-content-between mb-3 d-none" data-batch-select-target="batchActions">
+    <div class="text-muted">
+      <span data-batch-select-target="selectedCount">0</span> test(s) selected
+    </div>
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            data-action="batch-select#batchDelete">
+      <i class="bi bi-trash"></i> Delete Selected
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th style="width: 40px;">
+            <input type="checkbox"
+                   class="form-check-input"
+                   data-batch-select-target="selectAll"
+                   data-action="batch-select#toggleAll"
+                   title="Select all tests">
           </th>
-        <% end %>
-      </tr>
-    </thead>
-    <tbody>
-      <% tests.each do |test| %>
-        <%= render test.testable.test_row_partial, test: test %>
-        <tr class="collapse" id="test-runs-<%= test.id %>">
-          <td colspan="8" class="p-0">
-            <div id="test-runs-content-<%= test.id %>">
-              <%= render "prompt_tracker/testing/tests/test_runs_accordion_content", test: test %>
-            </div>
-          </td>
+          <% testable.test_table_headers.each do |header| %>
+            <th style="width: <%= header[:width] %>;" data-column="<%= header[:key] %>" class="<%= 'text-end' if header[:align] == 'end' %>">
+              <%= header[:label] %>
+            </th>
+          <% end %>
         </tr>
-      <% end %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% tests.each do |test| %>
+          <%= render test.testable.test_row_partial, test: test %>
+          <tr class="collapse" id="test-runs-<%= test.id %>">
+            <td colspan="9" class="p-0">
+              <div id="test-runs-content-<%= test.id %>">
+                <%= render "prompt_tracker/testing/tests/test_runs_accordion_content", test: test %>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 </div>
