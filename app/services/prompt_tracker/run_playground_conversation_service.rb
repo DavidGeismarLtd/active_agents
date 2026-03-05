@@ -109,8 +109,11 @@ module PromptTracker
     end
 
     def execute_assistants_api
+      assistant_id = model_config.dig(:metadata, :assistant_id) ||
+                     model_config.dig("metadata", "assistant_id")
+
       LlmClients::OpenaiAssistantService.call(
-        assistant_id: model_config[:assistant_id],
+        assistant_id: assistant_id,
         user_message: content
       )
     end

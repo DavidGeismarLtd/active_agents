@@ -93,16 +93,17 @@ module PromptTracker
 
           private
 
-          # Extract assistant_id from model_config
+          # Extract assistant_id from model_config metadata
           def extract_assistant_id
-            model_config[:assistant_id] || model_config["assistant_id"]
+            model_config.dig(:metadata, :assistant_id) ||
+              model_config.dig("metadata", "assistant_id")
           end
 
           # Update PromptVersion with the assistant_id after creation
           def update_prompt_version_with_assistant_id(assistant_id)
             updated_config = model_config.deep_dup
-            updated_config[:assistant_id] = assistant_id
             updated_config[:metadata] ||= {}
+            updated_config[:metadata][:assistant_id] = assistant_id
             updated_config[:metadata][:synced_at] = Time.current.iso8601
             updated_config[:metadata][:sync_status] = "synced"
 

@@ -68,13 +68,13 @@ module PromptTracker
               model_config: {
                 provider: "openai",
                 api: "assistants",
-                assistant_id: assistant_data["id"],
                 model: assistant_data["model"],
                 temperature: assistant_data["temperature"] || 0.7,
                 top_p: assistant_data["top_p"] || 1.0,
                 tools: format_tools_from_openai(assistant_data["tools"] || []),
                 tool_config: format_tool_config_from_openai(assistant_data["tool_resources"], vector_store_names: vector_store_names),
                 metadata: {
+                  assistant_id: assistant_data["id"],
                   name: assistant_data["name"],
                   description: assistant_data["description"],
                   synced_at: Time.current.iso8601,
