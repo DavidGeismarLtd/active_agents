@@ -8,13 +8,16 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
   let(:version) do
     create(:prompt_version,
            prompt: prompt,
+           user_prompt: "Hello {{customer_name}}, we received your {{issue_type}} issue with priority {{priority}}",
            variables_schema: [
              { "name" => "customer_name", "type" => "string", "required" => true, "description" => "Customer's full name" },
              { "name" => "issue_type", "type" => "string", "required" => true, "description" => "Type of support issue" },
              { "name" => "priority", "type" => "number", "required" => false, "description" => "Priority level 1-5" }
            ])
   end
-  let(:dataset) { create(:dataset, testable: version) }
+  let(:dataset) do
+    create(:dataset, testable: version)
+  end
 
   describe ".generate" do
     context "with valid parameters" do
@@ -217,6 +220,7 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
       let(:version_with_functions) do
         create(:prompt_version,
                prompt: prompt,
+               user_prompt: "Answer this question: {{user_query}}",
                variables_schema: [
                  { "name" => "user_query", "type" => "string", "required" => true, "description" => "User's question" }
                ],
@@ -392,6 +396,95 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
 
         first_row = rows.first
         expect(first_row.row_data["mock_function_outputs"]).to be_nil
+      end
+    end
+
+    context "when dataset is conversational" do
+      let(:conversational_dataset) do
+        create(:dataset, testable: version, dataset_type: :conversational)
+      end
+
+      let(:mock_conversational_response) do
+        {
+          text: {
+            rows: [
+              {
+                "customer_name" => "Sarah Johnson",
+                "issue_type" => "billing",
+                "priority" => 3,
+                "interlocutor_simulation_prompt" => "You are Sarah Johnson, a frustrated customer who was charged twice for the same subscription. You noticed the duplicate charge this morning. Start by explaining the issue, then ask for a refund. If asked for details, provide: Order IDs #78901 and #78902, both charged on January 15th for $49.99 each. Be firm but professional.",
+                "max_turns" => 8
+              },
+              {
+                "customer_name" => "Michael Chen",
+                "issue_type" => "technical",
+                "priority" => 5,
+                "interlocutor_simulation_prompt" => "You are Michael Chen, a tech-savvy user experiencing login issues for the past hour. You've already tried clearing cache and cookies. You're patient but need this resolved quickly as you have an important deadline. If asked, mention you're using Chrome on macOS and getting a 'Session expired' error.",
+                "max_turns" => 6
+              }
+            ]
+          }.to_json
+        }
+      end
+
+      before do
+        allow(PromptTracker::LlmClientService).to receive(:call_with_schema)
+          .and_return(mock_conversational_response)
+
+        # Disable Turbo Stream broadcasts
+        allow_any_instance_of(PromptTracker::DatasetRow).to receive(:broadcast_prepend_to_dataset)
+        allow_any_instance_of(PromptTracker::DatasetRow).to receive(:broadcast_replace_to_dataset)
+        allow_any_instance_of(PromptTracker::DatasetRow).to receive(:broadcast_remove_to_dataset)
+      end
+
+      it "includes conversational context in the generation prompt" do
+        expect(PromptTracker::LlmClientService).to receive(:call_with_schema) do |args|
+          expect(args[:prompt]).to include("CONVERSATIONAL DATASET")
+          expect(args[:prompt]).to include("interlocutor_simulation_prompt")
+          expect(args[:prompt]).to include("persona/role description")
+          expect(args[:prompt]).to include("GOOD EXAMPLE")
+          expect(args[:prompt]).to include("BAD EXAMPLE")
+          mock_conversational_response
+        end
+
+        described_class.generate(
+          dataset: conversational_dataset,
+          count: 2,
+          model: "gpt-4o"
+        )
+      end
+
+      it "generates rows with interlocutor_simulation_prompt and max_turns" do
+        rows = described_class.generate(
+          dataset: conversational_dataset,
+          count: 2,
+          model: "gpt-4o"
+        )
+
+        first_row = rows.first
+        expect(first_row.row_data["interlocutor_simulation_prompt"]).to be_present
+        expect(first_row.row_data["interlocutor_simulation_prompt"]).to include("You are Sarah Johnson")
+        expect(first_row.row_data["interlocutor_simulation_prompt"]).to include("frustrated customer")
+        expect(first_row.row_data["max_turns"]).to eq(8)
+
+        second_row = rows.second
+        expect(second_row.row_data["interlocutor_simulation_prompt"]).to be_present
+        expect(second_row.row_data["interlocutor_simulation_prompt"]).to include("You are Michael Chen")
+        expect(second_row.row_data["max_turns"]).to eq(6)
+      end
+
+      it "includes interlocutor_simulation_prompt in schema description" do
+        expect(PromptTracker::LlmClientService).to receive(:call_with_schema) do |args|
+          expect(args[:prompt]).to include("interlocutor_simulation_prompt")
+          expect(args[:prompt]).to include("max_turns")
+          mock_conversational_response
+        end
+
+        described_class.generate(
+          dataset: conversational_dataset,
+          count: 2,
+          model: "gpt-4o"
+        )
       end
     end
   end

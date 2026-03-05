@@ -18,7 +18,7 @@
 #
 FactoryBot.define do
   factory :dataset, class: "PromptTracker::Dataset" do
-    association :testable, factory: :prompt_version
+    testable { nil }  # Don't create default association - let tests specify it
     sequence(:name) { |n| "Dataset #{n}" }
     description { "A test dataset for validating prompts" }
     created_by { "test_user" }
@@ -34,8 +34,9 @@ FactoryBot.define do
     after(:build) do |dataset, evaluator|
       if evaluator.custom_schema
         dataset.schema = evaluator.custom_schema
-      elsif dataset.schema.blank? && dataset.testable
-        # Use required_schema which accounts for dataset_type
+      elsif dataset.testable
+        # Always use required_schema which accounts for dataset_type
+        # This ensures conversational datasets get the right schema
         dataset.schema = dataset.required_schema
       end
     end
