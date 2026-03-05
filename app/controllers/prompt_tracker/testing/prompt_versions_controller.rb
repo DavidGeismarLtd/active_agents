@@ -80,11 +80,13 @@ module PromptTracker
     # Generate tests with AI for this prompt version
     def generate_tests
       instructions = params[:instructions].presence
+      count = params[:count].to_i.clamp(1, 10) # Ensure count is between 1 and 10
 
       # Enqueue background job
       GenerateTestsJob.perform_later(
         @version.id,
-        instructions: instructions
+        instructions: instructions,
+        count: count
       )
 
       respond_to do |format|
