@@ -196,10 +196,16 @@ module PromptTracker
     # Broadcast prepend to testable's tests table
     # Uses prepend to show newest tests first (most recent at top)
     def broadcast_prepend_to_testable
+      Rails.logger.info { "[Test##{id}] Broadcasting to stream: #{testable.testable_stream_name}" }
+      Rails.logger.info { "[Test##{id}] Partial: #{testable.test_row_partial}" }
+      Rails.logger.info { "[Test##{id}] Locals: #{testable.test_row_locals(self).keys}" }
+
       row_html = PromptTracker::ApplicationController.render(
         partial: testable.test_row_partial,
         locals: testable.test_row_locals(self)
       )
+
+      Rails.logger.info { "[Test##{id}] Rendered HTML length: #{row_html.length}" }
 
       Turbo::StreamsChannel.broadcast_prepend_to(
         testable.testable_stream_name,
@@ -207,12 +213,25 @@ module PromptTracker
         html: row_html
       )
 
+      Rails.logger.info { "[Test##{id}] Broadcast prepend sent to tests-tbody" }
+
       # Update test count
       Turbo::StreamsChannel.broadcast_update_to(
         testable.testable_stream_name,
         target: "tests-count",
         html: testable.tests.count.to_s
       )
+
+      Rails.logger.info { "[Test##{id}] Broadcast update sent to tests-count: #{testable.tests.count}" }
+
+      # Remove empty state if this is the first test
+      if testable.tests.count == 1
+        Turbo::StreamsChannel.broadcast_remove_to(
+          testable.testable_stream_name,
+          target: "empty-state-tests"
+        )
+        Rails.logger.info { "[Test##{id}] Broadcast remove sent for empty-state-tests" }
+      end
     end
   end
 end
