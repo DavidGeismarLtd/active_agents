@@ -1,0 +1,202 @@
+<!-- Function Parameters Examples Modal -->
+<div class="modal fade" id="functionParametersExamplesModal" tabindex="-1" aria-labelledby="functionParametersExamplesModalLabel" aria-hidden="true" data-modal-fix-target="modal" data-controller="function-parameters-examples">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="functionParametersExamplesModalLabel">
+          <i class="bi bi-code-square"></i> Function Parameters Examples
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-3">
+          Click on any example to fill the parameters field. All examples use JSON Schema format.
+        </p>
+
+        <div class="accordion" id="parametersExamplesAccordion">
+          <!-- Simple String Parameter -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#paramExample1">
+                Simple String Parameter
+              </button>
+            </h2>
+            <div id="paramExample1" class="accordion-collapse collapse show" data-bs-parent="#parametersExamplesAccordion">
+              <div class="accordion-body">
+                <p class="small mb-2"><strong>Use case:</strong> Single required string input (e.g., location for weather)</p>
+                <pre class="bg-light p-3 rounded mb-2" style="font-size: 0.85rem;"><code>{
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "City name or zip code"
+    }
+  },
+  "required": ["location"]
+}</code></pre>
+                <button class="btn btn-sm btn-primary use-parameter-example-btn"
+                        data-action="click->function-parameters-examples#useExample"
+                        data-parameters='{"type":"object","properties":{"location":{"type":"string","description":"City name or zip code"}},"required":["location"]}'>
+                  <i class="bi bi-arrow-down-circle"></i> Use This Example
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multiple String Parameters -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#paramExample2">
+                Multiple Parameters (Mixed Types)
+              </button>
+            </h2>
+            <div id="paramExample2" class="accordion-collapse collapse" data-bs-parent="#parametersExamplesAccordion">
+              <div class="accordion-body">
+                <p class="small mb-2"><strong>Use case:</strong> Multiple inputs with different types (e.g., search with filters)</p>
+                <pre class="bg-light p-3 rounded mb-2" style="font-size: 0.85rem;"><code>{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search query"
+    },
+    "max_results": {
+      "type": "integer",
+      "description": "Maximum number of results",
+      "default": 10
+    },
+    "include_archived": {
+      "type": "boolean",
+      "description": "Include archived items",
+      "default": false
+    }
+  },
+  "required": ["query"]
+}</code></pre>
+                <button class="btn btn-sm btn-primary use-parameter-example-btn"
+                        data-action="click->function-parameters-examples#useExample"
+                        data-parameters='{"type":"object","properties":{"query":{"type":"string","description":"Search query"},"max_results":{"type":"integer","description":"Maximum number of results","default":10},"include_archived":{"type":"boolean","description":"Include archived items","default":false}},"required":["query"]}'>
+                  <i class="bi bi-arrow-down-circle"></i> Use This Example
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Enum Parameter -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#paramExample3">
+                Enum (Predefined Values)
+              </button>
+            </h2>
+            <div id="paramExample3" class="accordion-collapse collapse" data-bs-parent="#parametersExamplesAccordion">
+              <div class="accordion-body">
+                <p class="small mb-2"><strong>Use case:</strong> Parameter with limited set of valid values (e.g., temperature unit)</p>
+                <pre class="bg-light p-3 rounded mb-2" style="font-size: 0.85rem;"><code>{
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "City name"
+    },
+    "unit": {
+      "type": "string",
+      "enum": ["celsius", "fahrenheit"],
+      "description": "Temperature unit"
+    }
+  },
+  "required": ["location"]
+}</code></pre>
+                <button class="btn btn-sm btn-primary use-parameter-example-btn"
+                        data-action="click->function-parameters-examples#useExample"
+                        data-parameters='{"type":"object","properties":{"location":{"type":"string","description":"City name"},"unit":{"type":"string","enum":["celsius","fahrenheit"],"description":"Temperature unit"}},"required":["location"]}'>
+                  <i class="bi bi-arrow-down-circle"></i> Use This Example
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Array Parameter -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#paramExample4">
+                Array Parameter
+              </button>
+            </h2>
+            <div id="paramExample4" class="accordion-collapse collapse" data-bs-parent="#parametersExamplesAccordion">
+              <div class="accordion-body">
+                <p class="small mb-2"><strong>Use case:</strong> List of items (e.g., multiple email recipients)</p>
+                <pre class="bg-light p-3 rounded mb-2" style="font-size: 0.85rem;"><code>{
+  "type": "object",
+  "properties": {
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of email addresses"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject"
+    }
+  },
+  "required": ["recipients", "subject"]
+}</code></pre>
+                <button class="btn btn-sm btn-primary use-parameter-example-btn"
+                        data-action="click->function-parameters-examples#useExample"
+                        data-parameters='{"type":"object","properties":{"recipients":{"type":"array","items":{"type":"string"},"description":"List of email addresses"},"subject":{"type":"string","description":"Email subject"}},"required":["recipients","subject"]}'>
+                  <i class="bi bi-arrow-down-circle"></i> Use This Example
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Nested Object -->
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#paramExample5">
+                Nested Object
+              </button>
+            </h2>
+            <div id="paramExample5" class="accordion-collapse collapse" data-bs-parent="#parametersExamplesAccordion">
+              <div class="accordion-body">
+                <p class="small mb-2"><strong>Use case:</strong> Complex structured data (e.g., address with multiple fields)</p>
+                <pre class="bg-light p-3 rounded mb-2" style="font-size: 0.85rem;"><code>{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Customer name"
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {"type": "string"},
+        "city": {"type": "string"},
+        "zip": {"type": "string"}
+      },
+      "required": ["city"]
+    }
+  },
+  "required": ["name"]
+}</code></pre>
+                <button class="btn btn-sm btn-primary use-parameter-example-btn"
+                        data-action="click->function-parameters-examples#useExample"
+                        data-parameters='{"type":"object","properties":{"name":{"type":"string","description":"Customer name"},"address":{"type":"object","properties":{"street":{"type":"string"},"city":{"type":"string"},"zip":{"type":"string"}},"required":["city"]}},"required":["name"]}'>
+                  <i class="bi bi-arrow-down-circle"></i> Use This Example
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info mt-3 mb-0">
+          <i class="bi bi-info-circle"></i>
+          <strong>Tip:</strong> You can combine these patterns to create complex parameter schemas.
+          Learn more about JSON Schema at <a href="https://json-schema.org/understanding-json-schema/" target="_blank">json-schema.org</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
