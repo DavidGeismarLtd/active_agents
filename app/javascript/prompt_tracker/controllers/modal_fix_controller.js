@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import * as bootstrap from "bootstrap"
 
 /**
  * Modal Fix Stimulus Controller
