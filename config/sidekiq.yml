@@ -4,6 +4,7 @@
   - default
   - prompt_tracker_evaluators
   - prompt_tracker_tests
+  - prompt_tracker_test_generation
   - prompt_tracker_dataset_generation
 
 # Redis connection
