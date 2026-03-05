@@ -2,14 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 
 /**
  * Playground Functions Controller
- * 
+ *
  * Single Responsibility: Manage custom functions configuration
- * 
+ *
  * This controller handles:
  * - Adding/removing function definitions
  * - Handling function field changes
  * - Serializing functions configuration
- * 
+ *
  * @fires playground-functions:configChanged - When functions config changes
  */
 export default class extends Controller {
@@ -76,12 +76,26 @@ export default class extends Controller {
           </div>
 
           <div class="mb-2">
-            <label class="form-label small mb-1">Parameters (JSON Schema)</label>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label small mb-0">Parameters (JSON Schema)</label>
+              <button type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#functionParametersExamplesModal"
+                      data-function-index="${index}">
+                <i class="bi bi-lightbulb"></i> Examples
+              </button>
+            </div>
             <textarea class="form-control form-control-sm font-monospace"
                       rows="4"
                       placeholder='{"type": "object", "properties": {...}, "required": [...]}'
                       data-playground-functions-target="functionParameters"
+                      data-function-index="${index}"
                       data-action="input->playground-functions#onFunctionChange"></textarea>
+            <div class="form-text small">
+              Define parameters using JSON Schema format.
+              <a href="https://json-schema.org/understanding-json-schema/" target="_blank">Learn more</a>
+            </div>
           </div>
 
           <div class="form-check form-check-inline">
@@ -132,7 +146,7 @@ export default class extends Controller {
    */
   getFunctionsConfig() {
     const functions = []
-    
+
     this.functionItemTargets.forEach(item => {
       const nameInput = item.querySelector('[data-playground-functions-target="functionName"]')
       const descInput = item.querySelector('[data-playground-functions-target="functionDescription"]')
@@ -178,11 +192,10 @@ export default class extends Controller {
    */
   dispatchConfigChange() {
     const functions = this.getFunctionsConfig()
-    
+
     this.dispatch("configChanged", {
       detail: { functions },
       prefix: "playground-functions"
     })
   }
 }
-
