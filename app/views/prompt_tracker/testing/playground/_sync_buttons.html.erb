@@ -8,7 +8,13 @@
 <% if is_remote_entity_linked && version %>
   <% assistant_id = version.model_config&.dig("assistant_id") %>
 
-  <div class="btn-group ms-2" role="group" aria-label="Remote sync actions">
+  <div class="btn-group ms-2"
+       role="group"
+       aria-label="Remote sync actions"
+       data-controller="playground-sync-visibility"
+       data-playground-sync-visibility-playground-ui-outlet="#playground-container"
+       data-playground-sync-visibility-target="syncButtons"
+       data-action="provider:changed@window->playground-sync-visibility#onProviderChange api:changed@window->playground-sync-visibility#onApiChange">
     <!-- Push to Remote (local → remote) -->
     <button type="button"
             class="btn btn-outline-primary"

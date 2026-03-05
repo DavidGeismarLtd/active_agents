@@ -87,6 +87,11 @@ export default class extends Controller {
 
     // Update visibility
     this.updateVisibility()
+
+    // Dispatch custom event for other controllers to listen to
+    window.dispatchEvent(new CustomEvent('provider:changed', {
+      detail: { provider, api }
+    }))
   }
 
   /**
@@ -105,6 +110,11 @@ export default class extends Controller {
 
     // Update visibility
     this.updateVisibility()
+
+    // Dispatch custom event for other controllers to listen to
+    window.dispatchEvent(new CustomEvent('api:changed', {
+      detail: { provider, api }
+    }))
   }
 
   /**
