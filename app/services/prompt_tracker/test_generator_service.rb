@@ -29,13 +29,14 @@ module PromptTracker
     # Custom error for malformed LLM responses
     class MalformedResponseError < StandardError; end
 
-    def self.generate(prompt_version:, instructions: nil)
-      new(prompt_version: prompt_version, instructions: instructions).generate
+    def self.generate(prompt_version:, instructions: nil, count: 5)
+      new(prompt_version: prompt_version, instructions: instructions, count: count).generate
     end
 
-    def initialize(prompt_version:, instructions: nil)
+    def initialize(prompt_version:, instructions: nil, count: 5)
       @prompt_version = prompt_version
       @instructions = instructions
+      @count = count.to_i.clamp(1, 10) # Ensure count is between 1 and 10
     end
 
     def generate
@@ -78,7 +79,7 @@ module PromptTracker
 
     private
 
-    attr_reader :prompt_version, :instructions
+    attr_reader :prompt_version, :instructions, :count
 
     # Get the configured model for test generation.
     # Falls back to FALLBACK_MODEL if not configured.
@@ -222,7 +223,7 @@ module PromptTracker
 
         ## TASK
 
-        Generate 3-6 test cases that thoroughly validate this prompt. For each test:
+        Generate exactly #{count} test case#{'s' if count != 1} that thoroughly validate#{'s' if count == 1} this prompt. For each test:
 
         1. **name**: A descriptive snake_case name (e.g., test_greeting_premium_user, test_empty_input_handling)
         2. **description**: Clear explanation of what this test validates

@@ -17,18 +17,20 @@ module PromptTracker
     #
     # @param prompt_version_id [Integer] ID of the prompt version
     # @param instructions [String, nil] optional custom instructions for the LLM
-    def perform(prompt_version_id, instructions: nil)
-      Rails.logger.info { "🚀 GenerateTestsJob started for PromptVersion #{prompt_version_id}" }
+    # @param count [Integer] number of tests to generate (1-10)
+    def perform(prompt_version_id, instructions: nil, count: 5)
+      Rails.logger.info { "🚀 GenerateTestsJob started for PromptVersion #{prompt_version_id} (count: #{count})" }
 
       prompt_version = PromptVersion.find(prompt_version_id)
 
       # Broadcast start status
-      broadcast_generation_status(prompt_version, status: "running", message: "Generating tests with AI...")
+      broadcast_generation_status(prompt_version, status: "running", message: "Generating #{count} test(s) with AI...")
 
       # Generate tests using the service (tests will broadcast themselves via after_create_commit)
       result = TestGeneratorService.generate(
         prompt_version: prompt_version,
-        instructions: instructions
+        instructions: instructions,
+        count: count
       )
 
       Rails.logger.info { "✅ Generated #{result[:count]} tests for PromptVersion #{prompt_version_id}" }
