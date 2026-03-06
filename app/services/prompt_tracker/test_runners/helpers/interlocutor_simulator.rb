@@ -78,15 +78,21 @@ module PromptTracker
 
         # Call the LLM to generate the simulated user message
         #
+        # Uses configuration from the :interlocutor_simulation context.
+        # Falls back to hardcoded defaults if context is not configured.
+        #
         # @param prompt [String] the simulation prompt
         # @return [Hash] LLM response with :text key
         def call_simulation_llm(prompt)
+          config = PromptTracker.configuration
+          context = :interlocutor_simulation
+
           LlmClientService.call(
-            provider: "openai",
-            api: "chat_completions",
-            model: "gpt-4o-mini",
+            provider: config.default_provider_for(context) || :openai,
+            api: config.default_api_for(context) || :chat_completions,
+            model: config.default_model_for(context) || "gpt-4o-mini",
             prompt: prompt,
-            temperature: 0.7
+            temperature: config.default_temperature_for(context) || 0.7
           )
         end
 

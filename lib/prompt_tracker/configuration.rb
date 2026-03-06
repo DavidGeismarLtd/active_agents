@@ -78,7 +78,8 @@ module PromptTracker
     # @example
     #   {
     #     playground: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" },
-    #     llm_judge: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" }
+    #     llm_judge: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o" },
+    #     interlocutor_simulation: { default_provider: :openai, default_api: :chat_completions, default_model: "gpt-4o-mini", default_temperature: 0.7 }
     #   }
     attr_accessor :contexts
 
