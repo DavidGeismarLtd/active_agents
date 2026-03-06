@@ -91,7 +91,7 @@ module PromptTracker
     validate :must_have_evaluatable
 
     # Enums
-    enum evaluation_context: {
+    enum :evaluation_context, {
       tracked_call: "tracked_call",  # From host app via track_llm_call
       test_run: "test_run",          # From PromptTest execution
       manual: "manual"               # Manual evaluation in UI
