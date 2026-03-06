@@ -38,7 +38,30 @@ module PromptTracker
               )
             end
 
-            it "calls LlmClientService with correct parameters" do
+            it "uses configuration from interlocutor_simulation context" do
+              simulator.generate_next_message(
+                interlocutor_prompt: interlocutor_prompt,
+                conversation_history: conversation_history,
+                turn: 2
+              )
+
+              # Should use values from test/dummy/config/initializers/prompt_tracker.rb
+              # interlocutor_simulation context
+              expect(LlmClientService).to have_received(:call).with(
+                hash_including(
+                  provider: :openai,
+                  api: :chat_completions,
+                  model: "gpt-4o-mini",
+                  temperature: 0.7
+                )
+              )
+            end
+
+            it "falls back to defaults when context is not configured" do
+              # Temporarily remove the context configuration
+              original_contexts = PromptTracker.configuration.contexts
+              PromptTracker.configuration.contexts = {}
+
               simulator.generate_next_message(
                 interlocutor_prompt: interlocutor_prompt,
                 conversation_history: conversation_history,
@@ -47,12 +70,46 @@ module PromptTracker
 
               expect(LlmClientService).to have_received(:call).with(
                 hash_including(
-                  provider: "openai",
-                  api: "chat_completions",
+                  provider: :openai,
+                  api: :chat_completions,
                   model: "gpt-4o-mini",
                   temperature: 0.7
                 )
               )
+
+              # Restore original configuration
+              PromptTracker.configuration.contexts = original_contexts
+            end
+
+            it "uses custom configuration when provided" do
+              # Temporarily override the context configuration
+              original_contexts = PromptTracker.configuration.contexts
+              PromptTracker.configuration.contexts = {
+                interlocutor_simulation: {
+                  default_provider: :anthropic,
+                  default_api: :messages,
+                  default_model: "claude-3-5-sonnet-20241022",
+                  default_temperature: 0.5
+                }
+              }
+
+              simulator.generate_next_message(
+                interlocutor_prompt: interlocutor_prompt,
+                conversation_history: conversation_history,
+                turn: 2
+              )
+
+              expect(LlmClientService).to have_received(:call).with(
+                hash_including(
+                  provider: :anthropic,
+                  api: :messages,
+                  model: "claude-3-5-sonnet-20241022",
+                  temperature: 0.5
+                )
+              )
+
+              # Restore original configuration
+              PromptTracker.configuration.contexts = original_contexts
             end
 
             it "includes interlocutor prompt in the simulation prompt" do

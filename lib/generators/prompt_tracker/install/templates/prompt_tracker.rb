@@ -145,6 +145,13 @@ PromptTracker.configure do |config|
       default_provider: :openai,
       default_api: :chat_completions,
       default_model: "gpt-4o-mini"
+    },
+    interlocutor_simulation: {
+      description: "Simulating user responses in multi-turn conversations",
+      default_provider: :openai,
+      default_api: :chat_completions,
+      default_model: "gpt-4o-mini",
+      default_temperature: 0.7
     }
   }
 
