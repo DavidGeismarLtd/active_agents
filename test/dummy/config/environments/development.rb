@@ -16,7 +16,7 @@ Rails.application.configure do
 
   # Enable server timing.
   config.server_timing = true
-  config.log_level = :debug
+  config.log_level = :info
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
@@ -65,10 +65,10 @@ Rails.application.configure do
   config.active_record.migration_error = :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  config.active_record.verbose_query_logs = false
 
   # Highlight code that enqueued background job in logs.
-  config.active_job.verbose_enqueue_logs = true
+  config.active_job.verbose_enqueue_logs = false
 
   # Suppress logger output for asset requests.
   # config.assets.quiet = true
@@ -77,7 +77,7 @@ Rails.application.configure do
   # config.i18n.raise_on_missing_translations = true
 
   # Annotate rendered view with file names.
-  config.action_view.annotate_rendered_view_with_filenames = true
+  config.action_view.annotate_rendered_view_with_filenames = false
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
