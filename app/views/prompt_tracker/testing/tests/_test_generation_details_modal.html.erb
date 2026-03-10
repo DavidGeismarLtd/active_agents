@@ -1,0 +1,90 @@
+<%
+  # Test Generation Details Modal Partial
+  #
+  # Required locals:
+  #   - test: The Test object (must be AI-generated)
+  #
+  # This partial renders a modal showing the generation details for AI-generated tests,
+  # including the full prompt used to generate the test.
+%>
+
+<div data-controller="modal-fix">
+  <div class="modal fade" id="testGenerationDetailsModal-<%= test.id %>" tabindex="-1" data-modal-fix-target="modal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-stars text-primary"></i>
+            AI Generation Details - <%= test.name %>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Generation Metadata -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-info-circle"></i> Generation Metadata</h6>
+            </div>
+            <div class="card-body">
+              <dl class="row mb-0">
+                <dt class="col-sm-3">Model</dt>
+                <dd class="col-sm-9">
+                  <code><%= test.metadata["generation_model"] %></code>
+                </dd>
+
+                <dt class="col-sm-3">Generated At</dt>
+                <dd class="col-sm-9">
+                  <%= Time.parse(test.metadata["generated_at"]).strftime("%B %d, %Y at %I:%M %p") rescue test.metadata["generated_at"] %>
+                </dd>
+
+                <% if test.metadata["generation_instructions"].present? %>
+                  <dt class="col-sm-3">Custom Instructions</dt>
+                  <dd class="col-sm-9">
+                    <div class="alert alert-info mb-0">
+                      <%= simple_format(test.metadata["generation_instructions"]) %>
+                    </div>
+                  </dd>
+                <% end %>
+
+                <% if test.metadata["reasoning"].present? %>
+                  <dt class="col-sm-3">AI Reasoning</dt>
+                  <dd class="col-sm-9">
+                    <div class="alert alert-light mb-0">
+                      <%= simple_format(test.metadata["reasoning"]) %>
+                    </div>
+                  </dd>
+                <% end %>
+              </dl>
+            </div>
+          </div>
+
+          <!-- Generation Prompt -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-file-text"></i> Generation Prompt</h6>
+              <button type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      onclick="navigator.clipboard.writeText(document.getElementById('test-generation-prompt-<%= test.id %>').textContent)"
+                      title="Copy to clipboard">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+            <div class="card-body">
+              <pre id="test-generation-prompt-<%= test.id %>" class="bg-light p-3 rounded" style="max-height: 500px; overflow-y: auto; font-size: 0.875rem;"><%= test.metadata["generation_prompt"] %></pre>
+            </div>
+          </div>
+
+          <!-- Quality Evaluation Hint -->
+          <div class="alert alert-light border mt-3 mb-0">
+            <i class="bi bi-lightbulb text-warning"></i>
+            <strong>Tip:</strong> You can use this prompt to evaluate the quality of the generated test and improve your test generation instructions.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

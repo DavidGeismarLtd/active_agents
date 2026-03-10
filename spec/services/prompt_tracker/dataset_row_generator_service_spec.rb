@@ -96,6 +96,25 @@ RSpec.describe PromptTracker::DatasetRowGeneratorService do
         expect(first_row.metadata["generated_at"]).to be_present
       end
 
+      it "stores the generation prompt in metadata" do
+        rows = described_class.generate(
+          dataset: dataset,
+          count: count,
+          instructions: instructions,
+          model: model
+        )
+
+        first_row = rows.first
+        generation_prompt = first_row.metadata["generation_prompt"]
+
+        expect(generation_prompt).to be_present
+        expect(generation_prompt).to include("test data generator")
+        expect(generation_prompt).to include("customer_name")
+        expect(generation_prompt).to include("issue_type")
+        expect(generation_prompt).to include("priority")
+        expect(generation_prompt).to include(instructions)
+      end
+
       it "stores row_data matching the schema" do
         rows = described_class.generate(
           dataset: dataset,

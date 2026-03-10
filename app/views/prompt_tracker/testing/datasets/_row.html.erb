@@ -56,6 +56,15 @@
       <span class="badge bg-secondary"><i class="bi bi-pencil"></i> Manual</span>
     <% when "llm_generated" %>
       <span class="badge bg-primary"><i class="bi bi-stars"></i> AI</span>
+      <% if row.metadata["generation_prompt"].present? %>
+        <button type="button"
+                class="btn btn-link btn-sm p-0 ms-1"
+                data-bs-toggle="modal"
+                data-bs-target="#generationDetailsModal-<%= row.id %>"
+                title="View generation details">
+          <i class="bi bi-info-circle text-primary"></i>
+        </button>
+      <% end %>
     <% when "imported" %>
       <span class="badge bg-info"><i class="bi bi-upload"></i> Import</span>
     <% end %>
@@ -94,5 +103,12 @@
                index: index,
                dataset: dataset,
                update_path: update_path %>
+  <% end %>
+
+  <%# Generation Details Modal for AI-generated rows %>
+  <% if row.source == "llm_generated" && row.metadata["generation_prompt"].present? %>
+    <%= render "prompt_tracker/testing/datasets/generation_details_modal",
+               row: row,
+               index: index %>
   <% end %>
 <% end %>

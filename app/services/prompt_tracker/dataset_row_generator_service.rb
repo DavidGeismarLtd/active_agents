@@ -62,8 +62,8 @@ module PromptTracker
       # Call LLM with structured output
       generated_data = call_llm(prompt)
 
-      # Create DatasetRow records
-      create_rows(generated_data)
+      # Create DatasetRow records (pass prompt for metadata storage)
+      create_rows(generated_data, prompt)
     end
 
     private
@@ -389,8 +389,9 @@ module PromptTracker
     # Create DatasetRow records from generated data
     #
     # @param generated_data [Hash] parsed LLM response with :rows key
+    # @param generation_prompt [String] the prompt used to generate the rows
     # @return [Array<DatasetRow>] created dataset rows
-    def create_rows(generated_data)
+    def create_rows(generated_data, generation_prompt)
       rows_data = generated_data["rows"]
 
       created_rows = rows_data.map do |row_data|
@@ -400,6 +401,7 @@ module PromptTracker
           metadata: {
             generation_model: model,
             generation_instructions: instructions,
+            generation_prompt: generation_prompt,
             generated_at: Time.current.iso8601
           }
         )

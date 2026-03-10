@@ -70,7 +70,7 @@ module PromptTracker
         Rails.logger.info "[TestGeneratorService] LLM response received"
         Rails.logger.debug "[TestGeneratorService] Response content: #{response.content.inspect}"
 
-        result = parse_and_create_tests(response.content)
+        result = parse_and_create_tests(response.content, prompt)
         Rails.logger.info "[TestGeneratorService] Created #{result[:count]} tests"
 
         result
@@ -313,8 +313,9 @@ module PromptTracker
     # Parse the LLM response and create Test records
     #
     # @param response_content [Hash] the structured response from the LLM
+    # @param generation_prompt [String] the prompt used to generate the tests
     # @return [Hash] result with created tests, reasoning, and count
-    def parse_and_create_tests(response_content)
+    def parse_and_create_tests(response_content, generation_prompt)
       Rails.logger.info "[TestGeneratorService] Parsing response and creating tests"
       Rails.logger.debug "[TestGeneratorService] Response content type: #{response_content.class}"
       Rails.logger.debug "[TestGeneratorService] Response content: #{response_content.inspect}"
@@ -346,6 +347,9 @@ module PromptTracker
           metadata: {
             ai_generated: true,
             reasoning: test_data[:reasoning],
+            generation_model: configured_model,
+            generation_instructions: instructions,
+            generation_prompt: generation_prompt,
             generated_at: Time.current.iso8601
           }
         )

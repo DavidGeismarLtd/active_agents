@@ -87,6 +87,20 @@ module PromptTracker
         expect(test.metadata["ai_generated"]).to be true
         expect(test.metadata["reasoning"]).to be_present
         expect(test.metadata["generated_at"]).to be_present
+        expect(test.metadata["generation_model"]).to be_present
+        expect(test.metadata["generation_prompt"]).to be_present
+      end
+
+      it "stores the generation prompt in metadata" do
+        result = described_class.generate(prompt_version: prompt_version, instructions: "Focus on edge cases")
+
+        test = result[:tests].first
+        generation_prompt = test.metadata["generation_prompt"]
+
+        expect(generation_prompt).to be_present
+        expect(generation_prompt).to include("PROMPT TO TEST")
+        expect(generation_prompt).to include("AVAILABLE EVALUATORS")
+        expect(generation_prompt).to include("Focus on edge cases")
       end
 
       it "passes user instructions to the LLM" do

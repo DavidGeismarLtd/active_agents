@@ -16,3 +16,13 @@
   <%= render "prompt_tracker/testing/tests/cells/total_runs", test: test %>
   <%= render "prompt_tracker/testing/tests/cells/actions", test: test %>
 </tr>
+
+<%# Generation Details Modal for AI-generated tests %>
+<% if test.metadata["ai_generated"] && test.metadata["generation_prompt"].present? %>
+  <%= render "prompt_tracker/testing/tests/test_generation_details_modal", test: test %>
+<% end %>
+
+<%# Generation Details Modal for AI-generated tests %>
+<% if test.metadata["ai_generated"] && test.metadata["generation_prompt"].present? %>
+  <%= render "prompt_tracker/testing/tests/test_generation_details_modal", test: test %>
+<% end %>

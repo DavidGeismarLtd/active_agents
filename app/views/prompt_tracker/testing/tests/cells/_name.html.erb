@@ -3,6 +3,21 @@
   <% unless test.enabled? %>
     <span class="badge bg-secondary ms-1">Disabled</span>
   <% end %>
+  <% if test.metadata["ai_generated"] %>
+    <span class="badge bg-primary ms-1">
+      <i class="bi bi-stars"></i> AI
+    </span>
+    <% if test.metadata["generation_prompt"].present? %>
+      <button type="button"
+              class="btn btn-sm btn-link p-0 ms-1"
+              data-bs-toggle="modal"
+              data-bs-target="#testGenerationDetailsModal-<%= test.id %>"
+              title="View generation details"
+              style="vertical-align: baseline;">
+        <i class="bi bi-info-circle text-primary"></i>
+      </button>
+    <% end %>
+  <% end %>
   <% if test.description.present? %>
     <br><small class="text-muted"><%= truncate(test.description, length: 80) %></small>
   <% end %>
