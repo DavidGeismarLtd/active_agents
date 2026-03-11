@@ -128,6 +128,8 @@ PromptTracker::Engine.routes.draw do
   # Documentation
   namespace :docs do
     get :tracking
+    get :playground_guide
+    get :testing_guide
   end
 
   # Prompts (for monitoring - evaluator configs)

@@ -5,7 +5,19 @@
       <h1>
         <i class="bi bi-check2-square"></i> Testing Dashboard
       </h1>
-      <p class="text-muted">All agents in one place</p>
+      <p class="text-muted">
+        All agents in one place
+        <span class="ms-2">
+          <%= link_to docs_playground_guide_path, class: "text-decoration-none", target: "_blank" do %>
+            <i class="bi bi-question-circle"></i> New to the Playground? Read the guide
+          <% end %>
+        </span>
+        <span class="ms-2">
+          <%= link_to docs_testing_guide_path, class: "text-decoration-none", target: "_blank" do %>
+            <i class="bi bi-clipboard-check"></i> Learn how to create tests
+          <% end %>
+        </span>
+      </p>
     </div>
     <div class="col-auto d-flex gap-2 align-items-start">
       <% if PromptTracker.configuration.feature_enabled?(:openai_assistant_sync) %>

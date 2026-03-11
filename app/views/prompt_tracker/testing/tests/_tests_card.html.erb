@@ -47,11 +47,16 @@
     <!-- Info Alert -->
     <div class="alert alert-info mb-3">
       <h6 class="alert-heading"><i class="bi bi-info-circle"></i> How Tests Work</h6>
-      <ul class="mb-0">
+      <ul class="mb-2">
         <li><strong>Manual execution:</strong> Tests run on-demand when you click "Run" or "Run All" to validate behavior</li>
         <li><strong>Test environment only:</strong> Tests use the <code>is_test_run: true</code> flag and don't affect production metrics</li>
         <li><strong>Quality assurance:</strong> Validate with specific inputs and expected outputs before deploying to production</li>
       </ul>
+      <div class="mt-2">
+        <%= link_to docs_testing_guide_path, class: "btn btn-sm btn-outline-primary", target: "_blank" do %>
+          <i class="bi bi-book"></i> Read the Testing Guide
+        <% end %>
+      </div>
     </div>
 
     <%= render "prompt_tracker/testing/tests/tests_table", tests: tests, testable_param: testable %>

@@ -10,5 +10,17 @@ module PromptTracker
       @prompt = Prompt.find_by(id: params[:prompt_id]) if params[:prompt_id]
       @version = PromptVersion.find_by(id: params[:version_id]) if params[:version_id]
     end
+
+    # GET /docs/playground_guide
+    # Shows comprehensive guide on how to create and configure agents in the playground
+    def playground_guide
+      # No specific prompt/version needed - this is a general guide
+    end
+
+    # GET /docs/testing_guide
+    # Shows comprehensive guide on how to create and run tests for agents
+    def testing_guide
+      # No specific prompt/version needed - this is a general guide
+    end
   end
 end

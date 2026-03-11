@@ -1,0 +1,1108 @@
+<% content_for :title, "Testing Guide - PromptTracker" %>
+
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-lg-3">
+      <!-- Sticky Table of Contents -->
+      <div class="card sticky-top" style="top: 1rem;">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0"><i class="bi bi-list-ul"></i> Table of Contents</h6>
+        </div>
+        <div class="card-body p-0">
+          <nav class="nav flex-column">
+            <a class="nav-link" href="#introduction">Introduction</a>
+            <a class="nav-link" href="#step1">1. Understanding Tests</a>
+            <a class="nav-link" href="#step2">2. Creating Your First Test</a>
+            <a class="nav-link" href="#step3">3. Choosing Evaluators</a>
+            <a class="nav-link" href="#step4">4. Configuring Evaluators</a>
+            <a class="nav-link" href="#step5">5. Creating Test Data (Datasets)</a>
+            <a class="nav-link" href="#step6">6. Generating Data with AI</a>
+            <a class="nav-link" href="#step7">7. Running Tests</a>
+            <a class="nav-link" href="#step8">8. Analyzing Test Results</a>
+            <a class="nav-link" href="#step9">9. Managing Tests</a>
+            <a class="nav-link" href="#step10">10. Best Practices</a>
+            <a class="nav-link" href="#common-issues">Common Issues</a>
+            <a class="nav-link" href="#next-steps">Next Steps</a>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-9">
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="display-5"><i class="bi bi-clipboard-check"></i> Testing Guide</h1>
+        <p class="lead text-muted">
+          Learn how to create comprehensive tests for your AI agents to ensure quality and reliability.
+        </p>
+      </div>
+
+      <!-- Introduction -->
+      <section id="introduction" class="mb-5">
+        <div class="card border-primary">
+          <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="bi bi-info-circle"></i> What is Testing in PromptTracker?</h4>
+          </div>
+          <div class="card-body">
+            <p>
+              Testing in PromptTracker allows you to validate your AI agents <strong>before deploying them to production</strong>.
+              Tests help you ensure your agents behave correctly across different scenarios, maintain quality standards,
+              and catch regressions when you make changes.
+            </p>
+
+            <div class="alert alert-info mb-3">
+              <strong><i class="bi bi-lightbulb"></i> Key Concept:</strong> Tests vs Monitoring
+              <ul class="mb-0 mt-2">
+                <li><strong>Tests</strong>: Pre-deployment validation with controlled test data</li>
+                <li><strong>Monitoring</strong>: Post-deployment evaluation of real production calls</li>
+              </ul>
+            </div>
+
+            <h5 class="mt-4">What You'll Learn</h5>
+            <ul>
+              <li>How to create tests with automated evaluators</li>
+              <li>How to build datasets for comprehensive testing</li>
+              <li>How to use AI to generate test scenarios</li>
+              <li>How to run tests and interpret results</li>
+              <li>Best practices for maintaining test quality</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 1: Understanding Tests -->
+      <section id="step1" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 1: Understanding Tests</h3>
+          </div>
+          <div class="card-body">
+            <p>A <strong>Test</strong> in PromptTracker consists of three main components:</p>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="card h-100 border-primary">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-card-checklist text-primary"></i> Test Definition</h5>
+                    <p class="card-text small">
+                      Basic information: name, description, and whether the test is enabled.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 border-success">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-check-circle text-success"></i> Evaluators</h5>
+                    <p class="card-text small">
+                      Automated checks that determine if the agent's response passes or fails.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card h-100 border-info">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-database text-info"></i> Test Data</h5>
+                    <p class="card-text small">
+                      Input variables (datasets) used to run the test across multiple scenarios.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h5>Test Execution Flow</h5>
+            <div class="bg-light p-3 rounded">
+              <ol class="mb-0">
+                <li><strong>Input:</strong> Test data (variables) is provided to the agent</li>
+                <li><strong>Execution:</strong> The agent processes the input and generates a response</li>
+                <li><strong>Evaluation:</strong> Evaluators check the response against defined criteria</li>
+                <li><strong>Result:</strong> Test passes if all evaluators pass, fails otherwise</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 2: Creating Your First Test -->
+      <section id="step2" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 2: Creating Your First Test</h3>
+          </div>
+          <div class="card-body">
+            <h5>Where to Create Tests</h5>
+            <p>Tests are created from the <strong>Testing</strong> section of a Prompt Version or Assistant:</p>
+
+            <div class="alert alert-primary">
+              <strong><i class="bi bi-arrow-right-circle"></i> Navigation:</strong>
+              <ol class="mb-0 mt-2">
+                <li>Go to <strong>Testing Dashboard</strong></li>
+                <li>Click on a Prompt or Assistant</li>
+                <li>Click on a specific version</li>
+                <li>Scroll to the <strong>Tests</strong> section</li>
+                <li>Click <strong>"+ New Test"</strong> button</li>
+              </ol>
+            </div>
+
+            <h5 class="mt-4">Basic Test Information</h5>
+            <p>When creating a test, you'll need to provide:</p>
+
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Description</th>
+                  <th>Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Name</strong></td>
+                  <td>A unique identifier for the test</td>
+                  <td><code>greeting_premium_customers</code></td>
+                </tr>
+                <tr>
+                  <td><strong>Description</strong></td>
+                  <td>What the test validates</td>
+                  <td>"Ensures greeting is personalized for premium customers"</td>
+                </tr>
+                <tr>
+                  <td><strong>Enabled</strong></td>
+                  <td>Whether the test is active</td>
+                  <td>✓ Checked (enabled by default)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="alert alert-success">
+              <strong><i class="bi bi-check-circle"></i> Pro Tip:</strong>
+              Use descriptive names that clearly indicate what the test validates. This makes it easier to
+              understand test failures and maintain your test suite.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 3: Choosing Evaluators -->
+      <section id="step3" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 3: Choosing Evaluators</h3>
+          </div>
+          <div class="card-body">
+            <p>
+              <strong>Evaluators</strong> are automated checks that determine if a response passes or fails.
+              You can add multiple evaluators to a single test - the test passes only if <em>all</em> evaluators pass.
+            </p>
+
+            <h5>Available Evaluators</h5>
+            <p>PromptTracker provides several built-in evaluators:</p>
+
+            <div class="accordion" id="evaluatorsAccordion">
+              <!-- Content Quality Evaluators -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#contentEvaluators">
+                    <i class="bi bi-file-text text-primary"></i>&nbsp; Content Quality Evaluators
+                  </button>
+                </h2>
+                <div id="contentEvaluators" class="accordion-collapse collapse show" data-bs-parent="#evaluatorsAccordion">
+                  <div class="accordion-body">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Evaluator</th>
+                          <th>Purpose</th>
+                          <th>Use When</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>LLM Judge</strong></td>
+                          <td>Uses AI to evaluate response quality</td>
+                          <td>Checking tone, accuracy, helpfulness, or custom criteria</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Keyword</strong></td>
+                          <td>Checks for required/forbidden keywords</td>
+                          <td>Ensuring specific terms are present or absent</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Exact Match</strong></td>
+                          <td>Verifies exact text match</td>
+                          <td>Testing deterministic outputs</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Pattern Match</strong></td>
+                          <td>Checks for text patterns</td>
+                          <td>Validating response structure or format</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Length</strong></td>
+                          <td>Validates response length</td>
+                          <td>Ensuring responses aren't too short or too long</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Format Evaluators -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#formatEvaluators">
+                    <i class="bi bi-file-code text-success"></i>&nbsp; Format & Structure Evaluators
+                  </button>
+                </h2>
+                <div id="formatEvaluators" class="accordion-collapse collapse" data-bs-parent="#evaluatorsAccordion">
+                  <div class="accordion-body">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Evaluator</th>
+                          <th>Purpose</th>
+                          <th>Use When</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Format</strong></td>
+                          <td>Validates JSON, Markdown, etc.</td>
+                          <td>Ensuring structured output format</td>
+                        </tr>
+                        <tr>
+                          <td><strong>JSON Schema</strong></td>
+                          <td>Validates JSON against a schema</td>
+                          <td>Checking specific JSON structure and fields</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tool Usage Evaluators -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#toolEvaluators">
+                    <i class="bi bi-tools text-warning"></i>&nbsp; Tool Usage Evaluators
+                  </button>
+                </h2>
+                <div id="toolEvaluators" class="accordion-collapse collapse" data-bs-parent="#evaluatorsAccordion">
+                  <div class="accordion-body">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Evaluator</th>
+                          <th>Purpose</th>
+                          <th>Use When</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Function Call</strong></td>
+                          <td>Verifies function/tool calls</td>
+                          <td>Ensuring agent uses the right tools</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Web Search</strong></td>
+                          <td>Validates web search usage</td>
+                          <td>Checking search queries and sources</td>
+                        </tr>
+                        <tr>
+                          <td><strong>Code Interpreter</strong></td>
+                          <td>Validates code execution</td>
+                          <td>Ensuring code runs and produces expected output</td>
+                        </tr>
+                        <tr>
+                          <td><strong>File Search</strong></td>
+                          <td>Checks file search usage</td>
+                          <td>Validating knowledge base queries</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-3">
+              <strong><i class="bi bi-lightbulb"></i> Choosing the Right Evaluators:</strong>
+              <ul class="mb-0 mt-2">
+                <li>Start with 1-2 evaluators that test the most critical aspects</li>
+                <li>Combine evaluators for comprehensive testing (e.g., LLM Judge + Keyword)</li>
+                <li>Use specific evaluators (Keyword, Format) for deterministic checks</li>
+                <li>Use LLM Judge for subjective quality assessment</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 4: Configuring Evaluators -->
+      <section id="step4" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 4: Configuring Evaluators</h3>
+          </div>
+          <div class="card-body">
+            <p>Each evaluator has specific configuration options. Here are examples for the most common evaluators:</p>
+
+            <h5><i class="bi bi-robot"></i> LLM Judge Evaluator</h5>
+            <div class="bg-light p-3 rounded mb-3">
+              <p class="mb-2"><strong>Purpose:</strong> Uses an AI model to evaluate response quality based on custom instructions.</p>
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <td><strong>Judge Model</strong></td>
+                  <td>The LLM to use for evaluation (e.g., <code>gpt-4o-mini</code>, <code>claude-sonnet-4</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Custom Instructions</strong></td>
+                  <td>What to evaluate (e.g., "Check if the response is empathetic and professional")</td>
+                </tr>
+                <tr>
+                  <td><strong>Threshold Score</strong></td>
+                  <td>Minimum score (0-100) to pass (default: 70)</td>
+                </tr>
+              </table>
+            </div>
+
+            <h5><i class="bi bi-search"></i> Keyword Evaluator</h5>
+            <div class="bg-light p-3 rounded mb-3">
+              <p class="mb-2"><strong>Purpose:</strong> Checks for presence or absence of specific keywords.</p>
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <td><strong>Required Keywords</strong></td>
+                  <td>Keywords that must appear (e.g., <code>["thank you", "help"]</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Forbidden Keywords</strong></td>
+                  <td>Keywords that must NOT appear (e.g., <code>["error", "failed"]</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Case Sensitive</strong></td>
+                  <td>Whether matching is case-sensitive (default: false)</td>
+                </tr>
+              </table>
+            </div>
+
+            <h5><i class="bi bi-rulers"></i> Length Evaluator</h5>
+            <div class="bg-light p-3 rounded mb-3">
+              <p class="mb-2"><strong>Purpose:</strong> Validates response length is within acceptable range.</p>
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <td><strong>Min Length</strong></td>
+                  <td>Minimum character count (e.g., <code>50</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Max Length</strong></td>
+                  <td>Maximum character count (e.g., <code>500</code>)</td>
+                </tr>
+              </table>
+            </div>
+
+            <h5><i class="bi bi-tools"></i> Function Call Evaluator</h5>
+            <div class="bg-light p-3 rounded mb-3">
+              <p class="mb-2"><strong>Purpose:</strong> Verifies the agent called the expected functions/tools.</p>
+              <table class="table table-sm table-bordered mb-0">
+                <tr>
+                  <td><strong>Expected Functions</strong></td>
+                  <td>List of function names (e.g., <code>["search_products", "get_price"]</code>)</td>
+                </tr>
+                <tr>
+                  <td><strong>Require All</strong></td>
+                  <td>Whether all functions must be called (true) or just one (false)</td>
+                </tr>
+                <tr>
+                  <td><strong>Check Arguments</strong></td>
+                  <td>Whether to validate function arguments (default: false)</td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="alert alert-warning">
+              <strong><i class="bi bi-exclamation-triangle"></i> Important:</strong>
+              Click on an evaluator card in the test form to expand its configuration options.
+              Each evaluator will show a form with its specific settings.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 5: Creating Test Data (Datasets) -->
+      <section id="step5" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 5: Creating Test Data (Datasets)</h3>
+          </div>
+          <div class="card-body">
+            <p>
+              <strong>Datasets</strong> are collections of test data (input variables) that allow you to run
+              the same test across multiple scenarios. This is essential for comprehensive testing.
+            </p>
+
+            <h5>What is a Dataset?</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="card border-info h-100">
+                  <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-database text-info"></i> Dataset</h6>
+                    <p class="card-text small mb-2">A collection of test scenarios with a consistent schema</p>
+                    <p class="card-text small mb-0">
+                      <strong>Example:</strong> "Customer Support Scenarios"
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card border-success h-100">
+                  <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-table text-success"></i> Dataset Rows</h6>
+                    <p class="card-text small mb-2">Individual test cases with specific variable values</p>
+                    <p class="card-text small mb-0">
+                      <strong>Example:</strong> Row 1: <code>{ customer_name: "John", issue: "billing" }</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h5>Creating a Dataset</h5>
+            <div class="alert alert-primary">
+              <strong><i class="bi bi-arrow-right-circle"></i> Steps:</strong>
+              <ol class="mb-0 mt-2">
+                <li>From the Prompt Version page, click <strong>"Datasets"</strong> button</li>
+                <li>Click <strong>"+ New Dataset"</strong></li>
+                <li>Enter a name and description</li>
+                <li>The schema is automatically set from your prompt's variables</li>
+                <li>Click <strong>"Create Dataset"</strong></li>
+              </ol>
+            </div>
+
+            <h5 class="mt-4">Adding Rows Manually</h5>
+            <p>Once you've created a dataset, you can add test data rows:</p>
+            <ol>
+              <li>Click <strong>"Add Row Manually"</strong></li>
+              <li>Fill in values for each variable defined in your prompt</li>
+              <li>Click <strong>"Add Row"</strong></li>
+              <li>Repeat for each test scenario</li>
+            </ol>
+
+            <div class="alert alert-success">
+              <strong><i class="bi bi-check-circle"></i> Pro Tip:</strong>
+              Create datasets that cover:
+              <ul class="mb-0 mt-2">
+                <li><strong>Happy path:</strong> Normal, expected inputs</li>
+                <li><strong>Edge cases:</strong> Unusual but valid inputs</li>
+                <li><strong>Error cases:</strong> Invalid or problematic inputs</li>
+                <li><strong>Boundary conditions:</strong> Min/max values, empty strings, etc.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 6: Generating Data with AI -->
+      <section id="step6" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 6: Generating Data with AI</h3>
+          </div>
+          <div class="card-body">
+            <p>
+              Instead of manually creating test data, you can use <strong>AI to generate diverse test scenarios</strong>
+              automatically based on your prompt's variable schema.
+            </p>
+
+            <h5><i class="bi bi-stars"></i> How AI Generation Works</h5>
+            <div class="bg-light p-3 rounded mb-3">
+              <ol class="mb-0">
+                <li>PromptTracker analyzes your prompt's variable schema</li>
+                <li>An LLM generates realistic, diverse test data</li>
+                <li>Rows are created automatically and appear in real-time</li>
+                <li>You can review and edit generated rows</li>
+              </ol>
+            </div>
+
+            <h5>Using AI Generation</h5>
+            <div class="alert alert-primary">
+              <strong><i class="bi bi-arrow-right-circle"></i> Steps:</strong>
+              <ol class="mb-0 mt-2">
+                <li>From the Dataset page, click <strong>"Generate with AI"</strong></li>
+                <li>Specify how many rows to generate (1-100)</li>
+                <li>Optionally add custom instructions (e.g., "Focus on edge cases")</li>
+                <li>Select the model to use for generation</li>
+                <li>Click <strong>"Generate Rows"</strong></li>
+                <li>Watch as rows appear in real-time!</li>
+              </ol>
+            </div>
+
+            <h5 class="mt-4">Custom Instructions Examples</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Instruction</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>"Include international names and special characters"</td>
+                  <td>Generates diverse, global test data</td>
+                </tr>
+                <tr>
+                  <td>"Focus on edge cases and boundary conditions"</td>
+                  <td>Creates unusual but valid scenarios</td>
+                </tr>
+                <tr>
+                  <td>"Generate angry customer scenarios"</td>
+                  <td>Creates challenging support situations</td>
+                </tr>
+                <tr>
+                  <td>"Include both simple and complex queries"</td>
+                  <td>Balances easy and difficult test cases</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="alert alert-info">
+              <strong><i class="bi bi-lightbulb"></i> Best Practice:</strong>
+              Generate 10-20 rows initially, review them for quality, then generate more if needed.
+              You can always delete or edit generated rows that don't meet your needs.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 7: Running Tests -->
+      <section id="step7" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 7: Running Tests</h3>
+          </div>
+          <div class="card-body">
+            <p>Once you've created a test and prepared test data, you're ready to run it!</p>
+
+            <h5>Two Ways to Run Tests</h5>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <div class="card border-primary h-100">
+                  <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-database text-primary"></i> Run with Dataset</h6>
+                    <p class="card-text small">
+                      Runs the test against all rows in a dataset. Best for comprehensive testing.
+                    </p>
+                    <p class="card-text small mb-0">
+                      <strong>Use when:</strong> You want to test multiple scenarios at once
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card border-success h-100">
+                  <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-play-circle text-success"></i> Single Run with Custom Variables</h6>
+                    <p class="card-text small">
+                      Runs the test once with manually entered variables. Best for quick testing.
+                    </p>
+                    <p class="card-text small mb-0">
+                      <strong>Use when:</strong> You want to test a specific scenario quickly
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h5>Running a Test with a Dataset</h5>
+            <div class="alert alert-primary">
+              <strong><i class="bi bi-arrow-right-circle"></i> Steps:</strong>
+              <ol class="mb-0 mt-2">
+                <li>From the Prompt Version page, find your test in the Tests table</li>
+                <li>Click the <strong>"Run"</strong> button (play icon)</li>
+                <li>Select <strong>"Run against dataset"</strong></li>
+                <li>Choose a dataset from the dropdown</li>
+                <li>Click <strong>"Run Test"</strong></li>
+                <li>The test will run against all rows in the dataset</li>
+              </ol>
+            </div>
+
+            <h5 class="mt-4">Running a Single Test</h5>
+            <div class="alert alert-success">
+              <strong><i class="bi bi-arrow-right-circle"></i> Steps:</strong>
+              <ol class="mb-0 mt-2">
+                <li>Click the <strong>"Run"</strong> button on your test</li>
+                <li>Select <strong>"Single run with custom variables"</strong></li>
+                <li>Enter values for each variable</li>
+                <li>Click <strong>"Run Test"</strong></li>
+              </ol>
+            </div>
+
+            <h5 class="mt-4">Running All Tests</h5>
+            <p>You can also run all tests for a prompt version at once:</p>
+            <ol>
+              <li>Click the <strong>"Run All Tests"</strong> button at the top of the Tests section</li>
+              <li>Choose dataset or custom variables mode</li>
+              <li>All enabled tests will be queued and run</li>
+            </ol>
+
+            <div class="alert alert-info">
+              <strong><i class="bi bi-clock"></i> Test Execution:</strong>
+              Tests run in the background. You'll see real-time updates as they complete.
+              The page will automatically refresh to show results.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 8: Analyzing Test Results -->
+      <section id="step8" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 8: Analyzing Test Results</h3>
+          </div>
+          <div class="card-body">
+            <p>After running tests, you'll see detailed results for each test run.</p>
+
+            <h5>Understanding Test Results</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Column</th>
+                  <th>What It Shows</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Status</strong></td>
+                  <td>
+                    <span class="badge bg-success">Passed</span> All evaluators passed<br>
+                    <span class="badge bg-danger">Failed</span> One or more evaluators failed<br>
+                    <span class="badge bg-warning">Running</span> Test in progress
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Run Time</strong></td>
+                  <td>When the test was executed</td>
+                </tr>
+                <tr>
+                  <td><strong>Response Time</strong></td>
+                  <td>How long the LLM took to respond (in milliseconds)</td>
+                </tr>
+                <tr>
+                  <td><strong>Cost</strong></td>
+                  <td>API cost for this test run (in USD)</td>
+                </tr>
+                <tr>
+                  <td><strong>Rendered Prompt</strong></td>
+                  <td>The actual prompt sent to the LLM (with variables filled in)</td>
+                </tr>
+                <tr>
+                  <td><strong>Output Messages</strong></td>
+                  <td>The LLM's response (click to view full conversation)</td>
+                </tr>
+                <tr>
+                  <td><strong>Evaluations</strong></td>
+                  <td>Results from each evaluator (click to see details)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h5 class="mt-4">Viewing Evaluation Details</h5>
+            <p>Click on an evaluation badge to see:</p>
+            <ul>
+              <li><strong>Score:</strong> Numeric score (0-100)</li>
+              <li><strong>Feedback:</strong> Explanation of why it passed or failed</li>
+              <li><strong>Metadata:</strong> Additional details about the evaluation</li>
+            </ul>
+
+            <h5 class="mt-4">Test Statistics</h5>
+            <p>At the top of the Prompt Version page, you'll see overall statistics:</p>
+            <ul>
+              <li><strong>Total Tests:</strong> Number of tests configured</li>
+              <li><strong>Passing:</strong> Number of tests currently passing</li>
+              <li><strong>Failing:</strong> Number of tests currently failing</li>
+              <li><strong>Pass Rate:</strong> Percentage of tests passing</li>
+              <li><strong>Test Cost:</strong> Total cost of all test runs</li>
+              <li><strong>Avg Response Time:</strong> Average LLM response time</li>
+            </ul>
+
+            <div class="alert alert-warning">
+              <strong><i class="bi bi-exclamation-triangle"></i> Debugging Failed Tests:</strong>
+              <ol class="mb-0 mt-2">
+                <li>Click on the failed test run to see details</li>
+                <li>Review the rendered prompt - are variables filled correctly?</li>
+                <li>Check the LLM response - does it match expectations?</li>
+                <li>Review evaluator feedback - what specifically failed?</li>
+                <li>Adjust your prompt, evaluator config, or test data as needed</li>
+                <li>Re-run the test to verify the fix</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 9: Managing Tests -->
+      <section id="step9" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 9: Managing Tests</h3>
+          </div>
+          <div class="card-body">
+            <h5>Editing Tests</h5>
+            <p>You can modify tests at any time:</p>
+            <ol>
+              <li>Click the <strong>edit icon</strong> on a test row</li>
+              <li>Update name, description, or evaluators</li>
+              <li>Click <strong>"Update Test"</strong></li>
+            </ol>
+
+            <h5 class="mt-4">Disabling Tests</h5>
+            <p>To temporarily disable a test without deleting it:</p>
+            <ol>
+              <li>Edit the test</li>
+              <li>Uncheck the <strong>"Enable this test"</strong> checkbox</li>
+              <li>Save changes</li>
+            </ol>
+            <p class="text-muted small">Disabled tests won't run when you click "Run All Tests".</p>
+
+            <h5 class="mt-4">Deleting Tests</h5>
+            <p>To permanently remove a test:</p>
+            <ol>
+              <li>Click the <strong>delete icon</strong> on a test row</li>
+              <li>Confirm the deletion</li>
+            </ol>
+            <p class="text-muted small">⚠️ This will also delete all test run history for this test.</p>
+
+            <h5 class="mt-4">Re-running Tests</h5>
+            <p>To re-run a specific test run with the same configuration:</p>
+            <ol>
+              <li>Click on a test run row to expand details</li>
+              <li>Click the <strong>"Re-run"</strong> button</li>
+              <li>The test will run again with the same variables</li>
+            </ol>
+
+            <div class="alert alert-success">
+              <strong><i class="bi bi-check-circle"></i> Pro Tip:</strong>
+              Keep your test suite clean by:
+              <ul class="mb-0 mt-2">
+                <li>Deleting obsolete tests when requirements change</li>
+                <li>Disabling flaky tests while you investigate issues</li>
+                <li>Organizing tests with clear, descriptive names</li>
+                <li>Running tests regularly to catch regressions early</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 10: Best Practices -->
+      <section id="step10" class="mb-5">
+        <div class="card">
+          <div class="card-header bg-light">
+            <h3 class="mb-0">Step 10: Best Practices</h3>
+          </div>
+          <div class="card-body">
+            <h5><i class="bi bi-star"></i> Test Design</h5>
+            <ul>
+              <li><strong>Start small:</strong> Begin with 2-3 critical tests, then expand</li>
+              <li><strong>Test one thing:</strong> Each test should validate a specific behavior</li>
+              <li><strong>Use descriptive names:</strong> Make it clear what each test validates</li>
+              <li><strong>Cover edge cases:</strong> Don't just test the happy path</li>
+              <li><strong>Keep tests independent:</strong> Tests shouldn't depend on each other</li>
+            </ul>
+
+            <h5 class="mt-4"><i class="bi bi-database"></i> Dataset Management</h5>
+            <ul>
+              <li><strong>Create focused datasets:</strong> Group related scenarios together</li>
+              <li><strong>Use AI generation:</strong> Save time by generating diverse test data</li>
+              <li><strong>Review generated data:</strong> Always check AI-generated rows for quality</li>
+              <li><strong>Update datasets:</strong> Add new scenarios as you discover edge cases</li>
+              <li><strong>Version datasets:</strong> Create new datasets when requirements change significantly</li>
+            </ul>
+
+            <h5 class="mt-4"><i class="bi bi-check-circle"></i> Evaluator Selection</h5>
+            <ul>
+              <li><strong>Combine evaluators:</strong> Use multiple evaluators for comprehensive checks</li>
+              <li><strong>Use LLM Judge wisely:</strong> Great for subjective quality, but costs more</li>
+              <li><strong>Prefer deterministic evaluators:</strong> Keyword, Length, Format are faster and cheaper</li>
+              <li><strong>Set realistic thresholds:</strong> Don't require 100% scores unless necessary</li>
+              <li><strong>Test your evaluators:</strong> Make sure they catch real issues</li>
+            </ul>
+
+            <h5 class="mt-4"><i class="bi bi-arrow-repeat"></i> Testing Workflow</h5>
+            <ul>
+              <li><strong>Test before deploying:</strong> Always run tests before activating a new version</li>
+              <li><strong>Run tests regularly:</strong> Catch regressions early</li>
+              <li><strong>Investigate failures:</strong> Don't ignore failing tests</li>
+              <li><strong>Update tests with prompts:</strong> When you change a prompt, update related tests</li>
+              <li><strong>Monitor costs:</strong> Keep an eye on test execution costs</li>
+            </ul>
+
+            <h5 class="mt-4"><i class="bi bi-speedometer"></i> Performance Tips</h5>
+            <ul>
+              <li><strong>Use faster models for testing:</strong> Consider <code>gpt-4o-mini</code> instead of <code>gpt-4o</code></li>
+              <li><strong>Limit dataset size:</strong> 10-50 rows is usually sufficient</li>
+              <li><strong>Run critical tests first:</strong> Prioritize tests that catch the most important issues</li>
+              <li><strong>Use caching:</strong> Some evaluators cache results to save costs</li>
+            </ul>
+
+            <div class="alert alert-info">
+              <strong><i class="bi bi-lightbulb"></i> Golden Rule:</strong>
+              A good test suite gives you confidence to deploy changes quickly while catching real issues.
+              If tests are too strict, you'll ignore failures. If they're too loose, they won't catch problems.
+              Find the right balance for your use case.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Common Issues -->
+      <section id="common-issues" class="mb-5">
+        <div class="card border-warning">
+          <div class="card-header bg-warning text-dark">
+            <h3 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Common Issues & Solutions</h3>
+          </div>
+          <div class="card-body">
+            <div class="accordion" id="issuesAccordion">
+              <!-- Issue 1 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#issue1">
+                    Test fails with "Invalid Schema" error
+                  </button>
+                </h2>
+                <div id="issue1" class="accordion-collapse collapse show" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> Dataset schema doesn't match the prompt version's variables.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Go to the Dataset page</li>
+                      <li>Check if there's an "Invalid Schema" warning</li>
+                      <li>Create a new dataset with the updated schema</li>
+                      <li>Copy rows from the old dataset to the new one (or regenerate with AI)</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Issue 2 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#issue2">
+                    LLM Judge evaluator always fails
+                  </button>
+                </h2>
+                <div id="issue2" class="accordion-collapse collapse" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> LLM Judge is too strict or instructions are unclear.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Review the custom instructions - are they clear and specific?</li>
+                      <li>Lower the threshold score (try 60-70 instead of 80-90)</li>
+                      <li>Check the feedback to understand why it's failing</li>
+                      <li>Refine instructions to focus on what really matters</li>
+                      <li>Consider using a different judge model</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Issue 3 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#issue3">
+                    Test runs are too expensive
+                  </button>
+                </h2>
+                <div id="issue3" class="accordion-collapse collapse" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> Running tests costs too much in API fees.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Use cheaper models for testing (e.g., <code>gpt-4o-mini</code> instead of <code>gpt-4o</code>)</li>
+                      <li>Reduce dataset size - 10-20 rows is often enough</li>
+                      <li>Use fewer LLM Judge evaluators (they're the most expensive)</li>
+                      <li>Prefer deterministic evaluators (Keyword, Length, Format)</li>
+                      <li>Run tests selectively instead of running all tests every time</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Issue 4 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#issue4">
+                    Variables not being replaced in prompt
+                  </button>
+                </h2>
+                <div id="issue4" class="accordion-collapse collapse" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> Variables like <code>{{ customer_name }}</code> appear literally in the rendered prompt.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Check variable names match exactly (case-sensitive)</li>
+                      <li>Ensure variables are defined in the prompt version's schema</li>
+                      <li>Verify dataset rows have values for all required variables</li>
+                      <li>Check for typos in variable names</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Issue 5 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#issue5">
+                    Test results are inconsistent
+                  </button>
+                </h2>
+                <div id="issue5" class="accordion-collapse collapse" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> Same test passes sometimes and fails other times.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Lower the temperature in model settings (try 0.3 or 0.5)</li>
+                      <li>Use more specific evaluators instead of relying only on LLM Judge</li>
+                      <li>Make your prompt more deterministic with clear instructions</li>
+                      <li>Check if the LLM is using tools inconsistently</li>
+                      <li>Consider if the test expectations are too strict</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Issue 6 -->
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#issue6">
+                    Can't select dataset when running test
+                  </button>
+                </h2>
+                <div id="issue6" class="accordion-collapse collapse" data-bs-parent="#issuesAccordion">
+                  <div class="accordion-body">
+                    <p><strong>Problem:</strong> No datasets appear in the dropdown.</p>
+                    <p><strong>Solution:</strong></p>
+                    <ol class="mb-0">
+                      <li>Create a dataset first (click "Datasets" button from the version page)</li>
+                      <li>Add at least one row to the dataset</li>
+                      <li>Ensure the dataset schema matches the prompt version's variables</li>
+                      <li>Refresh the page if you just created the dataset</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Next Steps -->
+      <section id="next-steps" class="mb-5">
+        <div class="card border-success">
+          <div class="card-header bg-success text-white">
+            <h3 class="mb-0"><i class="bi bi-arrow-right-circle"></i> Next Steps</h3>
+          </div>
+          <div class="card-body">
+            <p>Now that you know how to create and run tests, here's what to explore next:</p>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-activity text-success"></i> Monitoring</h5>
+                    <p class="card-text">
+                      Learn how to monitor production LLM calls and set up automatic evaluations
+                      for real user interactions.
+                    </p>
+                    <%= link_to monitoring_root_path, class: "btn btn-outline-success btn-sm" do %>
+                      <i class="bi bi-arrow-right"></i> Go to Monitoring
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-code-square text-primary"></i> Integration</h5>
+                    <p class="card-text">
+                      Learn how to integrate PromptTracker into your application to track
+                      production LLM calls.
+                    </p>
+                    <%= link_to docs_tracking_path, class: "btn btn-outline-primary btn-sm" do %>
+                      <i class="bi bi-arrow-right"></i> Integration Guide
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-flask text-info"></i> Playground</h5>
+                    <p class="card-text">
+                      Master the Playground to create and refine your AI agents with
+                      advanced features and tools.
+                    </p>
+                    <%= link_to docs_playground_guide_path, class: "btn btn-outline-info btn-sm" do %>
+                      <i class="bi bi-arrow-right"></i> Playground Guide
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-speedometer text-warning"></i> Advanced Testing</h5>
+                    <p class="card-text">
+                      Explore advanced testing features like conversational tests, custom evaluators,
+                      and performance optimization.
+                    </p>
+                    <%= link_to testing_root_path, class: "btn btn-outline-warning btn-sm" do %>
+                      <i class="bi bi-arrow-right"></i> Back to Testing
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-success mt-4 mb-0">
+              <h5 class="alert-heading"><i class="bi bi-check-circle"></i> You're Ready!</h5>
+              <p class="mb-0">
+                You now have all the knowledge you need to create comprehensive tests for your AI agents.
+                Start with a simple test, iterate based on results, and build confidence in your prompts
+                before deploying to production. Happy testing! 🚀
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer Navigation -->
+      <div class="card bg-light">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <%= link_to testing_root_path, class: "btn btn-outline-primary" do %>
+                <i class="bi bi-arrow-left"></i> Back to Testing Dashboard
+              <% end %>
+            </div>
+            <div class="d-flex gap-2">
+              <%= link_to docs_playground_guide_path, class: "btn btn-outline-info" do %>
+                <i class="bi bi-flask"></i> Playground Guide
+              <% end %>
+              <%= link_to docs_tracking_path, class: "btn btn-outline-success" do %>
+                <i class="bi bi-code-square"></i> Integration Guide
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
