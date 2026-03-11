@@ -6,7 +6,12 @@
   <p style="font-size: 1.25rem; opacity: 0.95; max-width: 800px; margin: 0 auto;">
     Manage, test, and monitor your LLM prompts with confidence
   </p>
+  <div style="margin-top: 2rem;">
+    <%= link_to testing_playground_path, class: "btn btn-lg btn-light", style: "font-weight: 600; padding: 0.75rem 2rem;" do %>
+      <i class="bi bi-plus-circle"></i> <%= @prompts.empty? ? "Create Your First Agent" : "Create New Agent" %>
+    <% end %>
+  </div>
 </div>
 
 <!-- Prompts Accordion -->
-<%= render "prompt_tracker/shared/prompts_accordion", prompts: @prompts, show_monitor_button: true, search_enabled: true %>
+<%= render "prompt_tracker/shared/prompts_accordion", prompts: @prompts, show_monitor_button: feature_enabled?(:monitoring), search_enabled: true %>

@@ -296,6 +296,16 @@ module PromptTracker
       PromptTracker.configuration.all_provider_api_options
     end
 
+    # Check if a feature is enabled.
+    #
+    # @param feature [Symbol] the feature name
+    # @return [Boolean] true if the feature is enabled
+    # @example
+    #   feature_enabled?(:monitoring) # => true
+    def feature_enabled?(feature)
+      PromptTracker.configuration.feature_enabled?(feature)
+    end
+
     # Highlight variable values in rendered prompt
     #
     # @param rendered_prompt [String] the rendered prompt text
