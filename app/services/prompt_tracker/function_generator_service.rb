@@ -62,13 +62,38 @@ module PromptTracker
         Description: #{description}
         Language: #{language}
 
-        Requirements:
-        1. Write clean, well-documented code with an `execute` method
-        2. The execute method should accept keyword arguments
-        3. Include error handling where appropriate
-        4. Add helpful comments explaining the logic
-        5. Return a hash/object with the result
-        6. Use modern #{language} best practices
+        CRITICAL REQUIREMENTS:
+        1. Write a TOP-LEVEL `execute` method (NOT a class method, NOT inside a class)
+        2. The execute method MUST accept keyword arguments
+        3. The execute method MUST return a hash/object with the result
+        4. DO NOT wrap the code in a class or module
+        5. Include error handling where appropriate
+        6. Add helpful comments explaining the logic
+        7. Use modern #{language} best practices
+
+        Code Format Examples:
+
+        ✅ CORRECT (Ruby):
+        ```ruby
+        require 'httparty'
+
+        # Fetches stock price from API
+        def execute(symbol:)
+          response = HTTParty.get("https://api.example.com/stock/\#{symbol}")
+          { success: true, price: response['price'] }
+        rescue => e
+          { success: false, error: e.message }
+        end
+        ```
+
+        ❌ WRONG (Don't do this):
+        ```ruby
+        class StockFetcher  # ❌ NO CLASSES!
+          def execute(symbol:)
+            # ...
+          end
+        end
+        ```
 
         Additional guidelines:
         - For Ruby: Use keyword arguments, return hashes with symbol keys
@@ -76,7 +101,7 @@ module PromptTracker
         - For Node.js: Use async/await if needed, return objects
 
         Generate:
-        1. Function code with the execute method
+        1. Function code with the TOP-LEVEL execute method (no classes!)
         2. JSON Schema for the parameters (what arguments the function accepts) - return as JSON string
         3. List of dependencies/packages needed - return as JSON array string (e.g., ["httparty", "json"])
         4. Example input that demonstrates usage - return as JSON object string

@@ -52,13 +52,19 @@
         </div>
 
         <div class="col-md-3 mb-3">
-          <%= f.label :language, "Language", class: "form-label" %>
+          <%= f.label :language, "Language/Runtime", class: "form-label" %>
           <%= f.select :language,
-                       options_for_select([["Ruby", "ruby"]], function.language),
+                       options_for_select(
+                         PromptTracker::CloudProviders::Aws::LambdaConfig.available_languages.map { |lang|
+                           label = lang[:deprecated] ? "#{lang[:label]} (deprecated)" : lang[:label]
+                           [label, lang[:value]]
+                         },
+                         function.language || PromptTracker::CloudProviders::Aws::LambdaConfig.default_language
+                       ),
                        {},
                        class: "form-select",
                        required: true %>
-          <div class="form-text">Currently only Ruby is supported</div>
+          <div class="form-text">AWS Lambda runtime version</div>
         </div>
       </div>
 

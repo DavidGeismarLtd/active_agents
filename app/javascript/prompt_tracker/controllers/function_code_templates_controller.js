@@ -160,12 +160,16 @@ end`
     // Build modal HTML
     const modalHTML = this.buildTemplateModal()
 
-    // Insert modal into DOM
+    // Insert modal into DOM with modal-fix wrapper
     const modalContainer = document.createElement("div")
+    modalContainer.setAttribute("data-controller", "modal-fix")
     modalContainer.innerHTML = modalHTML
     document.body.appendChild(modalContainer)
 
     const modalElement = modalContainer.querySelector(".modal")
+
+    // Add modal-fix target attribute
+    modalElement.setAttribute("data-modal-fix-target", "modal")
 
     // Add click event listeners to template cards
     modalElement.querySelectorAll(".template-card").forEach(card => {
