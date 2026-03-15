@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import * as bootstrap from "bootstrap"
 
 /**
  * Function Code Templates Controller
@@ -27,15 +28,15 @@ export default class extends Controller {
 def execute(args)
   # Extract arguments
   name = args[:name] || args["name"]
-  
+
   # Your logic here
   result = "Hello, #{name}!"
-  
+
   # Return result
   { message: result }
 end`
     },
-    
+
     api_call: {
       name: "API Call",
       description: "Make HTTP requests to external APIs",
@@ -46,19 +47,19 @@ require 'json'
 def execute(args)
   # Get API endpoint from arguments
   endpoint = args[:endpoint] || args["endpoint"]
-  
+
   # Get API key from environment variables
   api_key = ENV['API_KEY']
-  
+
   # Make HTTP request
   uri = URI(endpoint)
   request = Net::HTTP::Get.new(uri)
   request['Authorization'] = "Bearer #{api_key}"
-  
+
   response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
     http.request(request)
   end
-  
+
   # Parse and return response
   if response.is_a?(Net::HTTPSuccess)
     JSON.parse(response.body)
@@ -67,7 +68,7 @@ def execute(args)
   end
 end`
     },
-    
+
     data_processing: {
       name: "Data Processing",
       description: "Process and transform data",
@@ -75,7 +76,7 @@ end`
 def execute(args)
   # Get data from arguments
   data = args[:data] || args["data"] || []
-  
+
   # Process data
   processed = data.map do |item|
     # Transform each item
@@ -85,7 +86,7 @@ def execute(args)
       timestamp: Time.now.iso8601
     }
   end
-  
+
   # Return processed data
   {
     count: processed.length,
@@ -93,7 +94,7 @@ def execute(args)
   }
 end`
     },
-    
+
     validation: {
       name: "Validation",
       description: "Validate input data",
@@ -101,16 +102,16 @@ end`
 def execute(args)
   # Get data to validate
   email = args[:email] || args["email"]
-  
+
   # Validation rules
   errors = []
-  
+
   if email.nil? || email.empty?
     errors << "Email is required"
   elsif !email.match?(/\\A[\\w+\\-.]+@[a-z\\d\\-]+(\\.[a-z\\d\\-]+)*\\.[a-z]+\\z/i)
     errors << "Email format is invalid"
   end
-  
+
   # Return validation result
   {
     valid: errors.empty?,
@@ -119,7 +120,7 @@ def execute(args)
   }
 end`
     },
-    
+
     conditional_logic: {
       name: "Conditional Logic",
       description: "Execute different logic based on conditions",
@@ -128,7 +129,7 @@ def execute(args)
   # Get action type
   action = args[:action] || args["action"]
   value = args[:value] || args["value"]
-  
+
   # Execute based on action
   case action
   when "uppercase"
@@ -155,21 +156,33 @@ end`
    */
   showTemplates(event) {
     event.preventDefault()
-    
+
     // Build modal HTML
     const modalHTML = this.buildTemplateModal()
-    
+
     // Insert modal into DOM
     const modalContainer = document.createElement("div")
     modalContainer.innerHTML = modalHTML
     document.body.appendChild(modalContainer)
-    
+
+    const modalElement = modalContainer.querySelector(".modal")
+
+    // Add click event listeners to template cards
+    modalElement.querySelectorAll(".template-card").forEach(card => {
+      card.addEventListener("click", (e) => {
+        const templateKey = e.currentTarget.dataset.templateKey
+        this.insertTemplate(templateKey)
+        const modal = bootstrap.Modal.getInstance(modalElement)
+        if (modal) modal.hide()
+      })
+    })
+
     // Show modal
-    const modal = new bootstrap.Modal(modalContainer.querySelector(".modal"))
+    const modal = new bootstrap.Modal(modalElement)
     modal.show()
-    
+
     // Clean up when modal is hidden
-    modalContainer.querySelector(".modal").addEventListener("hidden.bs.modal", () => {
+    modalElement.addEventListener("hidden.bs.modal", () => {
       modalContainer.remove()
     })
   }
@@ -180,7 +193,7 @@ end`
   buildTemplateModal() {
     const templateCards = Object.entries(this.templates).map(([key, template]) => `
       <div class="col-md-6 mb-3">
-        <div class="card h-100 template-card" style="cursor: pointer;" data-action="click->function-code-templates#selectTemplate" data-template-key="${key}">
+        <div class="card h-100 template-card" style="cursor: pointer;" data-template-key="${key}">
           <div class="card-body">
             <h6 class="card-title">
               <i class="bi bi-file-code"></i> ${template.name}
@@ -214,20 +227,26 @@ end`
   }
 
   /**
-   * Insert selected template into Monaco Editor
+   * Insert template code into Monaco Editor
    */
-  selectTemplate(event) {
-    const templateKey = event.currentTarget.dataset.templateKey
+  insertTemplate(templateKey) {
     const template = this.templates[templateKey]
-    
+
     if (template && this.hasMonacoEditorOutlet) {
       // Insert template code into Monaco Editor
       this.monacoEditorOutlet.setValue(template.code)
-      
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(event.currentTarget.closest(".modal"))
-      if (modal) modal.hide()
     }
   }
-}
 
+  /**
+   * Insert selected template into Monaco Editor (kept for backwards compatibility)
+   */
+  selectTemplate(event) {
+    const templateKey = event.currentTarget.dataset.templateKey
+    this.insertTemplate(templateKey)
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(event.currentTarget.closest(".modal"))
+    if (modal) modal.hide()
+  }
+}

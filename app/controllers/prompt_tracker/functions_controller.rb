@@ -5,7 +5,7 @@ module PromptTracker
   # Provides CRUD operations for code-based functions
   class FunctionsController < ApplicationController
     before_action :set_function, only: [ :show, :edit, :update, :destroy, :test, :deploy, :undeploy ]
-    skip_before_action :verify_authenticity_token, only: [ :test, :deploy, :undeploy ]
+    skip_before_action :verify_authenticity_token, only: [ :test, :deploy, :undeploy, :generate_with_ai ]
     # GET /functions
     # List all functions with search and filtering
     def index
@@ -115,6 +115,26 @@ module PromptTracker
       @function.destroy
       redirect_to functions_path,
                   notice: "Function deleted successfully."
+    end
+
+    # POST /functions/generate_with_ai
+    # Generate function code using AI
+    def generate_with_ai
+      description = params[:description]
+      language = params[:language] || "ruby"
+
+      if description.blank?
+        render json: { error: "Description is required" }, status: :unprocessable_entity
+        return
+      end
+      result = FunctionGeneratorService.generate(
+        description: description,
+        language: language
+      )
+      render json: result
+    rescue StandardError => e
+      Rails.logger.error "[FunctionsController] AI generation failed: #{e.message}"
+      render json: { error: "Failed to generate function: #{e.message}" }, status: :internal_server_error
     end
 
     # POST /functions/:id/test

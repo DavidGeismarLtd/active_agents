@@ -174,6 +174,9 @@ PromptTracker::Engine.routes.draw do
   # FUNCTION LIBRARY - Code-based functions
   # ========================================
   resources :functions do
+    collection do
+      post :generate_with_ai # POST /functions/generate_with_ai - Generate function using AI
+    end
     member do
       post :test      # POST /functions/:id/test - Test function with sample inputs
       post :deploy    # POST /functions/:id/deploy - Deploy function to AWS Lambda

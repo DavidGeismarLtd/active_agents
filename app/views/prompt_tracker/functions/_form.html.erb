@@ -1,20 +1,33 @@
-<%= form_with model: @function, url: @function.persisted? ? function_path(@function) : functions_path, local: true, class: "needs-validation", novalidate: true do |f| %>
-  <% if function.errors.any? %>
-    <div class="alert alert-danger">
-      <h4 class="alert-heading">Please fix the following errors:</h4>
-      <ul class="mb-0">
-        <% function.errors.full_messages.each do |message| %>
-          <li><%= message %></li>
-        <% end %>
-      </ul>
-    </div>
-  <% end %>
+<div data-controller="function-ai-generator">
+  <%= form_with model: @function, url: @function.persisted? ? function_path(@function) : functions_path, local: true, class: "needs-validation", novalidate: true do |f| %>
+    <% if function.errors.any? %>
+      <div class="alert alert-danger">
+        <h4 class="alert-heading">Please fix the following errors:</h4>
+        <ul class="mb-0">
+          <% function.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
 
-  <!-- Basic Information -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Basic Information</h5>
-    </div>
+    <!-- AI Generation Button (only for new functions) -->
+    <% unless @function.persisted? %>
+      <div class="mb-4">
+        <button type="button"
+                class="btn btn-primary btn-lg"
+                data-action="click->function-ai-generator#showModal">
+          <i class="bi bi-magic"></i> Create with AI
+        </button>
+        <span class="text-muted ms-2">Or fill out the form manually below</span>
+      </div>
+    <% end %>
+
+    <!-- Basic Information -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Basic Information</h5>
+      </div>
     <div class="card-body">
       <div class="row">
         <div class="col-md-6 mb-3">
@@ -66,13 +79,15 @@
   </div>
 
   <!-- Code -->
-  <div class="card mb-4" data-controller="function-code-templates">
+  <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">
         <i class="bi bi-code-slash"></i> Function Code
       </h5>
       <button type="button"
               class="btn btn-sm btn-outline-primary"
+              data-controller="function-code-templates"
+              data-function-code-templates-monaco-editor-outlet="monaco-editor"
               data-action="click->function-code-templates#showTemplates">
         <i class="bi bi-file-code"></i> Use Template
       </button>
@@ -83,7 +98,8 @@
            data-monaco-editor-language-value="ruby"
            data-monaco-editor-height-value="500px"
            data-monaco-editor-minimap-value="true"
-           data-function-code-templates-monaco-editor-outlet=".monaco-editor">
+           data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+           data-field="code">
         <div data-monaco-editor-target="container" class="monaco-editor"></div>
         <%= f.text_area :code,
                         data: { monaco_editor_target: "textarea" },
@@ -108,7 +124,9 @@
       <div data-controller="monaco-editor"
            data-monaco-editor-language-value="json"
            data-monaco-editor-height-value="300px"
-           data-monaco-editor-minimap-value="false">
+           data-monaco-editor-minimap-value="false"
+           data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+           data-field="parameters">
         <div data-monaco-editor-target="container"></div>
         <%= f.text_area :parameters,
                         value: function.parameters.present? ? JSON.pretty_generate(function.parameters) : "",
@@ -185,7 +203,9 @@
           <div data-controller="monaco-editor"
                data-monaco-editor-language-value="json"
                data-monaco-editor-height-value="200px"
-               data-monaco-editor-minimap-value="false">
+               data-monaco-editor-minimap-value="false"
+               data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+               data-field="example_input">
             <div data-monaco-editor-target="container"></div>
             <%= f.text_area :example_input,
                             data: { monaco_editor_target: "textarea" } %>
@@ -196,7 +216,9 @@
           <div data-controller="monaco-editor"
                data-monaco-editor-language-value="json"
                data-monaco-editor-height-value="200px"
-               data-monaco-editor-minimap-value="false">
+               data-monaco-editor-minimap-value="false"
+               data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+               data-field="example_output">
             <div data-monaco-editor-target="container"></div>
             <%= f.text_area :example_output,
                             data: { monaco_editor_target: "textarea" } %>
@@ -211,4 +233,10 @@
     <%= link_to "Cancel", function.persisted? ? function_path(function) : functions_path, class: "btn btn-outline-secondary" %>
     <%= f.submit function.persisted? ? "Update Function" : "Create Function", class: "btn btn-primary" %>
   </div>
-<% end %>
+  <% end %>
+
+  <!-- AI Generation Modal (inside controller scope) -->
+  <div data-controller="modal-fix">
+    <%= render "prompt_tracker/functions/ai_generator_modal" %>
+  </div>
+</div>

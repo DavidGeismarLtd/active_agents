@@ -60,6 +60,7 @@ module PromptTracker
         prompt_tracker/controllers/function_code_templates_controller.js
         prompt_tracker/controllers/function_test_controller.js
         prompt_tracker/controllers/function_test_controller.js
+        prompt_tracker/controllers/function_ai_generator_controller.js
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)
