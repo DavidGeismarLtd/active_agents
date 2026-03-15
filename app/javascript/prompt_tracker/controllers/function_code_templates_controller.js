@@ -157,19 +157,26 @@ end`
   showTemplates(event) {
     event.preventDefault()
 
+    // Remove focus from button to prevent aria-hidden focus conflict
+    if (event.target) {
+      event.target.blur()
+    }
+
     // Build modal HTML
     const modalHTML = this.buildTemplateModal()
 
-    // Insert modal into DOM with modal-fix wrapper
+    // Create wrapper with modal-fix controller
     const modalContainer = document.createElement("div")
-    modalContainer.setAttribute("data-controller", "modal-fix")
     modalContainer.innerHTML = modalHTML
-    document.body.appendChild(modalContainer)
 
     const modalElement = modalContainer.querySelector(".modal")
 
-    // Add modal-fix target attribute
+    // Add modal-fix attributes BEFORE appending to DOM
+    modalContainer.setAttribute("data-controller", "modal-fix")
     modalElement.setAttribute("data-modal-fix-target", "modal")
+
+    // Now append to body (this will trigger Stimulus to connect the controller)
+    document.body.appendChild(modalContainer)
 
     // Add click event listeners to template cards
     modalElement.querySelectorAll(".template-card").forEach(card => {
@@ -181,9 +188,11 @@ end`
       })
     })
 
-    // Show modal
-    const modal = new bootstrap.Modal(modalElement)
-    modal.show()
+    // Show modal after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+      const modal = new bootstrap.Modal(modalElement)
+      modal.show()
+    }, 10)
 
     // Clean up when modal is hidden
     modalElement.addEventListener("hidden.bs.modal", () => {
