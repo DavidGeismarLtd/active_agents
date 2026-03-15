@@ -155,5 +155,18 @@ export default class extends Controller {
       this.editor.setValue(value)
     }
   }
-}
 
+  /**
+   * Set editor language
+   * @param {String} language - Monaco language identifier (e.g., "ruby", "python", "javascript")
+   */
+  setLanguage(language) {
+    if (this.editor) {
+      const model = this.editor.getModel()
+      if (model) {
+        window.monaco.editor.setModelLanguage(model, language)
+        console.log("[MonacoEditorController] Language changed to:", language)
+      }
+    }
+  }
+}

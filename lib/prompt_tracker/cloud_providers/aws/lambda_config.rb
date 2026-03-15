@@ -91,6 +91,22 @@ module PromptTracker
           "ruby3.3"
         end
 
+        # Map AWS Lambda runtime to Monaco editor language identifier
+        # @param runtime [String] AWS Lambda runtime identifier (e.g., "ruby3.3", "python3.12", "nodejs22.x")
+        # @return [String] Monaco editor language identifier (e.g., "ruby", "python", "javascript")
+        def self.monaco_language(runtime)
+          case runtime
+          when /^ruby/
+            "ruby"
+          when /^python/
+            "python"
+          when /^nodejs/
+            "javascript"
+          else
+            "plaintext"
+          end
+        end
+
         private
 
         def self.deprecated?(deprecation_date)

@@ -1,4 +1,4 @@
-<div data-controller="function-ai-generator">
+<div data-controller="function-ai-generator function-language-switcher">
   <%= form_with model: @function, url: @function.persisted? ? function_path(@function) : functions_path, local: true, class: "needs-validation", novalidate: true do |f| %>
     <% if function.errors.any? %>
       <div class="alert alert-danger">
@@ -63,7 +63,8 @@
                        ),
                        {},
                        class: "form-select",
-                       required: true %>
+                       required: true,
+                       data: { action: "change->function-language-switcher#updateEditorLanguage" } %>
           <div class="form-text">AWS Lambda runtime version</div>
         </div>
       </div>
@@ -99,13 +100,14 @@
       </button>
     </div>
     <div class="card-body">
-      <%= f.label :code, "Ruby Code", class: "form-label" %>
+      <%= f.label :code, "Code", class: "form-label" %>
       <div data-controller="monaco-editor"
            data-monaco-editor-language-value="ruby"
            data-monaco-editor-height-value="500px"
            data-monaco-editor-minimap-value="true"
            data-function-ai-generator-monaco-editor-outlet="monaco-editor"
-           data-field="code">
+           data-field="code"
+           data-function-editor-target="codeEditor">
         <div data-monaco-editor-target="container" class="monaco-editor"></div>
         <%= f.text_area :code,
                         data: { monaco_editor_target: "textarea" },
@@ -179,7 +181,7 @@
       </h5>
     </div>
     <div class="card-body">
-      <%= f.label :dependencies, "Ruby Gems (JSON array)", class: "form-label" %>
+      <%= f.label :dependencies, "Dependencies (JSON array)", class: "form-label" %>
       <div data-controller="monaco-editor"
            data-monaco-editor-language-value="json"
            data-monaco-editor-height-value="150px"
@@ -192,7 +194,7 @@
                         data: { monaco_editor_target: "textarea" } %>
       </div>
       <div class="form-text mt-2">
-        List of Ruby gems required by this function (e.g., <code>["httparty", "json"]</code>)
+        List of dependencies required by this function (e.g., <code>["httparty", "json"]</code> for Ruby, <code>["requests"]</code> for Python)
       </div>
     </div>
   </div>
