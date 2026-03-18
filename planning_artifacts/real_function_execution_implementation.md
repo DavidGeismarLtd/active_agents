@@ -1,11 +1,22 @@
 # Real Function Execution Implementation
 
-**Date**: 2026-03-18  
+**Date**: 2026-03-18
 **Status**: ✅ Complete
+**Commits**: `8c93a6f`, `46ba5a1`, `cf9b066`
 
 ## Overview
 
 Integrated the existing AWS Lambda CodeExecutor into the AgentRuntimeService to enable real serverless function execution for deployed agents. Functions are now automatically deployed to AWS Lambda on first use and executed in a secure, sandboxed environment.
+
+## Key Challenge Solved
+
+**Problem**: RubyLLM gem was handling function execution internally with mock responses. The `AgentRuntimeService#execute_single_function` method was never being called because RubyLLM's `DynamicToolBuilder` had hardcoded mock execution logic.
+
+**Solution**: Added a **custom executor callback** pattern that bridges RubyLLM's tool execution with our real Lambda-based execution:
+1. `DynamicToolBuilder` now accepts an optional `executor` proc
+2. `RubyLlmService` passes through the `function_executor` parameter
+3. `AgentRuntimeService` provides a lambda that calls `execute_single_function`
+4. When RubyLLM triggers a tool, it calls our lambda → which deploys & executes on Lambda → returns real results
 
 ## What Was Implemented
 
@@ -26,9 +37,63 @@ Added deployment lifecycle methods to `app/models/prompt_tracker/function_defini
 - Resets deployment status to "not_deployed"
 - Clears Lambda function name and deployment metadata
 
-### 2. AgentRuntimeService - Real Execution
+### 2. DynamicToolBuilder - Custom Executor Support
+
+Updated `app/services/prompt_tracker/ruby_llm/dynamic_tool_builder.rb`:
+
+**New `executor` parameter:**
+- Accepts a `Proc` that receives `(function_name, arguments)` and returns the execution result
+- If provided, the tool's `execute` method calls the proc instead of returning mocks
+- Falls back to `mock_function_outputs` or default mocks if no executor is provided
+
+**Before (Mock only):**
+```ruby
+define_method(:execute) do |**args|
+  { status: "success", result: "Mock response for #{func_name}" }
+end
+```
+
+**After (Real execution):**
+```ruby
+define_method(:execute) do |**args|
+  if custom_executor
+    custom_executor.call(func_name, args)
+  else
+    # Fall back to mocks
+  end
+end
+```
+
+### 3. RubyLlmService - Executor Pass-through
+
+Updated `app/services/prompt_tracker/llm_clients/ruby_llm_service.rb`:
+
+**New `function_executor` parameter:**
+- Added to `.call` and `.build_chat` methods
+- Stored as instance variable
+- Passed to `DynamicToolBuilder.build` when creating tool classes
+
+### 4. AgentRuntimeService - Real Execution
 
 Updated `app/services/prompt_tracker/agent_runtime_service.rb`:
+
+**Custom executor lambda:**
+```ruby
+executor = lambda do |function_name, arguments|
+  func_def = deployed_agent.function_definitions.find_by(name: function_name)
+  result = execute_single_function(func_def, arguments, @conversation)
+  result[:success?] ? result[:result] : { error: result[:error] }
+end
+
+LlmClients::RubyLlmService.call(
+  model: model_config[:model],
+  prompt: user_prompt,
+  system: system_prompt,
+  tools: [:functions],
+  tool_config: { "functions" => tools },
+  function_executor: executor  # ← This is the key!
+)
+```
 
 **`execute_single_function` method:**
 - **Auto-deployment**: Checks if function is deployed; if not, deploys it automatically
@@ -37,27 +102,28 @@ Updated `app/services/prompt_tracker/agent_runtime_service.rb`:
 - **Comprehensive logging**: Logs function name, arguments, success status, and execution time
 - **Execution tracking**: Creates `FunctionExecution` records with real results
 
-**Before (Mock):**
+**Implementation:**
 ```ruby
-result = {
-  success?: true,
-  result: { message: "Function execution not yet implemented" },
-  error: nil
-}
-```
+def execute_single_function(func_def, arguments, conversation)
+  # Auto-deploy if needed
+  unless func_def.deployed?
+    Rails.logger.info "Function #{func_def.name} not deployed. Deploying now..."
+    unless func_def.deploy
+      return { success?: false, error: "Failed to deploy: #{func_def.deployment_error}" }
+    end
+  end
 
-**After (Real):**
-```ruby
-# Auto-deploy if needed
-unless func_def.deployed?
-  func_def.deploy
+  # Execute on Lambda
+  result = CodeExecutor.execute(
+    lambda_function_name: func_def.lambda_function_name,
+    arguments: arguments
+  )
+
+  # Track execution
+  FunctionExecution.create!(...)
+
+  { success?: result.success?, result: result.result, error: result.error }
 end
-
-# Execute on Lambda
-result = CodeExecutor.execute(
-  lambda_function_name: func_def.lambda_function_name,
-  arguments: arguments
-)
 ```
 
 ## Architecture Flow
@@ -145,7 +211,9 @@ See `docs/aws_lambda_setup.md` for detailed AWS setup instructions.
 ## Files Changed
 
 - ✅ `app/models/prompt_tracker/function_definition.rb` - Added deploy/undeploy methods
-- ✅ `app/services/prompt_tracker/agent_runtime_service.rb` - Replaced mock with real execution
+- ✅ `app/services/prompt_tracker/ruby_llm/dynamic_tool_builder.rb` - Added executor parameter
+- ✅ `app/services/prompt_tracker/llm_clients/ruby_llm_service.rb` - Added function_executor parameter
+- ✅ `app/services/prompt_tracker/agent_runtime_service.rb` - Created custom executor lambda
 - ✅ `planning_artifacts/real_function_execution_implementation.md` - This document
 
 ## Next Steps
@@ -170,4 +238,3 @@ See `docs/aws_lambda_setup.md` for detailed AWS setup instructions.
 - ✅ Execution tracking captures real results
 - ✅ Error handling is robust
 - ✅ Zero manual deployment steps required
-
