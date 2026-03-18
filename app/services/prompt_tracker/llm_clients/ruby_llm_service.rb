@@ -136,7 +136,8 @@ module PromptTracker
           response = chat.ask(prompt)
 
           log_response(response)
-          LlmResponseNormalizers::RubyLlm.normalize(response)
+          # Pass chat.messages to extract all tool calls from conversation history
+          LlmResponseNormalizers::RubyLlm.normalize(response, chat_messages: chat.messages)
         end
       end
 

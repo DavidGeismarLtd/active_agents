@@ -79,6 +79,16 @@ module PromptTracker
              class_name: "PromptTracker::EvaluatorConfig",
              dependent: :destroy
 
+    has_many :deployed_agents,
+             class_name: "PromptTracker::DeployedAgent",
+             dependent: :restrict_with_error,
+             inverse_of: :prompt_version
+
+    has_many :deployed_agents,
+             class_name: "PromptTracker::DeployedAgent",
+             dependent: :restrict_with_error,
+             inverse_of: :prompt_version
+
     # Validations
     validates :user_prompt, presence: true
     validates :version_number, presence: true, numericality: { only_integer: true, greater_than: 0 }

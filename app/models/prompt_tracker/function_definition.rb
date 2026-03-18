@@ -83,6 +83,15 @@ module PromptTracker
              source: :environment_variable,
              class_name: "PromptTracker::EnvironmentVariable"
 
+    has_many :deployed_agent_functions,
+             class_name: "PromptTracker::DeployedAgentFunction",
+             dependent: :restrict_with_error,
+             inverse_of: :function_definition
+
+    has_many :deployed_agents,
+             through: :deployed_agent_functions,
+             class_name: "PromptTracker::DeployedAgent"
+
     # Validations
     validates :name, presence: true, uniqueness: true
     validates :code, presence: true

@@ -1,0 +1,81 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="bi bi-list-ul"></i> Recent Requests</h5>
+  </div>
+  <div class="card-body p-0">
+    <% if recent_responses.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Conversation</th>
+              <th>Status</th>
+              <th>Response Time</th>
+              <th>Tokens</th>
+              <th>Cost</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recent_responses.each do |response| %>
+              <tr>
+                <td>
+                  <%= time_ago_in_words(response.created_at) %> ago
+                  <br>
+                  <small class="text-muted"><%= response.created_at.strftime("%Y-%m-%d %H:%M:%S") %></small>
+                </td>
+                <td>
+                  <% if response.agent_conversation %>
+                    <code><%= response.agent_conversation.conversation_id.truncate(20) %></code>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if response.status == "success" %>
+                    <span class="badge bg-success">Success</span>
+                  <% else %>
+                    <span class="badge bg-danger">Error</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if response.execution_time_ms %>
+                    <%= response.execution_time_ms %>ms
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if response.total_tokens %>
+                    <%= number_with_delimiter(response.total_tokens) %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if response.cost_usd %>
+                    $<%= sprintf("%.4f", response.cost_usd) %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to monitoring_llm_response_path(response), class: "btn btn-sm btn-outline-primary" do %>
+                    <i class="bi bi-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #9CA3AF;"></i>
+        <p class="text-muted mt-3">No requests yet</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+

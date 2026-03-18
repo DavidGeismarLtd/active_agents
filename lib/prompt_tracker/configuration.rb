@@ -158,6 +158,25 @@ module PromptTracker
     #   }
     attr_accessor :function_providers
 
+    # Base URL for deployed agents (used to generate public URLs).
+    # @return [String] base URL (e.g., "https://api.example.com")
+    # @example
+    #   config.agent_base_url = "https://api.example.com"
+    #   # Deployed agents will be accessible at:
+    #   # https://api.example.com/agents/{slug}/chat
+    attr_accessor :agent_base_url
+
+    # Default deployment configuration for new deployed agents.
+    # @return [Hash] default config hash
+    # @example
+    #   {
+    #     auth: { type: "api_key" },
+    #     rate_limit: { requests_per_minute: 60 },
+    #     conversation_ttl: 3600,  # 1 hour
+    #     allowed_origins: []
+    #   }
+    attr_accessor :default_deployment_config
+
     # Initialize with default values.
     def initialize
       @basic_auth_username = nil
@@ -170,6 +189,13 @@ module PromptTracker
       @url_options_provider = nil
       @base_record_class = "::ActiveRecord::Base"
       @function_providers = {}
+      @agent_base_url = "http://localhost:3000"
+      @default_deployment_config = {
+        auth: { type: "api_key" },
+        rate_limit: { requests_per_minute: 60 },
+        conversation_ttl: 3600,  # 1 hour
+        allowed_origins: []
+      }
     end
 
     # Check if basic authentication is enabled.

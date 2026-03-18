@@ -51,6 +51,26 @@ module PromptTracker
                class_name: "PromptTracker::FunctionDefinition",
                inverse_of: :function_executions
 
+    belongs_to :deployed_agent,
+               class_name: "PromptTracker::DeployedAgent",
+               optional: true,
+               inverse_of: :function_executions
+
+    belongs_to :agent_conversation,
+               class_name: "PromptTracker::AgentConversation",
+               optional: true,
+               inverse_of: :function_executions
+
+    belongs_to :deployed_agent,
+               class_name: "PromptTracker::DeployedAgent",
+               optional: true,
+               inverse_of: :function_executions
+
+    belongs_to :agent_conversation,
+               class_name: "PromptTracker::AgentConversation",
+               optional: true,
+               inverse_of: :function_executions
+
     # Validations
     validates :arguments, presence: true
     validates :executed_at, presence: true

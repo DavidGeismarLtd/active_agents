@@ -515,6 +515,512 @@ datetime_formatter = PromptTracker::FunctionDefinition.create!(
 
 puts "  ✓ Created date/time formatter function"
 
+# ============================================================================
+# 9. News API Function (for News Analyst)
+# ============================================================================
+news_api_function = PromptTracker::FunctionDefinition.create!(
+  name: "fetch_news_articles",
+  description: "Fetch latest news articles from NewsAPI for a given topic",
+  category: "api",
+  tags: [ "news", "api", "media" ],
+  language: "ruby",
+  code: <<~'RUBY',
+    def execute(topic:, from_date: nil, language: "en", page_size: 10)
+      require 'net/http'
+      require 'json'
+      require 'uri'
+
+      api_key = env['NEWS_API_KEY']
+      base_url = "https://newsapi.org/v2/everything"
+
+      params = {
+        q: topic,
+        language: language,
+        pageSize: page_size,
+        sortBy: "publishedAt",
+        apiKey: api_key
+      }
+      params[:from] = from_date if from_date
+
+      uri = URI(base_url)
+      uri.query = URI.encode_www_form(params)
+
+      response = Net::HTTP.get_response(uri)
+      data = JSON.parse(response.body)
+
+      if data['status'] == 'ok'
+        {
+          total_results: data['totalResults'],
+          articles: data['articles'].map do |article|
+            {
+              title: article['title'],
+              description: article['description'],
+              url: article['url'],
+              source: article['source']['name'],
+              published_at: article['publishedAt'],
+              author: article['author']
+            }
+          end
+        }
+      else
+        { error: data['message'] || 'Failed to fetch news' }
+      end
+    end
+  RUBY
+  parameters: {
+    "type" => "object",
+    "properties" => {
+      "topic" => {
+        "type" => "string",
+        "description" => "News topic or search query"
+      },
+      "from_date" => {
+        "type" => "string",
+        "description" => "Start date for articles (YYYY-MM-DD format)",
+        "default" => nil
+      },
+      "language" => {
+        "type" => "string",
+        "description" => "Language code (e.g., 'en', 'fr', 'es')",
+        "default" => "en"
+      },
+      "page_size" => {
+        "type" => "integer",
+        "description" => "Number of articles to return (max 100)",
+        "default" => 10
+      }
+    },
+    "required" => [ "topic" ]
+  },
+  dependencies: [],
+  example_input: {
+    "topic" => "artificial intelligence",
+    "language" => "en",
+    "page_size" => 5
+  },
+  example_output: {
+    "total_results" => 1247,
+    "articles" => [
+      {
+        "title" => "AI Breakthrough in Medical Diagnosis",
+        "description" => "New AI system achieves 95% accuracy...",
+        "url" => "https://example.com/article",
+        "source" => "TechNews",
+        "published_at" => "2024-03-12T10:30:00Z",
+        "author" => "Jane Smith"
+      }
+    ]
+  },
+  created_by: "system"
+)
+
+news_api_key = PromptTracker::EnvironmentVariable.create!(
+  name: "NewsAPI Key",
+  key: "NEWS_API_KEY",
+  value: "demo_newsapi_key_xyz789",
+  description: "API key for NewsAPI.org - used for fetching news articles"
+)
+news_api_function.shared_environment_variables << news_api_key
+
+puts "  ✓ Created news API function (using shared NEWS_API_KEY)"
+
+# ============================================================================
+# 10. Flight Search Function (for Travel Booking Assistant)
+# ============================================================================
+flight_search_function = PromptTracker::FunctionDefinition.create!(
+  name: "search_flights",
+  description: "Search for available flights between two airports",
+  category: "travel",
+  tags: [ "travel", "flights", "booking" ],
+  language: "ruby",
+  code: <<~'RUBY',
+    def execute(origin:, destination:, date:, passengers: 1)
+      require 'date'
+
+      # Mock flight search - in production, this would call a real flight API
+      departure_date = Date.parse(date)
+
+      # Generate mock flight results
+      flights = [
+        {
+          flight_id: "FL#{rand(1000..9999)}",
+          airline: ["United", "Delta", "American", "Southwest"].sample,
+          departure_time: "#{date}T08:00:00Z",
+          arrival_time: "#{date}T12:30:00Z",
+          price: rand(200..800),
+          currency: "USD",
+          available_seats: rand(10..50),
+          duration_minutes: 270
+        },
+        {
+          flight_id: "FL#{rand(1000..9999)}",
+          airline: ["United", "Delta", "American", "Southwest"].sample,
+          departure_time: "#{date}T14:00:00Z",
+          arrival_time: "#{date}T18:30:00Z",
+          price: rand(200..800),
+          currency: "USD",
+          available_seats: rand(10..50),
+          duration_minutes: 270
+        }
+      ]
+
+      {
+        origin: origin,
+        destination: destination,
+        date: date,
+        passengers: passengers,
+        flights: flights
+      }
+    end
+  RUBY
+  parameters: {
+    "type" => "object",
+    "properties" => {
+      "origin" => {
+        "type" => "string",
+        "description" => "Origin airport code (e.g., JFK, LAX)"
+      },
+      "destination" => {
+        "type" => "string",
+        "description" => "Destination airport code"
+      },
+      "date" => {
+        "type" => "string",
+        "description" => "Departure date in YYYY-MM-DD format"
+      },
+      "passengers" => {
+        "type" => "integer",
+        "description" => "Number of passengers",
+        "default" => 1
+      }
+    },
+    "required" => [ "origin", "destination", "date" ]
+  },
+  dependencies: [],
+  example_input: {
+    "origin" => "JFK",
+    "destination" => "LAX",
+    "date" => "2024-04-15",
+    "passengers" => 2
+  },
+  example_output: {
+    "origin" => "JFK",
+    "destination" => "LAX",
+    "date" => "2024-04-15",
+    "passengers" => 2,
+    "flights" => [
+      {
+        "flight_id" => "FL1234",
+        "airline" => "Delta",
+        "departure_time" => "2024-04-15T08:00:00Z",
+        "arrival_time" => "2024-04-15T12:30:00Z",
+        "price" => 450,
+        "currency" => "USD",
+        "available_seats" => 25,
+        "duration_minutes" => 270
+      }
+    ]
+  },
+  created_by: "system"
+)
+
+puts "  ✓ Created flight search function"
+
+# ============================================================================
+# 11. Hotel Search Function (for Travel Booking Assistant)
+# ============================================================================
+hotel_search_function = PromptTracker::FunctionDefinition.create!(
+  name: "search_hotels",
+  description: "Search for available hotels in a city",
+  category: "travel",
+  tags: [ "travel", "hotels", "booking" ],
+  language: "ruby",
+  code: <<~'RUBY',
+    def execute(city:, check_in:, check_out:, guests: 2)
+      require 'date'
+
+      # Mock hotel search - in production, this would call a real hotel API
+      hotels = [
+        {
+          hotel_id: "HTL#{rand(1000..9999)}",
+          name: "Grand Plaza Hotel",
+          address: "123 Main St, #{city}",
+          star_rating: 4,
+          price_per_night: rand(150..300),
+          currency: "USD",
+          available_rooms: rand(5..20),
+          amenities: ["WiFi", "Pool", "Gym", "Restaurant"],
+          distance_from_center_km: rand(1.0..5.0).round(1)
+        },
+        {
+          hotel_id: "HTL#{rand(1000..9999)}",
+          name: "Budget Inn",
+          address: "456 Oak Ave, #{city}",
+          star_rating: 3,
+          price_per_night: rand(80..150),
+          currency: "USD",
+          available_rooms: rand(5..20),
+          amenities: ["WiFi", "Parking"],
+          distance_from_center_km: rand(2.0..8.0).round(1)
+        }
+      ]
+
+      {
+        city: city,
+        check_in: check_in,
+        check_out: check_out,
+        guests: guests,
+        hotels: hotels
+      }
+    end
+  RUBY
+  parameters: {
+    "type" => "object",
+    "properties" => {
+      "city" => {
+        "type" => "string",
+        "description" => "City name to search for hotels"
+      },
+      "check_in" => {
+        "type" => "string",
+        "description" => "Check-in date in YYYY-MM-DD format"
+      },
+      "check_out" => {
+        "type" => "string",
+        "description" => "Check-out date in YYYY-MM-DD format"
+      },
+      "guests" => {
+        "type" => "integer",
+        "description" => "Number of guests",
+        "default" => 2
+      }
+    },
+    "required" => [ "city", "check_in", "check_out" ]
+  },
+  dependencies: [],
+  example_input: {
+    "city" => "Paris",
+    "check_in" => "2024-05-01",
+    "check_out" => "2024-05-05",
+    "guests" => 2
+  },
+  example_output: {
+    "city" => "Paris",
+    "check_in" => "2024-05-01",
+    "check_out" => "2024-05-05",
+    "guests" => 2,
+    "hotels" => [
+      {
+        "hotel_id" => "HTL5678",
+        "name" => "Grand Plaza Hotel",
+        "address" => "123 Main St, Paris",
+        "star_rating" => 4,
+        "price_per_night" => 220,
+        "currency" => "USD",
+        "available_rooms" => 12,
+        "amenities" => [ "WiFi", "Pool", "Gym", "Restaurant" ],
+        "distance_from_center_km" => 2.3
+      }
+    ]
+  },
+  created_by: "system"
+)
+
+puts "  ✓ Created hotel search function"
+
+# ============================================================================
+# 12. Product Search Function (for E-commerce Assistant)
+# ============================================================================
+product_search_function = PromptTracker::FunctionDefinition.create!(
+  name: "search_products",
+  description: "Search for products in the e-commerce catalog",
+  category: "ecommerce",
+  tags: [ "ecommerce", "products", "search" ],
+  language: "ruby",
+  code: <<~'RUBY',
+    def execute(query:, category: nil, max_price: nil, in_stock: true)
+      # Mock product search - in production, this would query a real database
+      products = [
+        {
+          product_id: "PROD#{rand(10000..99999)}",
+          name: "#{query.capitalize} Pro",
+          description: "High-quality #{query} with advanced features",
+          price: rand(50..500),
+          currency: "USD",
+          category: category || "Electronics",
+          in_stock: true,
+          stock_quantity: rand(10..100),
+          rating: rand(3.5..5.0).round(1),
+          image_url: "https://example.com/images/product1.jpg"
+        },
+        {
+          product_id: "PROD#{rand(10000..99999)}",
+          name: "#{query.capitalize} Basic",
+          description: "Affordable #{query} for everyday use",
+          price: rand(20..200),
+          currency: "USD",
+          category: category || "Electronics",
+          in_stock: true,
+          stock_quantity: rand(10..100),
+          rating: rand(3.0..4.5).round(1),
+          image_url: "https://example.com/images/product2.jpg"
+        }
+      ]
+
+      # Filter by max_price if provided
+      products = products.select { |p| p[:price] <= max_price } if max_price
+
+      # Filter by in_stock if requested
+      products = products.select { |p| p[:in_stock] } if in_stock
+
+      {
+        query: query,
+        category: category,
+        max_price: max_price,
+        in_stock_only: in_stock,
+        results_count: products.length,
+        products: products
+      }
+    end
+  RUBY
+  parameters: {
+    "type" => "object",
+    "properties" => {
+      "query" => {
+        "type" => "string",
+        "description" => "Search query for products"
+      },
+      "category" => {
+        "type" => "string",
+        "description" => "Product category filter (optional)"
+      },
+      "max_price" => {
+        "type" => "number",
+        "description" => "Maximum price filter (optional)"
+      },
+      "in_stock" => {
+        "type" => "boolean",
+        "description" => "Only show in-stock items",
+        "default" => true
+      }
+    },
+    "required" => [ "query" ]
+  },
+  dependencies: [],
+  example_input: {
+    "query" => "laptop",
+    "category" => "Electronics",
+    "max_price" => 1000,
+    "in_stock" => true
+  },
+  example_output: {
+    "query" => "laptop",
+    "category" => "Electronics",
+    "max_price" => 1000,
+    "in_stock_only" => true,
+    "results_count" => 2,
+    "products" => [
+      {
+        "product_id" => "PROD12345",
+        "name" => "Laptop Pro",
+        "description" => "High-quality laptop with advanced features",
+        "price" => 899,
+        "currency" => "USD",
+        "category" => "Electronics",
+        "in_stock" => true,
+        "stock_quantity" => 45,
+        "rating" => 4.7,
+        "image_url" => "https://example.com/images/product1.jpg"
+      }
+    ]
+  },
+  created_by: "system"
+)
+
+puts "  ✓ Created product search function"
+
+# ============================================================================
+# 13. Order Status Function (for E-commerce Assistant)
+# ============================================================================
+order_status_function = PromptTracker::FunctionDefinition.create!(
+  name: "get_order_status",
+  description: "Get the status and details of a customer order",
+  category: "ecommerce",
+  tags: [ "ecommerce", "orders", "tracking" ],
+  language: "ruby",
+  code: <<~'RUBY',
+    def execute(order_id:)
+      require 'date'
+
+      # Mock order lookup - in production, this would query a real database
+      statuses = ["processing", "shipped", "delivered", "cancelled"]
+      carriers = ["UPS", "FedEx", "USPS", "DHL"]
+
+      status = statuses.sample
+      order_date = (Date.today - rand(1..30)).to_s
+
+      result = {
+        order_id: order_id,
+        status: status,
+        order_date: "#{order_date}T10:30:00Z",
+        items: [
+          {
+            product_id: "PROD#{rand(10000..99999)}",
+            name: "Sample Product",
+            quantity: rand(1..3),
+            price: rand(20..200)
+          }
+        ]
+      }
+
+      if status == "shipped" || status == "delivered"
+        result[:tracking_number] = "1Z#{rand(100000000..999999999)}"
+        result[:carrier] = carriers.sample
+        result[:estimated_delivery] = (Date.today + rand(1..5)).to_s + "T00:00:00Z"
+      end
+
+      result
+    end
+  RUBY
+  parameters: {
+    "type" => "object",
+    "properties" => {
+      "order_id" => {
+        "type" => "string",
+        "description" => "The order ID to look up"
+      }
+    },
+    "required" => [ "order_id" ]
+  },
+  dependencies: [],
+  example_input: {
+    "order_id" => "ORD-2024-12345"
+  },
+  example_output: {
+    "order_id" => "ORD-2024-12345",
+    "status" => "shipped",
+    "order_date" => "2024-03-01T10:30:00Z",
+    "estimated_delivery" => "2024-03-15T00:00:00Z",
+    "tracking_number" => "1Z123456789",
+    "carrier" => "UPS",
+    "items" => [
+      {
+        "product_id" => "PROD12345",
+        "name" => "Sample Product",
+        "quantity" => 2,
+        "price" => 99
+      }
+    ]
+  },
+  created_by: "system"
+)
+
+puts "  ✓ Created order status function"
+
 puts "\n✅ Function Library seeded:"
-puts "   - 3 shared environment variables"
-puts "   - 8 example functions (2 using shared variables)"
+puts "   - 4 shared environment variables"
+puts "   - 13 example functions (3 using shared variables)"
+puts "\n📦 Functions by category:"
+puts "   - News: fetch_news_articles"
+puts "   - Travel: search_flights, search_hotels"
+puts "   - E-commerce: search_products, get_order_status"

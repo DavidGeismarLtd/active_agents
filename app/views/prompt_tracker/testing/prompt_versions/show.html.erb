@@ -32,6 +32,9 @@
         <%= link_to monitoring_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-success" do %>
           <i class="bi bi-activity"></i> View in Monitoring
         <% end %>
+        <%= link_to new_deployed_agent_path(prompt_version_id: @version.id), class: "btn btn-outline-purple" do %>
+          <i class="bi bi-robot"></i> Deploy Agent
+        <% end %>
         <% unless @version.active? %>
           <%= button_to activate_testing_prompt_prompt_version_path(@prompt, @version), method: :post, class: "btn btn-success", data: { confirm: "Activate this version? This will deprecate all other versions." } do %>
             <i class="bi bi-check-circle"></i> Activate Version

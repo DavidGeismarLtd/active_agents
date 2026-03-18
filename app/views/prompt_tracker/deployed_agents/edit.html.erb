@@ -1,0 +1,33 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item"><%= link_to @agent.name, deployed_agent_path(@agent.slug) %></li>
+  <li class="breadcrumb-item active">Settings</li>
+<% end %>
+
+<div class="deployed-agent-edit">
+  <div class="page-header" style="background-color: #F3E8FF; border-left: 4px solid #9333EA; padding: 1.5rem; margin-bottom: 2rem;">
+    <h1 style="color: #581C87; margin: 0;">
+      <i class="bi bi-gear"></i> Agent Settings
+    </h1>
+    <p style="color: #581C87; margin: 0.5rem 0 0 0;">
+      Configure <%= @agent.name %>
+    </p>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <%= render "form", agent: @agent, prompt: @prompt, version: @version %>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-shield-lock"></i> Security</h6>
+        </div>
+        <div class="card-body">
+          <p class="small">API keys cannot be viewed after creation. If you've lost your key, you'll need to delete and redeploy the agent.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

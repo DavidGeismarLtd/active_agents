@@ -188,6 +188,16 @@ PromptTracker::Engine.routes.draw do
   resources :environment_variables, path: "environment-variables"
 
   # ========================================
+  # DEPLOYED AGENTS - Live agent deployments
+  # ========================================
+  resources :deployed_agents, path: "agents", param: :slug do
+    member do
+      post :pause
+      post :resume
+    end
+  end
+
+  # ========================================
   # API SECTION - Internal API endpoints
   # ========================================
   namespace :api do

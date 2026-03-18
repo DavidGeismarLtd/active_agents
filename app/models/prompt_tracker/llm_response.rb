@@ -99,6 +99,16 @@ module PromptTracker
              class_name: "PromptTracker::HumanEvaluation",
              dependent: :destroy
 
+    belongs_to :deployed_agent,
+               class_name: "PromptTracker::DeployedAgent",
+               optional: true,
+               inverse_of: :llm_responses
+
+    belongs_to :agent_conversation,
+               class_name: "PromptTracker::AgentConversation",
+               optional: true,
+               inverse_of: :llm_responses
+
     # Callbacks
     # Auto-evaluate all production tracked calls
     after_create :trigger_auto_evaluation

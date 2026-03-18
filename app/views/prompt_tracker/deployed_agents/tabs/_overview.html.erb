@@ -1,0 +1,130 @@
+<div class="row">
+  <!-- API Endpoint -->
+  <div class="col-md-12 mb-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> API Endpoint</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Chat Endpoint</label>
+          <div class="input-group">
+            <input type="text" class="form-control font-monospace" value="<%= agent.public_url %>" readonly>
+            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('<%= agent.public_url %>')">
+              <i class="bi bi-clipboard"></i> Copy
+            </button>
+            <% if agent.config[:enable_web_ui] %>
+              <%= link_to "/agents/#{agent.slug}/chat", class: "btn btn-primary", target: "_blank" do %>
+                <i class="bi bi-chat-dots"></i> Test Agent
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="alert alert-info mb-0">
+          <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Authentication</h6>
+          <p class="mb-0">Include the API key in the <code>Authorization</code> header:</p>
+          <pre class="mb-0 mt-2"><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration -->
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-gear"></i> Configuration</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <tbody>
+            <tr>
+              <th style="width: 40%;">Conversation TTL</th>
+              <td><%= agent.config[:conversation_ttl] %> seconds (<%= distance_of_time_in_words(agent.config[:conversation_ttl]) %>)</td>
+            </tr>
+            <tr>
+              <th>Rate Limit</th>
+              <td><%= agent.config.dig(:rate_limit, :requests_per_minute) || "Unlimited" %> requests/min</td>
+            </tr>
+            <tr>
+              <th>Auth Type</th>
+              <td><%= agent.config.dig(:auth, :type)&.titleize || "None" %></td>
+            </tr>
+            <tr>
+              <th>Web UI</th>
+              <td>
+                <% if agent.config[:enable_web_ui] %>
+                  <span class="badge bg-success">Enabled</span>
+                <% else %>
+                  <span class="badge bg-secondary">Disabled</span>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <th>CORS Origins</th>
+              <td>
+                <% origins = agent.config.dig(:cors, :allowed_origins) %>
+                <% if origins.present? %>
+                  <%= origins.is_a?(Array) ? origins.join(", ") : origins %>
+                <% else %>
+                  <span class="text-muted">All origins</span>
+                <% end %>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt Version Info -->
+  <div class="col-md-6 mb-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-file-text"></i> Prompt Version</h5>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <tbody>
+            <tr>
+              <th style="width: 40%;">Prompt</th>
+              <td><%= link_to prompt.name, testing_prompt_prompt_version_path(prompt, version) %></td>
+            </tr>
+            <tr>
+              <th>Version</th>
+              <td>v<%= version.version_number %> (<%= version.status %>)</td>
+            </tr>
+            <tr>
+              <th>Model</th>
+              <td>
+                <% if version.model_config["provider"] && version.model_config["model"] %>
+                  <%= version.model_config["provider"] %> / <%= version.model_config["model"] %>
+                <% else %>
+                  <span class="text-muted">Not configured</span>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <th>API</th>
+              <td><%= version.model_config["api"]&.titleize || "N/A" %></td>
+            </tr>
+          </tbody>
+        </table>
+        <%= link_to testing_prompt_prompt_version_path(prompt, version), class: "btn btn-sm btn-outline-primary" do %>
+          <i class="bi bi-arrow-right"></i> View Full Version
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message (if any) -->
+  <% if agent.error_message.present? %>
+    <div class="col-md-12 mb-4">
+      <div class="alert alert-danger">
+        <h6 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h6>
+        <p class="mb-0"><%= agent.error_message %></p>
+      </div>
+    </div>
+  <% end %>
+</div>
