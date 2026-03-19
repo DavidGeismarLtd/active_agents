@@ -106,7 +106,7 @@ module PromptTracker
             it "includes assistant_id" do
               result = described_class.normalize(assistant_data)
 
-              expect(result[:assistant_id]).to eq("asst_abc123")
+              expect(result[:metadata][:assistant_id]).to eq("asst_abc123")
             end
 
             it "includes model configuration" do

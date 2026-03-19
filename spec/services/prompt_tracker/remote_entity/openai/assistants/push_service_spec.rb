@@ -63,7 +63,7 @@ module PromptTracker
               described_class.create(prompt_version: prompt_version)
 
               prompt_version.reload
-              expect(prompt_version.model_config["assistant_id"]).to eq("asst_abc123")
+              expect(prompt_version.model_config["metadata"]["assistant_id"]).to eq("asst_abc123")
               expect(prompt_version.model_config["metadata"]["sync_status"]).to eq("synced")
               expect(prompt_version.model_config["metadata"]["synced_at"]).to be_present
             end
@@ -89,9 +89,9 @@ module PromptTracker
             end
 
             before do
-              prompt_version.update!(
-                model_config: prompt_version.model_config.merge(assistant_id: "asst_abc123")
-              )
+              updated_config = prompt_version.model_config.deep_dup
+              updated_config["metadata"] = { "assistant_id" => "asst_abc123" }
+              prompt_version.update!(model_config: updated_config)
             end
 
             it "updates an existing assistant on OpenAI" do

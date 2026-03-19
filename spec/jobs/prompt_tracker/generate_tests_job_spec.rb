@@ -19,7 +19,8 @@ RSpec.describe PromptTracker::GenerateTestsJob, type: :job do
     it "calls TestGeneratorService with correct parameters" do
       expect(PromptTracker::TestGeneratorService).to receive(:generate).with(
         prompt_version: version,
-        instructions: "Test instructions"
+        instructions: "Test instructions",
+        count: 5
       ).and_return({ tests: [], count: 0, overall_reasoning: "Test reasoning" })
 
       described_class.perform_now(

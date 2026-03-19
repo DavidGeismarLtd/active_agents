@@ -29,6 +29,7 @@ RSpec.describe PromptTracker::LlmClients::RubyLlmService do
         allow(chat).to receive(:on_tool_call).and_return(chat)
         allow(chat).to receive(:on_tool_result).and_return(chat)
         allow(chat).to receive(:ask).with(prompt).and_return(mock_response)
+        allow(chat).to receive(:messages).and_return([])
         chat
       end
 
@@ -114,6 +115,7 @@ RSpec.describe PromptTracker::LlmClients::RubyLlmService do
         allow(chat).to receive(:on_tool_call).and_return(chat)
         allow(chat).to receive(:on_tool_result).and_return(chat)
         allow(chat).to receive(:ask).and_return(mock_response)
+        allow(chat).to receive(:messages).and_return([])
         chat
       end
 
@@ -135,7 +137,8 @@ RSpec.describe PromptTracker::LlmClients::RubyLlmService do
       it "uses DynamicToolBuilder to create tool classes" do
         expect(PromptTracker::RubyLlm::DynamicToolBuilder).to receive(:build).with(
           tool_config: tool_config,
-          mock_function_outputs: nil
+          mock_function_outputs: nil,
+          executor: nil
         ).and_call_original
 
         described_class.call(
@@ -151,7 +154,8 @@ RSpec.describe PromptTracker::LlmClients::RubyLlmService do
 
         expect(PromptTracker::RubyLlm::DynamicToolBuilder).to receive(:build).with(
           tool_config: tool_config,
-          mock_function_outputs: mock_outputs
+          mock_function_outputs: mock_outputs,
+          executor: nil
         ).and_call_original
 
         described_class.call(

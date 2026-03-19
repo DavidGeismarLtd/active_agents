@@ -50,6 +50,10 @@ module PromptTracker
         allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
         allow(mock_chat).to receive(:with_schema).and_return(mock_chat)
         allow(mock_chat).to receive(:ask).and_return(mock_response)
+
+        # Stub configuration methods for all contexts (needed for view rendering during broadcasts)
+        allow(PromptTracker.configuration).to receive(:default_model_for).and_call_original
+        allow(PromptTracker.configuration).to receive(:default_temperature_for).and_call_original
       end
 
       it "generates tests for the prompt version" do
@@ -115,8 +119,11 @@ module PromptTracker
       end
 
       it "uses the configured model from context" do
+        # Stub only :test_generation context, allow others to call original
+        allow(PromptTracker.configuration).to receive(:default_model_for).and_call_original
         allow(PromptTracker.configuration).to receive(:default_model_for)
           .with(:test_generation).and_return("gpt-4o-custom")
+        allow(PromptTracker.configuration).to receive(:default_temperature_for).and_call_original
         allow(PromptTracker.configuration).to receive(:default_temperature_for)
           .with(:test_generation).and_return(0.8)
 
@@ -127,8 +134,11 @@ module PromptTracker
       end
 
       it "falls back to defaults when context not configured" do
+        # Stub only :test_generation context, allow others to call original
+        allow(PromptTracker.configuration).to receive(:default_model_for).and_call_original
         allow(PromptTracker.configuration).to receive(:default_model_for)
           .with(:test_generation).and_return(nil)
+        allow(PromptTracker.configuration).to receive(:default_temperature_for).and_call_original
         allow(PromptTracker.configuration).to receive(:default_temperature_for)
           .with(:test_generation).and_return(nil)
 

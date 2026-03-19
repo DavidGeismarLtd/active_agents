@@ -118,7 +118,7 @@ module PromptTracker
         result = described_class.new.call
 
         version = result[:created_versions].first
-        expect(version.model_config["assistant_id"]).to eq("asst_123")
+        expect(version.model_config["metadata"]["assistant_id"]).to eq("asst_123")
       end
 
       it "stores model name in model_config[:model]" do

@@ -165,43 +165,49 @@ RSpec.describe "PromptTracker::PromptVersionsController", type: :request do
   end
 
   describe "POST /testing/versions/:id/generate_tests" do
-    let(:mock_result) do
-      {
-        tests: [ build(:test, testable: version) ],
-        count: 1,
-        overall_reasoning: "Generated test suite"
-      }
-    end
-
-    before do
-      allow(PromptTracker::TestGeneratorService).to receive(:generate).and_return(mock_result)
-    end
-
-    it "generates tests and redirects with success message" do
-      post "/prompt_tracker/testing/versions/#{version.id}/generate_tests"
+    it "enqueues GenerateTestsJob and redirects with notice" do
+      expect {
+        post "/prompt_tracker/testing/versions/#{version.id}/generate_tests"
+      }.to have_enqueued_job(PromptTracker::GenerateTestsJob)
+        .with(version.id, hash_including(instructions: nil, count: 1))
 
       expect(response).to redirect_to("/prompt_tracker/testing/prompts/#{prompt.id}/versions/#{version.id}")
       follow_redirect!
-      expect(response.body).to include("Generated 1 test(s) successfully")
+      expect(response.body).to include("Generating tests in the background")
     end
 
-    it "calls TestGeneratorService with prompt version" do
-      expect(PromptTracker::TestGeneratorService).to receive(:generate).with(
-        prompt_version: version,
-        instructions: nil
-      ).and_return(mock_result)
+    it "enqueues job with custom instructions" do
+      expect {
+        post "/prompt_tracker/testing/versions/#{version.id}/generate_tests",
+             params: { instructions: "Focus on edge cases" }
+      }.to have_enqueued_job(PromptTracker::GenerateTestsJob)
+        .with(version.id, hash_including(instructions: "Focus on edge cases", count: 1))
 
-      post "/prompt_tracker/testing/versions/#{version.id}/generate_tests"
+      expect(response).to redirect_to("/prompt_tracker/testing/prompts/#{prompt.id}/versions/#{version.id}")
     end
 
-    it "passes instructions to TestGeneratorService" do
-      expect(PromptTracker::TestGeneratorService).to receive(:generate).with(
-        prompt_version: version,
-        instructions: "Focus on edge cases"
-      ).and_return(mock_result)
+    it "enqueues job with custom count" do
+      expect {
+        post "/prompt_tracker/testing/versions/#{version.id}/generate_tests",
+             params: { count: 3 }
+      }.to have_enqueued_job(PromptTracker::GenerateTestsJob)
+        .with(version.id, hash_including(instructions: nil, count: 3))
 
-      post "/prompt_tracker/testing/versions/#{version.id}/generate_tests",
-           params: { instructions: "Focus on edge cases" }
+      expect(response).to redirect_to("/prompt_tracker/testing/prompts/#{prompt.id}/versions/#{version.id}")
+    end
+
+    it "clamps count to valid range (1-10)" do
+      expect {
+        post "/prompt_tracker/testing/versions/#{version.id}/generate_tests",
+             params: { count: 20 }
+      }.to have_enqueued_job(PromptTracker::GenerateTestsJob)
+        .with(version.id, hash_including(count: 10))
+
+      expect {
+        post "/prompt_tracker/testing/versions/#{version.id}/generate_tests",
+             params: { count: 0 }
+      }.to have_enqueued_job(PromptTracker::GenerateTestsJob)
+        .with(version.id, hash_including(count: 1))
     end
 
     it "returns 404 for non-existent version" do

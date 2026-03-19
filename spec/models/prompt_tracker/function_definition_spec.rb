@@ -195,7 +195,20 @@ module PromptTracker
     # Method Tests
 
     describe "#test" do
-      let(:function) { FunctionDefinition.create!(valid_attributes) }
+      let(:function) { create(:function_definition, :deployed) }
+      let(:mock_result) do
+        CodeExecutor::Result.new(
+          success?: true,
+          result: { temperature: 15, city: "Berlin", units: "celsius" },
+          error: nil,
+          execution_time_ms: 123,
+          logs: ""
+        )
+      end
+
+      before do
+        allow(CodeExecutor).to receive(:execute).and_return(mock_result)
+      end
 
       it "returns a mock response" do
         result = function.test(city: "Berlin")
@@ -203,7 +216,7 @@ module PromptTracker
         expect(result[:success?]).to be true
         expect(result[:result]).to be_present
         expect(result[:error]).to be_nil
-        expect(result[:execution_time_ms]).to eq(0)
+        expect(result[:execution_time_ms]).to eq(123)
       end
 
       it "does not create a function_execution record" do
@@ -214,7 +227,20 @@ module PromptTracker
     end
 
     describe "#execute" do
-      let(:function) { FunctionDefinition.create!(valid_attributes) }
+      let(:function) { create(:function_definition, :deployed) }
+      let(:mock_result) do
+        CodeExecutor::Result.new(
+          success?: true,
+          result: { temperature: 15, city: "Berlin", units: "celsius" },
+          error: nil,
+          execution_time_ms: 123,
+          logs: ""
+        )
+      end
+
+      before do
+        allow(CodeExecutor).to receive(:execute).and_return(mock_result)
+      end
 
       it "creates a function_execution record" do
         expect {

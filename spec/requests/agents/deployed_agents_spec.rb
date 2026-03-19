@@ -4,8 +4,8 @@ require "rails_helper"
 
 RSpec.describe "Agents API", type: :request do
   let(:prompt_version) { create(:prompt_version, :active) }
-  let(:deployed_agent) do
-    create(:deployed_agent,
+  let!(:deployed_agent) do
+    agent = build(:deployed_agent,
            prompt_version: prompt_version,
            status: "active",
            deployment_config: {
@@ -14,13 +14,10 @@ RSpec.describe "Agents API", type: :request do
              conversation_ttl: 3600,
              cors: { allowed_origins: [ "https://example.com" ] }
            })
-  end
-  let(:api_key) { deployed_agent.instance_variable_get(:@plain_api_key) }
-
-  before do
-    # Ensure API key is generated
-    deployed_agent.send(:generate_api_key)
-    @plain_api_key = deployed_agent.instance_variable_get(:@plain_api_key)
+    agent.save!
+    # Capture the plain API key immediately after creation
+    @plain_api_key = agent.plain_api_key
+    agent
   end
 
   describe "POST /agents/:slug/chat" do

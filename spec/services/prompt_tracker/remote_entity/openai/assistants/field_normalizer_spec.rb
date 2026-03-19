@@ -125,7 +125,7 @@ module PromptTracker
 
               expect(result[:model_config][:provider]).to eq("openai")
               expect(result[:model_config][:api]).to eq("assistants")
-              expect(result[:model_config][:assistant_id]).to eq("asst_abc123")
+              expect(result[:model_config][:metadata][:assistant_id]).to eq("asst_abc123")
               expect(result[:model_config][:model]).to eq("gpt-4o")
               expect(result[:model_config][:temperature]).to eq(0.7)
               expect(result[:model_config][:top_p]).to eq(1.0)

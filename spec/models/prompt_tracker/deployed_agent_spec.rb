@@ -60,9 +60,9 @@ module PromptTracker
       end
 
       describe "generate_api_key" do
-        it "generates api_key_digest on create" do
+        it "generates encrypted api_key on create" do
           agent = create(:deployed_agent)
-          expect(agent.api_key_digest).to be_present
+          expect(agent.api_key).to be_present
         end
 
         it "makes plain_api_key available after creation" do
@@ -203,9 +203,9 @@ module PromptTracker
         expect(agent.verify_api_key("wrong_key")).to be false
       end
 
-      it "returns false when api_key_digest is blank" do
+      it "returns false when api_key is blank" do
         agent = create(:deployed_agent)
-        agent.update_column(:api_key_digest, nil)
+        agent.update_column(:api_key, nil)
 
         expect(agent.verify_api_key("any_key")).to be false
       end

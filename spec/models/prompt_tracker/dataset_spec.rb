@@ -20,15 +20,18 @@ module PromptTracker
     end
 
     let(:version) do
-      prompt.prompt_versions.create!(
+      v = prompt.prompt_versions.create!(
         user_prompt: "Hello {{name}}, your issue is {{issue}}",
         version_number: 1,
-        status: "active",
-        variables_schema: [
-          { "name" => "name", "type" => "string", "required" => true },
-          { "name" => "issue", "type" => "string", "required" => false }
-        ]
+        status: "active"
       )
+      # Update variables_schema after creation to set specific order and required fields
+      # (extract_variables_schema callback may change order and sets all to required: false)
+      v.update_column(:variables_schema, [
+        { "name" => "name", "type" => "string", "required" => true },
+        { "name" => "issue", "type" => "string", "required" => false }
+      ])
+      v
     end
 
     describe "associations" do

@@ -116,5 +116,11 @@ FactoryBot.define do
         create_list(:function_execution, 5, function_definition: function)
       end
     end
+
+    trait :deployed do
+      deployment_status { "deployed" }
+      lambda_function_name { "prompt_tracker_#{name}" }
+      deployed_at { Time.current }
+    end
   end
 end

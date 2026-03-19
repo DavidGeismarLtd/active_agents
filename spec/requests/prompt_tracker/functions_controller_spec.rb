@@ -203,9 +203,11 @@ RSpec.describe "PromptTracker::FunctionsController", type: :request do
   end
 
   describe "POST /functions/:id/test" do
+    let(:deployed_function) { create(:function_definition, :deployed) }
+
     it "tests function with valid arguments (JSON)" do
-      post "/prompt_tracker/functions/#{function.id}/test",
-           params: { arguments: '{"city": "Paris"}' },
+      post "/prompt_tracker/functions/#{deployed_function.id}/test",
+           params: { arguments: '{"operation": "add", "a": 5, "b": 3}' },
            headers: { "Accept" => "application/json" }
 
       expect(response).to have_http_status(:success)
@@ -215,7 +217,7 @@ RSpec.describe "PromptTracker::FunctionsController", type: :request do
     end
 
     it "handles invalid JSON" do
-      post "/prompt_tracker/functions/#{function.id}/test",
+      post "/prompt_tracker/functions/#{deployed_function.id}/test",
            params: { arguments: "invalid json" },
            headers: { "Accept" => "application/json" }
 
@@ -225,12 +227,31 @@ RSpec.describe "PromptTracker::FunctionsController", type: :request do
     end
 
     it "tests function with HTML format" do
+      post "/prompt_tracker/functions/#{deployed_function.id}/test",
+           params: { arguments: '{"operation": "add", "a": 5, "b": 3}' }
+
+      expect(response).to redirect_to("/prompt_tracker/functions/#{deployed_function.id}")
+      follow_redirect!
+      expect(response.body).to include("Test executed successfully")
+    end
+
+    it "returns error when function is not deployed (JSON)" do
       post "/prompt_tracker/functions/#{function.id}/test",
-           params: { arguments: '{"city": "Paris"}' }
+           params: { arguments: '{"operation": "add", "a": 5, "b": 3}' },
+           headers: { "Accept" => "application/json" }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body)
+      expect(json["error"]).to include("must be deployed to AWS Lambda")
+    end
+
+    it "returns error when function is not deployed (HTML)" do
+      post "/prompt_tracker/functions/#{function.id}/test",
+           params: { arguments: '{"operation": "add", "a": 5, "b": 3}' }
 
       expect(response).to redirect_to("/prompt_tracker/functions/#{function.id}")
       follow_redirect!
-      expect(response.body).to include("Test executed successfully")
+      expect(response.body).to include("must be deployed to AWS Lambda")
     end
   end
 end

@@ -22,6 +22,9 @@ module PromptTracker
   #   agent.public_url # => "https://app.com/agents/customer-support-bot/chat"
   #
   class DeployedAgent < ApplicationRecord
+    # Temporary storage for plain API key (only available during creation)
+    attr_accessor :plain_api_key
+
     # Associations
     belongs_to :prompt_version,
                class_name: "PromptTracker::PromptVersion",
@@ -174,7 +177,9 @@ module PromptTracker
 
     def generate_api_key
       # Generate a secure random API key (stored encrypted)
-      self.api_key = SecureRandom.base58(32)
+      key = SecureRandom.base58(32)
+      self.api_key = key
+      @plain_api_key = key # Store temporarily for display after creation
     end
   end
 end
