@@ -520,27 +520,26 @@ puts "  ✓ Created date/time formatter function"
 # ============================================================================
 news_api_function = PromptTracker::FunctionDefinition.create!(
   name: "fetch_news_articles",
-  description: "Fetch latest news articles from NewsAPI for a given topic",
+  description: "Fetch latest news articles from GNews API for a given topic",
   category: "api",
   tags: [ "news", "api", "media" ],
   language: "ruby",
   code: <<~'RUBY',
-    def execute(topic:, from_date: nil, language: "en", page_size: 10)
+    def execute(topic:, language: "en", page_size: 10)
       require 'net/http'
       require 'json'
       require 'uri'
 
-      api_key = env['NEWS_API_KEY']
-      base_url = "https://newsapi.org/v2/everything"
+      api_key = env['GNEWS_API_KEY']
+      base_url = "https://gnews.io/api/v4/search"
 
+      # GNews API parameters
       params = {
         q: topic,
-        language: language,
-        pageSize: page_size,
-        sortBy: "publishedAt",
-        apiKey: api_key
+        lang: language,
+        max: [page_size, 10].min, # GNews free tier max is 10
+        apikey: api_key
       }
-      params[:from] = from_date if from_date
 
       uri = URI(base_url)
       uri.query = URI.encode_www_form(params)
@@ -548,22 +547,23 @@ news_api_function = PromptTracker::FunctionDefinition.create!(
       response = Net::HTTP.get_response(uri)
       data = JSON.parse(response.body)
 
-      if data['status'] == 'ok'
+      if response.code == '200' && data['articles']
         {
-          total_results: data['totalResults'],
+          total_results: data['totalArticles'],
           articles: data['articles'].map do |article|
             {
               title: article['title'],
               description: article['description'],
+              content: article['content'],
               url: article['url'],
+              image: article['image'],
               source: article['source']['name'],
-              published_at: article['publishedAt'],
-              author: article['author']
+              published_at: article['publishedAt']
             }
           end
         }
       else
-        { error: data['message'] || 'Failed to fetch news' }
+        { error: data['errors']&.first || data['message'] || 'Failed to fetch news' }
       end
     end
   RUBY
@@ -574,19 +574,14 @@ news_api_function = PromptTracker::FunctionDefinition.create!(
         "type" => "string",
         "description" => "News topic or search query"
       },
-      "from_date" => {
-        "type" => "string",
-        "description" => "Start date for articles (YYYY-MM-DD format)",
-        "default" => nil
-      },
       "language" => {
         "type" => "string",
-        "description" => "Language code (e.g., 'en', 'fr', 'es')",
+        "description" => "Language code (e.g., 'en', 'fr', 'es', 'de')",
         "default" => "en"
       },
       "page_size" => {
         "type" => "integer",
-        "description" => "Number of articles to return (max 100)",
+        "description" => "Number of articles to return (max 10 for free tier)",
         "default" => 10
       }
     },
@@ -614,15 +609,15 @@ news_api_function = PromptTracker::FunctionDefinition.create!(
   created_by: "system"
 )
 
-news_api_key = PromptTracker::EnvironmentVariable.create!(
-  name: "NewsAPI Key",
-  key: "NEWS_API_KEY",
-  value: "demo_newsapi_key_xyz789",
-  description: "API key for NewsAPI.org - used for fetching news articles"
+gnews_api_key = PromptTracker::EnvironmentVariable.create!(
+  name: "GNews API Key",
+  key: "GNEWS_API_KEY",
+  value: "8a938f749f805f47ccd94712b7d32828",
+  description: "API key for GNews.io - used for fetching news articles"
 )
-news_api_function.shared_environment_variables << news_api_key
+news_api_function.shared_environment_variables << gnews_api_key
 
-puts "  ✓ Created news API function (using shared NEWS_API_KEY)"
+puts "  ✓ Created news API function (using shared GNEWS_API_KEY)"
 
 # ============================================================================
 # 10. Flight Search Function (for Travel Booking Assistant)
