@@ -295,6 +295,12 @@ module PromptTracker
         <<~RUBY
           require 'json'
 
+          # Helper method to access environment variables
+          # This allows user code to use: env['API_KEY']
+          def env
+            ENV
+          end
+
           def handler(event:, context:)
             # Load user code
             require_relative 'user_code'
