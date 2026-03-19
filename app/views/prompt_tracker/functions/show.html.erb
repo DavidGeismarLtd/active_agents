@@ -307,7 +307,7 @@
             </thead>
             <tbody>
               <% @executions.each do |execution| %>
-                <tr>
+                <tr style="cursor: pointer;" onclick="window.location='<%= function_execution_path(execution) %>'">
                   <td><%= execution.executed_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
                   <td>
                     <% if execution.success %>

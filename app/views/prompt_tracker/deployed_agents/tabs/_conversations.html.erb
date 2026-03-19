@@ -17,7 +17,7 @@
           </thead>
           <tbody>
             <% recent_conversations.each do |conversation| %>
-              <tr>
+              <tr style="cursor: pointer;" onclick="window.location='<%= agent_conversation_path(conversation) %>'">
                 <td>
                   <code><%= conversation.conversation_id.truncate(30) %></code>
                 </td>
@@ -66,4 +66,3 @@
     <% end %>
   </div>
 </div>
-

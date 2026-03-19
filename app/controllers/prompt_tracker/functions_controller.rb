@@ -60,9 +60,10 @@ module PromptTracker
                              .page(params[:page])
                              .per(20)
 
-      # Calculate stats
-      @total_executions = @function.execution_count
-      @success_rate = @function.function_executions.success_rate
+      # Calculate stats from actual executions (not cached counter)
+      all_executions = @function.function_executions
+      @total_executions = all_executions.count
+      @success_rate = all_executions.success_rate
       @avg_execution_time = @function.average_execution_time_ms
     end
 

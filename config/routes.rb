@@ -184,8 +184,14 @@ PromptTracker::Engine.routes.draw do
     end
   end
 
+  # Function Executions (for viewing execution details)
+  resources :function_executions, only: [ :show ]
+
   # Environment Variables (shared secrets for functions)
   resources :environment_variables, path: "environment-variables"
+
+  # Agent Conversations (for viewing conversation details)
+  resources :agent_conversations, only: [ :show ]
 
   # ========================================
   # DEPLOYED AGENTS - Live agent deployments

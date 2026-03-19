@@ -1,0 +1,152 @@
+<div class="container-fluid py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+      <li class="breadcrumb-item"><%= link_to @agent.name, deployed_agent_path(@agent) %></li>
+      <li class="breadcrumb-item active" aria-current="page">Conversation</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2><i class="bi bi-chat-dots"></i> Conversation Details</h2>
+      <p class="text-muted mb-0">
+        Agent: <strong><%= @agent.name %></strong> •
+        ID: <code><%= @conversation.conversation_id %></code>
+      </p>
+    </div>
+    <div>
+      <%= link_to deployed_agent_path(@agent, tab: 'conversations'), class: "btn btn-outline-secondary" do %>
+        <i class="bi bi-arrow-left"></i> Back to Agent
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left Column: Conversation Info -->
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle"></i> Conversation Info</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <th style="width: 50%;">Status</th>
+                <td>
+                  <% if @conversation.expired? %>
+                    <span class="badge bg-secondary">Expired</span>
+                  <% else %>
+                    <span class="badge bg-success">Active</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>Message Count</th>
+                <td><%= @conversation.message_count %></td>
+              </tr>
+              <tr>
+                <th>Created At</th>
+                <td><%= @conversation.created_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></td>
+              </tr>
+              <tr>
+                <th>Last Message</th>
+                <td>
+                  <% if @conversation.last_message_at %>
+                    <%= @conversation.last_message_at.strftime("%Y-%m-%d %H:%M:%S %Z") %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>Expires At</th>
+                <td>
+                  <% if @conversation.expires_at %>
+                    <%= @conversation.expires_at.strftime("%Y-%m-%d %H:%M:%S %Z") %>
+                    <% if @conversation.expired? %>
+                      <br><small class="text-danger">Expired <%= time_ago_in_words(@conversation.expires_at) %> ago</small>
+                    <% else %>
+                      <br><small class="text-success">In <%= distance_of_time_in_words(Time.current, @conversation.expires_at) %></small>
+                    <% end %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Message History -->
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Message History</h5>
+        </div>
+        <div class="card-body">
+          <% if @messages.any? %>
+            <div class="conversation-messages">
+              <% @messages.each_with_index do |message, index| %>
+                <div class="message-item mb-3 <%= message['role'] %>">
+                  <div class="d-flex align-items-start">
+                    <div class="message-avatar me-3">
+                      <% if message['role'] == 'user' %>
+                        <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                          <i class="bi bi-person-fill"></i>
+                        </div>
+                      <% elsif message['role'] == 'assistant' %>
+                        <div class="avatar bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                          <i class="bi bi-robot"></i>
+                        </div>
+                      <% else %>
+                        <div class="avatar bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                          <i class="bi bi-gear-fill"></i>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="message-content flex-grow-1">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong class="text-capitalize"><%= message['role'] %></strong>
+                        <small class="text-muted">Message #<%= index + 1 %></small>
+                      </div>
+                      <div class="message-text bg-light p-3 rounded">
+                        <%= simple_format(message['content']) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center py-5">
+              <i class="bi bi-chat-dots" style="font-size: 3rem; color: #9CA3AF;"></i>
+              <p class="text-muted mt-3">No messages in this conversation</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .conversation-messages {
+    max-height: 600px;
+    overflow-y: auto;
+  }
+
+  .message-item.user .message-text {
+    background-color: #e3f2fd !important;
+  }
+
+  .message-item.assistant .message-text {
+    background-color: #f1f8e9 !important;
+  }
+</style>
+
