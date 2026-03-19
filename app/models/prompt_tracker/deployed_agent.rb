@@ -54,14 +54,14 @@ module PromptTracker
              inverse_of: :deployed_agent
 
     # Validations
-    validates :name, presence: true
+    validates :name, presence: true, length: { maximum: 255 }
     validates :slug, presence: true,
                      uniqueness: true,
                      format: { with: /\A[a-z0-9-]+\z/, message: "must be lowercase alphanumeric with hyphens" }
     validates :status, inclusion: { in: %w[active paused error] }
 
     # Callbacks
-    before_validation :generate_slug, on: :create, if: -> { slug.blank? }
+    before_validation :generate_slug, on: :create
     before_create :set_deployed_at
     after_create :extract_functions_from_version
     after_create :generate_api_key
@@ -71,6 +71,12 @@ module PromptTracker
     scope :paused, -> { where(status: "paused") }
     scope :with_errors, -> { where(status: "error") }
     scope :recent, -> { order(created_at: :desc) }
+
+    # Use slug for URLs instead of ID
+    # @return [String] the slug
+    def to_param
+      slug
+    end
 
     # Generate public URL for this agent
     # @return [String] public chat endpoint URL
@@ -116,9 +122,11 @@ module PromptTracker
     private
 
     def generate_slug
+      return if slug.present? # Don't regenerate if slug is already set
       return if name.blank?
 
-      base = name.parameterize
+      # Convert to lowercase, replace underscores and spaces with hyphens, remove special chars
+      base = name.downcase.gsub(/[_\s]+/, "-").gsub(/[^a-z0-9-]/, "").gsub(/-+/, "-").gsub(/^-|-$/, "")
       self.slug = base
       counter = 1
       while DeployedAgent.exists?(slug: slug)
