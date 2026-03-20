@@ -158,8 +158,13 @@ module PromptTracker
         end
 
         context "when mock_function_outputs is present in dataset row" do
+          let(:dataset) do
+            create(:dataset, :for_prompt_version, testable: prompt_version)
+          end
+
           let(:dataset_row) do
             create(:dataset_row,
+                   dataset: dataset,
                    row_data: {
                      "name" => "Jane",
                      "mock_function_outputs" => {

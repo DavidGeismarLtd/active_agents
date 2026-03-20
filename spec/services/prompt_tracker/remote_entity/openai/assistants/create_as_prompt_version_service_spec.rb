@@ -48,7 +48,7 @@ module PromptTracker
               result = described_class.call(assistant_data: assistant_data)
 
               model_config = result.prompt_version.model_config
-              expect(model_config["assistant_id"]).to eq("asst_abc123")
+              expect(model_config["metadata"]["assistant_id"]).to eq("asst_abc123")
               expect(model_config["model"]).to eq("gpt-4o")
               expect(model_config["provider"]).to eq("openai")
               expect(model_config["api"]).to eq("assistants")

@@ -1,0 +1,154 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item active">Deployed Agents</li>
+<% end %>
+
+<div class="deployed-agents-index">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #F3E8FF; border-left: 4px solid #9333EA; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 style="color: #581C87; margin: 0;">
+          <i class="bi bi-robot"></i> Deployed Agents
+        </h1>
+        <p style="color: #581C87; margin: 0.5rem 0 0 0;">
+          Manage live agents accessible via API
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Total Agents</h6>
+          <h3 class="mb-0"><%= @total_agents %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-success">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Active</h6>
+          <h3 class="mb-0 text-success"><%= @active_agents %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-warning">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Paused</h6>
+          <h3 class="mb-0 text-warning"><%= @paused_agents %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-danger">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Errors</h6>
+          <h3 class="mb-0 text-danger"><%= @error_agents %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <%= form_with url: deployed_agents_path, method: :get, local: true do |f| %>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <%= f.label :status, "Status", class: "form-label" %>
+            <%= f.select :status,
+                options_for_select([["All", ""], ["Active", "active"], ["Paused", "paused"], ["Error", "error"]], params[:status]),
+                {}, class: "form-select" %>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <%= f.submit "Filter", class: "btn btn-primary" %>
+            <%= link_to "Clear", deployed_agents_path, class: "btn btn-outline-secondary ms-2" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Agents Table -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Deployed Agents</h5>
+    </div>
+    <div class="card-body p-0">
+      <% if @agents.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Prompt Version</th>
+                <th>Status</th>
+                <th>Deployed At</th>
+                <th>Requests</th>
+                <th>Last Request</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @agents.each do |agent| %>
+                <tr>
+                  <td>
+                    <%= link_to agent.name, deployed_agent_path(agent.slug), class: "fw-bold" %>
+                    <br>
+                    <small class="text-muted"><code><%= agent.slug %></code></small>
+                  </td>
+                  <td>
+                    <%= link_to "#{agent.prompt_version.prompt.name} v#{agent.prompt_version.version_number}",
+                        testing_prompt_prompt_version_path(agent.prompt_version.prompt, agent.prompt_version),
+                        class: "text-decoration-none" %>
+                  </td>
+                  <td>
+                    <% case agent.status %>
+                    <% when "active" %>
+                      <span class="badge bg-success">Active</span>
+                    <% when "paused" %>
+                      <span class="badge bg-warning">Paused</span>
+                    <% when "error" %>
+                      <span class="badge bg-danger">Error</span>
+                    <% end %>
+                  </td>
+                  <td><%= time_ago_in_words(agent.deployed_at) %> ago</td>
+                  <td><%= number_with_delimiter(agent.request_count) %></td>
+                  <td>
+                    <% if agent.last_request_at %>
+                      <%= time_ago_in_words(agent.last_request_at) %> ago
+                    <% else %>
+                      <span class="text-muted">Never</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= link_to deployed_agent_path(agent.slug), class: "btn btn-sm btn-outline-primary" do %>
+                      <i class="bi bi-eye"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-center py-5">
+          <i class="bi bi-robot" style="font-size: 3rem; color: #9CA3AF;"></i>
+          <p class="text-muted mt-3">No deployed agents found</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @agents.any? %>
+    <div class="mt-4">
+      <%= paginate @agents %>
+    </div>
+  <% end %>
+</div>
+

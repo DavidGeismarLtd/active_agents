@@ -68,4 +68,9 @@ Rails.application.configure do
 
   # Use test adapter for ActiveJob in tests (no Redis required)
   config.active_job.queue_adapter = :test
+
+  # Configure Active Record Encryption for tests
+  config.active_record.encryption.primary_key = "test_primary_key_for_encryption_do_not_use_in_production"
+  config.active_record.encryption.deterministic_key = "test_deterministic_key_for_encryption_do_not_use_in_production"
+  config.active_record.encryption.key_derivation_salt = "test_key_derivation_salt_for_encryption_do_not_use_in_production"
 end

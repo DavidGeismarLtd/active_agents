@@ -79,10 +79,30 @@ PromptTracker.configure do |config|
   }
 
   # ===========================================================================
-  # 4. FEATURE FLAGS
+  # 4. FUNCTION EXECUTION PROVIDERS
+  # ===========================================================================
+  # Similar to LLM providers, but for code execution backends.
+  # A provider is only enabled if all required credentials are present.
+  # See docs/aws_lambda_setup.md for AWS Lambda setup instructions.
+  config.function_providers = {
+    aws_lambda: {
+      region: ENV.fetch("AWS_REGION", "us-east-1"),
+      access_key_id: ENV["AWS_ACCESS_KEY_ID"],
+      secret_access_key: ENV["AWS_SECRET_ACCESS_KEY"],
+      execution_role_arn: ENV["LAMBDA_EXECUTION_ROLE_ARN"],
+      function_prefix: ENV.fetch("LAMBDA_FUNCTION_PREFIX", "prompt-tracker")
+    }
+    # Future providers can be added here:
+    # google_cloud_functions: { ... },
+    # local_docker: { ... }
+  }
+
+  # ===========================================================================
+  # 5. FEATURE FLAGS
   # ===========================================================================
   config.features = {
     monitoring: true,            # Enable the Monitoring section (tracked calls, auto-evaluations)
-    openai_assistant_sync: true  # Show "Sync OpenAI Assistants" button in Testing Dashboard
+    openai_assistant_sync: true, # Show "Sync OpenAI Assistants" button in Testing Dashboard
+    functions: true             # Enable the Functions section (code-based agent functions) - requires AWS Lambda config
   }
 end

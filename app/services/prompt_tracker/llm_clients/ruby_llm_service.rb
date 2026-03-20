@@ -37,11 +37,12 @@ module PromptTracker
       # @param tools [Array<Symbol>] Tools to enable (e.g., [:functions])
       # @param tool_config [Hash] Tool configuration with functions array
       # @param mock_function_outputs [Hash, nil] Mock outputs for tool execution
+      # @param function_executor [Proc, nil] Custom executor proc(function_name, arguments) for real execution
       # @param temperature [Float, nil] Temperature (0.0-2.0)
       # @param max_tokens [Integer, nil] Maximum output tokens
       # @return [NormalizedLlmResponse] Normalized response
       def self.call(model:, prompt:, system: nil, tools: [], tool_config: {},
-                    mock_function_outputs: nil, temperature: nil, max_tokens: nil, **options)
+                    mock_function_outputs: nil, function_executor: nil, temperature: nil, max_tokens: nil, **options)
         new(
           model: model,
           prompt: prompt,
@@ -49,6 +50,7 @@ module PromptTracker
           tools: tools,
           tool_config: tool_config,
           mock_function_outputs: mock_function_outputs,
+          function_executor: function_executor,
           temperature: temperature,
           max_tokens: max_tokens,
           **options
@@ -65,11 +67,12 @@ module PromptTracker
       # @param tools [Array<Symbol>] Tools to enable (e.g., [:functions])
       # @param tool_config [Hash] Tool configuration with functions array
       # @param mock_function_outputs [Hash, nil] Mock outputs for tool execution
+      # @param function_executor [Proc, nil] Custom executor proc(function_name, arguments) for real execution
       # @param temperature [Float, nil] Temperature (0.0-2.0)
       # @param max_tokens [Integer, nil] Maximum output tokens
       # @return [RubyLLM::Chat] Configured chat instance
       def self.build_chat(model:, system: nil, tools: [], tool_config: {},
-                          mock_function_outputs: nil, temperature: nil, max_tokens: nil)
+                          mock_function_outputs: nil, function_executor: nil, temperature: nil, max_tokens: nil)
         new(
           model: model,
           prompt: "", # Not used for chat building
@@ -77,6 +80,7 @@ module PromptTracker
           tools: tools,
           tool_config: tool_config,
           mock_function_outputs: mock_function_outputs,
+          function_executor: function_executor,
           temperature: temperature,
           max_tokens: max_tokens
         ).build_chat
@@ -109,16 +113,17 @@ module PromptTracker
       end
 
       attr_reader :model, :prompt, :system, :tools, :tool_config,
-                  :mock_function_outputs, :temperature, :max_tokens, :options
+                  :mock_function_outputs, :function_executor, :temperature, :max_tokens, :options
 
       def initialize(model:, prompt:, system: nil, tools: [], tool_config: {},
-                     mock_function_outputs: nil, temperature: nil, max_tokens: nil, **options)
+                     mock_function_outputs: nil, function_executor: nil, temperature: nil, max_tokens: nil, **options)
         @model = model
         @prompt = prompt
         @system = system
         @tools = tools || []
         @tool_config = tool_config || {}
         @mock_function_outputs = mock_function_outputs
+        @function_executor = function_executor
         @temperature = temperature
         @max_tokens = max_tokens
         @options = options
@@ -136,7 +141,8 @@ module PromptTracker
           response = chat.ask(prompt)
 
           log_response(response)
-          LlmResponseNormalizers::RubyLlm.normalize(response)
+          # Pass chat.messages to extract all tool calls from conversation history
+          LlmResponseNormalizers::RubyLlm.normalize(response, chat_messages: chat.messages)
         end
       end
 
@@ -190,7 +196,8 @@ module PromptTracker
         # Build dynamic RubyLLM::Tool classes from JSON config
         tool_classes = RubyLlm::DynamicToolBuilder.build(
           tool_config: tool_config,
-          mock_function_outputs: mock_function_outputs
+          mock_function_outputs: mock_function_outputs,
+          executor: function_executor
         )
 
         # Register each tool with the chat

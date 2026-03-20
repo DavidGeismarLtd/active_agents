@@ -1,0 +1,63 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="bi bi-code-square"></i> Available Functions</h5>
+  </div>
+  <div class="card-body p-0">
+    <% if agent.function_definitions.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Language</th>
+              <th>Category</th>
+              <th>Deployment Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% agent.function_definitions.each do |func| %>
+              <tr>
+                <td>
+                  <code class="fw-bold"><%= func.name %></code>
+                </td>
+                <td><%= func.description.truncate(80) %></td>
+                <td>
+                  <span class="badge bg-secondary"><%= func.language %></span>
+                </td>
+                <td>
+                  <span class="badge bg-info"><%= func.category %></span>
+                </td>
+                <td>
+                  <% case func.deployment_status %>
+                  <% when "deployed" %>
+                    <span class="badge bg-success">Deployed</span>
+                  <% when "deploying" %>
+                    <span class="badge bg-warning">Deploying</span>
+                  <% when "failed" %>
+                    <span class="badge bg-danger">Failed</span>
+                  <% else %>
+                    <span class="badge bg-secondary">Not Deployed</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to function_path(func), class: "btn btn-sm btn-outline-primary" do %>
+                    <i class="bi bi-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-code-slash" style="font-size: 3rem; color: #9CA3AF;"></i>
+        <p class="text-muted mt-3">No functions configured</p>
+        <p class="text-muted">Functions are defined in the prompt version's model_config</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+

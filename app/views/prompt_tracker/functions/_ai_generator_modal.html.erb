@@ -1,0 +1,71 @@
+<!-- AI Generation Modal -->
+<div class="modal fade"
+     id="aiGeneratorModal"
+     tabindex="-1"
+     data-modal-fix-target="modal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-magic"></i> Generate Function with AI
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Error Message -->
+          <div class="alert alert-danger d-none"
+               id="aiGenerateError"
+               role="alert">
+          </div>
+
+          <!-- Description Input -->
+          <div class="mb-3">
+            <%= label_tag :ai_description, "What should this function do?", class: "form-label" %>
+            <%= text_area_tag :ai_description,
+                              nil,
+                              class: "form-control",
+                              rows: 4,
+                              placeholder: "e.g., Fetch weather data from OpenWeatherMap API for a given city and return temperature, humidity, and conditions" %>
+            <div class="form-text">
+              Describe what you want the function to do. Be specific about inputs, outputs, and any external APIs or services.
+            </div>
+          </div>
+
+          <!-- Language Selection -->
+          <div class="mb-3">
+            <%= label_tag :ai_language, "Programming Language", class: "form-label" %>
+            <%= select_tag :ai_language,
+                           options_for_select([
+                             ["Ruby", "ruby"],
+                             ["Python", "python"],
+                             ["Node.js (JavaScript)", "javascript"]
+                           ], "ruby"),
+                           class: "form-select" %>
+          </div>
+
+          <!-- Examples -->
+          <div class="card bg-light">
+            <div class="card-body">
+              <h6 class="card-title">💡 Example Descriptions</h6>
+              <ul class="mb-0 small">
+                <li>Fetch weather data from OpenWeatherMap API for a given city</li>
+                <li>Validate email addresses using regex and check if domain has MX records</li>
+                <li>Convert markdown text to HTML using a markdown parser</li>
+                <li>Calculate the distance between two GPS coordinates</li>
+                <li>Send a Slack notification to a webhook URL</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button"
+                  class="btn btn-primary"
+                  id="aiGenerateButton">
+            <span id="aiGenerateSpinner" class="spinner-border spinner-border-sm d-none me-2"></span>
+            <i class="bi bi-magic"></i> Generate Function
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>

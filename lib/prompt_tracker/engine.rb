@@ -2,6 +2,9 @@ module PromptTracker
   class Engine < ::Rails::Engine
     isolate_namespace PromptTracker
 
+    # Add lib directory to autoload paths
+    config.autoload_paths << root.join("lib")
+
     initializer "prompt_tracker.assets.precompile" do |app|
       app.config.assets.precompile += %w[
         prompt_tracker/application.js
@@ -56,6 +59,14 @@ module PromptTracker
         prompt_tracker/controllers/evaluator_config_form_controller.js
         prompt_tracker/controllers/playground_sync_visibility_controller.js
         prompt_tracker/controllers/function_parameters_examples_controller.js
+        prompt_tracker/controllers/monaco_editor_controller.js
+        prompt_tracker/controllers/function_code_templates_controller.js
+        prompt_tracker/controllers/function_test_controller.js
+        prompt_tracker/controllers/function_test_controller.js
+        prompt_tracker/controllers/function_ai_generator_controller.js
+        prompt_tracker/controllers/function_language_switcher_controller.js
+        prompt_tracker/controllers/agent_chat_controller.js
+        prompt_tracker/controllers/api_key_controller.js
       ]
     end
     # # Make engine JS available to Sprockets (so importmap can find it)

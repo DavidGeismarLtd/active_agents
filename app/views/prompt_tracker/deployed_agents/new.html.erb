@@ -1,0 +1,33 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item active">Deploy New Agent</li>
+<% end %>
+
+<div class="deployed-agent-new">
+  <div class="page-header" style="background-color: #F3E8FF; border-left: 4px solid #9333EA; padding: 1.5rem; margin-bottom: 2rem;">
+    <h1 style="color: #581C87; margin: 0;">
+      <i class="bi bi-robot"></i> Deploy New Agent
+    </h1>
+    <p style="color: #581C87; margin: 0.5rem 0 0 0;">
+      Deploy <%= @prompt.name %> v<%= @version.version_number %> as a live agent
+    </p>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <%= render "form", agent: @agent, prompt: @prompt, version: @version %>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-info-circle"></i> About Agent Deployment</h6>
+        </div>
+        <div class="card-body">
+          <p class="small">Deploying an agent creates a live API endpoint that can be accessed by external applications.</p>
+          <p class="small mb-0">You'll receive an API key that must be included in all requests to authenticate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,18 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="mb-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><%= link_to "Functions", functions_path %></li>
+        <li class="breadcrumb-item"><%= link_to @function.name, function_path(@function) %></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+      </ol>
+    </nav>
+    <h1 class="h2">
+      <i class="bi bi-pencil"></i> Edit Function: <%= @function.name %>
+    </h1>
+  </div>
+
+  <%= render "form", function: @function %>
+</div>
+

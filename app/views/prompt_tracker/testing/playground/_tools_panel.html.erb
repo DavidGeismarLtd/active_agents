@@ -46,7 +46,8 @@
   <%= render 'prompt_tracker/testing/playground/tools/functions_configuration_panel',
              functions_config: functions_config,
              enabled_tools_hash: enabled_tools_hash,
-             tool_config: tool_config %>
+             tool_config: tool_config,
+             function_definitions: @function_definitions || [] %>
 
   <% if available_tools.empty? %>
     <div class="alert alert-secondary py-2">

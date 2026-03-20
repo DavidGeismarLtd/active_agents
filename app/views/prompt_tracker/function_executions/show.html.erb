@@ -1,0 +1,111 @@
+<div class="container-fluid py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Functions", functions_path %></li>
+      <li class="breadcrumb-item"><%= link_to @function.name, function_path(@function) %></li>
+      <li class="breadcrumb-item active" aria-current="page">Execution #<%= @execution.id %></li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2><i class="bi bi-play-circle"></i> Execution Details</h2>
+      <p class="text-muted mb-0">
+        Function: <strong><%= @function.name %></strong> •
+        Executed <%= time_ago_in_words(@execution.executed_at) %> ago
+      </p>
+    </div>
+    <div>
+      <%= link_to function_path(@function), class: "btn btn-outline-secondary" do %>
+        <i class="bi bi-arrow-left"></i> Back to Function
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left Column: Execution Info -->
+    <div class="col-lg-6">
+      <!-- Status Card -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-info-circle"></i> Execution Status</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tbody>
+              <tr>
+                <th style="width: 40%;">Status</th>
+                <td>
+                  <% if @execution.success %>
+                    <span class="badge bg-success">Success</span>
+                  <% else %>
+                    <span class="badge bg-danger">Failed</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>Execution Time</th>
+                <td><%= @execution.execution_time_ms %>ms</td>
+              </tr>
+              <tr>
+                <th>Executed At</th>
+                <td><%= @execution.executed_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></td>
+              </tr>
+              <tr>
+                <th>Conversation ID</th>
+                <td>
+                  <% if @execution.agent_conversation_id %>
+                    <%= link_to @execution.agent_conversation.conversation_id.truncate(40), agent_conversation_path(@execution.agent_conversation) %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Input Arguments -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-box-arrow-in-right"></i> Input Arguments</h5>
+        </div>
+        <div class="card-body">
+          <pre class="bg-light p-3 rounded mb-0"><code><%= JSON.pretty_generate(@execution.arguments || {}) %></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Output & Logs -->
+    <div class="col-lg-6">
+      <!-- Output/Error -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <% if @execution.success %>
+              <i class="bi bi-box-arrow-right"></i> Output
+            <% else %>
+              <i class="bi bi-exclamation-triangle"></i> Error
+            <% end %>
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @execution.success %>
+            <pre class="bg-light p-3 rounded mb-0"><code><%= JSON.pretty_generate(@execution.result || {}) %></code></pre>
+          <% else %>
+            <div class="alert alert-danger mb-0">
+              <strong>Error:</strong>
+              <pre class="mb-0 mt-2"><%= @execution.error_message %></pre>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Note: Logs are not currently persisted in the database -->
+      <!-- Future enhancement: Add logs column to function_executions table -->
+    </div>
+  </div>
+</div>

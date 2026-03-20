@@ -1,0 +1,148 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h2 mb-1">
+        <i class="bi bi-code-square"></i> Function Library
+      </h1>
+      <p class="text-muted">Manage code-based functions for your deployed agents</p>
+    </div>
+    <%= link_to new_function_path, class: "btn btn-primary" do %>
+      <i class="bi bi-plus-circle"></i> Create Function
+    <% end %>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <%= form_with url: functions_path, method: :get, local: true, class: "row g-3" do |f| %>
+        <div class="col-md-4">
+          <%= f.label :q, "Search", class: "form-label" %>
+          <%= f.text_field :q, value: params[:q], class: "form-control", placeholder: "Search by name or description..." %>
+        </div>
+
+        <div class="col-md-2">
+          <%= f.label :category, "Category", class: "form-label" %>
+          <%= f.select :category, options_for_select([["All", ""]] + @categories.map { |c| [c.titleize, c] }, params[:category]), {}, class: "form-select" %>
+        </div>
+
+        <div class="col-md-2">
+          <%= f.label :language, "Language", class: "form-label" %>
+          <%= f.select :language, options_for_select([["All", ""]] + @languages.map { |l| [l.upcase, l] }, params[:language]), {}, class: "form-select" %>
+        </div>
+
+        <div class="col-md-2">
+          <%= f.label :tag, "Tag", class: "form-label" %>
+          <%= f.select :tag, options_for_select([["All", ""]] + @tags, params[:tag]), {}, class: "form-select" %>
+        </div>
+
+        <div class="col-md-2">
+          <%= f.label :sort, "Sort By", class: "form-label" %>
+          <%= f.select :sort, options_for_select([
+            ["Newest", ""],
+            ["Name", "name"],
+            ["Most Used", "most_used"],
+            ["Recently Executed", "recently_executed"]
+          ], params[:sort]), {}, class: "form-select" %>
+        </div>
+
+        <div class="col-12">
+          <%= f.submit "Apply Filters", class: "btn btn-primary" %>
+          <%= link_to "Clear Filters", functions_path, class: "btn btn-outline-secondary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Functions Table -->
+  <div class="card">
+    <div class="card-body">
+      <% if @functions.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Language</th>
+                <th>Status</th>
+                <th>Executions</th>
+                <th>Success Rate</th>
+                <th>Avg Time</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @functions.each do |function| %>
+                <tr>
+                  <td>
+                    <strong><%= link_to function.name, function_path(function) %></strong>
+                    <% if function.tags.present? %>
+                      <div class="mt-1">
+                        <% function.tags.each do |tag| %>
+                          <span class="badge bg-secondary"><%= tag %></span>
+                        <% end %>
+                      </div>
+                    <% end %>
+                  </td>
+                  <td><%= truncate(function.description, length: 80) %></td>
+                  <td>
+                    <span class="badge bg-info"><%= function.category.titleize %></span>
+                  </td>
+                  <td>
+                    <code><%= function.language.upcase %></code>
+                  </td>
+                  <td>
+                    <span class="badge bg-<%= function.deployment_status_badge_class %>">
+                      <%= function.deployment_status_text %>
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <%= number_with_delimiter(function.execution_count) %>
+                  </td>
+                  <td class="text-end">
+                    <% if function.execution_count > 0 %>
+                      <% success_rate = function.function_executions.success_rate %>
+                      <span class="badge <%= success_rate >= 90 ? 'bg-success' : success_rate >= 70 ? 'bg-warning' : 'bg-danger' %>">
+                        <%= number_to_percentage(success_rate, precision: 1) %>
+                      </span>
+                    <% else %>
+                      <span class="text-muted">N/A</span>
+                    <% end %>
+                  </td>
+                  <td class="text-end">
+                    <% if function.average_execution_time_ms %>
+                      <%= number_with_precision(function.average_execution_time_ms, precision: 0) %>ms
+                    <% else %>
+                      <span class="text-muted">N/A</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= link_to "View", function_path(function), class: "btn btn-sm btn-outline-primary" %>
+                    <%= link_to "Edit", edit_function_path(function), class: "btn btn-sm btn-outline-secondary" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-3">
+          <%= paginate @functions %>
+        </div>
+      <% else %>
+        <div class="text-center py-5">
+          <i class="bi bi-code-square" style="font-size: 3rem; color: #ccc;"></i>
+          <p class="text-muted mt-3">No functions found</p>
+          <% if params[:q].present? || params[:category].present? || params[:language].present? || params[:tag].present? %>
+            <%= link_to "Clear filters", functions_path, class: "btn btn-outline-primary" %>
+          <% else %>
+            <%= link_to "Create your first function", new_function_path, class: "btn btn-primary" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

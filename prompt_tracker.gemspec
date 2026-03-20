@@ -26,4 +26,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "importmap-rails"
   spec.add_dependency "turbo-rails"
   spec.add_dependency "stimulus-rails"
+  spec.add_dependency "aws-sdk-lambda", "~> 1.0"
+  spec.add_dependency "rubyzip", "~> 2.3"
+  spec.add_dependency "bcrypt", "~> 3.1"
 end

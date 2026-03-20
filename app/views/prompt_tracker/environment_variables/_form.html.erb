@@ -1,0 +1,47 @@
+<%= form_with model: @environment_variable, url: @environment_variable.persisted? ? environment_variable_path(@environment_variable) : environment_variables_path, local: true, class: "needs-validation", novalidate: true do |f| %>
+  <% if @environment_variable.errors.any? %>
+    <div class="alert alert-danger">
+      <h4 class="alert-heading">Please fix the following errors:</h4>
+      <ul class="mb-0">
+        <% @environment_variable.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="mb-3">
+        <%= f.label :name, "Name", class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "e.g., OpenWeather API Key", required: true %>
+        <div class="form-text">Human-readable name for this variable</div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :key, "Key", class: "form-label" %>
+        <%= f.text_field :key, class: "form-control", placeholder: "e.g., OPENWEATHER_API_KEY", required: true %>
+        <div class="form-text">Environment variable key (uppercase with underscores)</div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :value, "Value", class: "form-label" %>
+        <%= f.text_field :value, class: "form-control", placeholder: "e.g., sk_abc123", required: true, type: "password" %>
+        <div class="form-text">
+          <i class="bi bi-shield-lock"></i> This value will be encrypted and securely stored
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, "Description (Optional)", class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "e.g., Used for weather-related functions" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit @environment_variable.persisted? ? "Update Variable" : "Create Variable", class: "btn btn-primary" %>
+    <%= link_to "Cancel", environment_variables_path, class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>
+

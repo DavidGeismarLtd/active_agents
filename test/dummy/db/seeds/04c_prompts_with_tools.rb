@@ -395,13 +395,13 @@ news_prompt = PromptTracker::Prompt.create!(
 news_prompt.prompt_versions.create!(
   system_prompt: <<~SYSTEM.strip,
     You are a news analyst assistant. Your role is to:
-    1. Search for the latest news on requested topics
+    1. Search for the latest news on requested topics using the fetch_news_articles function
     2. Synthesize information from multiple news sources
     3. Provide balanced, objective analysis
     4. Cite all sources with publication dates
     5. Distinguish between facts and opinions
 
-    Use web search to find current news. Always verify information across sources.
+    Use the fetch_news_articles function to find current news. Always verify information across sources.
   SYSTEM
   user_prompt: "Provide a news analysis on: {{topic}}\n\nFocus on: {{focus_areas}}",
   status: "active",
@@ -415,13 +415,33 @@ news_prompt.prompt_versions.create!(
     "model" => "gpt-4o",
     "temperature" => 0.5,
     "max_tokens" => 3000,
-    "tools" => [ "web_search" ]
+    "tools" => [ "functions" ],
+    "tool_config" => {
+      "functions" => [
+        {
+          "name" => "fetch_news_articles",
+          "description" => "Fetch news articles from various sources based on a search query",
+          "parameters" => {
+            "type" => "object",
+            "properties" => {
+              "query" => { "type" => "string", "description" => "Search query for news articles" },
+              "category" => { "type" => "string", "description" => "News category (e.g., business, technology, sports)" },
+              "language" => { "type" => "string", "description" => "Language code (e.g., en, fr, es)" },
+              "from_date" => { "type" => "string", "description" => "Start date in YYYY-MM-DD format" },
+              "to_date" => { "type" => "string", "description" => "End date in YYYY-MM-DD format" },
+              "sort_by" => { "type" => "string", "description" => "Sort order: relevancy, popularity, or publishedAt" }
+            },
+            "required" => [ "query" ]
+          }
+        }
+      ]
+    }
   },
-  notes: "News analysis with balanced multi-source reporting",
+  notes: "News analysis with function calls to fetch articles",
   created_by: "media-team@example.com"
 )
 
-puts "  ✓ Created news analyst prompt with web search"
+puts "  ✓ Created news analyst prompt with function calls"
 
 # ============================================================================
 # 8. Tech Support Assistant (Anthropic with Function Calls)

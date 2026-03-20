@@ -1,0 +1,277 @@
+<div data-controller="function-ai-generator function-language-switcher">
+  <%= form_with model: @function, url: @function.persisted? ? function_path(@function) : functions_path, local: true, class: "needs-validation", novalidate: true do |f| %>
+    <% if function.errors.any? %>
+      <div class="alert alert-danger">
+        <h4 class="alert-heading">Please fix the following errors:</h4>
+        <ul class="mb-0">
+          <% function.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <!-- AI Generation Button (only for new functions) -->
+    <% unless @function.persisted? %>
+      <div class="mb-4">
+        <button type="button"
+                class="btn btn-primary btn-lg"
+                data-action="click->function-ai-generator#showModal">
+          <i class="bi bi-magic"></i> Create with AI
+        </button>
+        <span class="text-muted ms-2">Or fill out the form manually below</span>
+      </div>
+    <% end %>
+
+    <!-- Basic Information -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Basic Information</h5>
+      </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <%= f.label :name, "Function Name", class: "form-label" %>
+          <%= f.text_field :name, class: "form-control", placeholder: "e.g., get_weather", required: true %>
+          <div class="form-text">Unique identifier for this function (snake_case recommended)</div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+          <%= f.label :category, "Category", class: "form-label" %>
+          <%= f.select :category,
+                       options_for_select([
+                         ["API Integration", "api"],
+                         ["Utility", "utility"],
+                         ["Validation", "validation"],
+                         ["Data Processing", "data_processing"],
+                         ["External Service", "external_service"]
+                       ], function.category),
+                       { include_blank: "Select category" },
+                       class: "form-select",
+                       required: true %>
+        </div>
+
+        <div class="col-md-3 mb-3">
+          <%= f.label :language, "Language/Runtime", class: "form-label" %>
+          <%= f.select :language,
+                       options_for_select(
+                         PromptTracker::CloudProviders::Aws::LambdaConfig.available_languages.map { |lang|
+                           label = lang[:deprecated] ? "#{lang[:label]} (deprecated)" : lang[:label]
+                           [label, lang[:value]]
+                         },
+                         function.language || PromptTracker::CloudProviders::Aws::LambdaConfig.default_language
+                       ),
+                       {},
+                       class: "form-select",
+                       required: true,
+                       data: { action: "change->function-language-switcher#updateEditorLanguage" } %>
+          <div class="form-text">AWS Lambda runtime version</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :description, "Description", class: "form-label" %>
+        <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Describe what this function does...", required: true %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :tags, "Tags (comma-separated)", class: "form-label" %>
+        <%= f.text_field :tags,
+                         value: function.tags&.join(", "),
+                         class: "form-control",
+                         placeholder: "e.g., weather, api, external" %>
+        <div class="form-text">Add tags to help organize and search for functions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-code-slash"></i> Function Code
+      </h5>
+      <button type="button"
+              class="btn btn-sm btn-outline-primary"
+              data-controller="function-code-templates"
+              data-function-code-templates-monaco-editor-outlet="monaco-editor"
+              data-action="click->function-code-templates#showTemplates">
+        <i class="bi bi-file-code"></i> Use Template
+      </button>
+    </div>
+    <div class="card-body">
+      <%= f.label :code, "Code", class: "form-label" %>
+      <div data-controller="monaco-editor"
+           data-monaco-editor-language-value="ruby"
+           data-monaco-editor-height-value="500px"
+           data-monaco-editor-minimap-value="true"
+           data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+           data-field="code"
+           data-function-editor-target="codeEditor">
+        <div data-monaco-editor-target="container" class="monaco-editor"></div>
+        <%= f.text_area :code,
+                        data: { monaco_editor_target: "textarea" },
+                        required: true %>
+      </div>
+      <div class="form-text mt-2">
+        <strong>Note:</strong> Code will be executed in a sandboxed environment.
+        Use the <code>execute</code> method as the entry point.
+      </div>
+    </div>
+  </div>
+
+  <!-- Parameters (JSON Schema) -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="bi bi-braces"></i> Parameters (JSON Schema)
+      </h5>
+    </div>
+    <div class="card-body">
+      <%= f.label :parameters, "JSON Schema", class: "form-label" %>
+      <div data-controller="monaco-editor"
+           data-monaco-editor-language-value="json"
+           data-monaco-editor-height-value="300px"
+           data-monaco-editor-minimap-value="false"
+           data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+           data-field="parameters">
+        <div data-monaco-editor-target="container"></div>
+        <%= f.text_area :parameters,
+                        value: function.parameters.present? ? JSON.pretty_generate(function.parameters) : "",
+                        data: { monaco_editor_target: "textarea" } %>
+      </div>
+      <div class="form-text mt-2">
+        Define the input parameters using JSON Schema format
+        <a href="https://json-schema.org/learn/getting-started-step-by-step" target="_blank" class="ms-2">
+          <i class="bi bi-question-circle"></i> JSON Schema Guide
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment Variables -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-shield-lock"></i> Environment Variables (Optional)
+      </h5>
+      <%= link_to "Manage Shared Variables", environment_variables_path, class: "btn btn-sm btn-outline-secondary", target: "_blank" %>
+    </div>
+    <div class="card-body">
+      <!-- Shared Environment Variables -->
+      <div class="mb-4">
+        <%= f.label :shared_environment_variable_ids, "Shared Variables", class: "form-label" %>
+        <%= f.collection_select :shared_environment_variable_ids,
+                                PromptTracker::EnvironmentVariable.ordered_by_name,
+                                :id,
+                                :display_name,
+                                {},
+                                { multiple: true, class: "form-select", size: 5 } %>
+        <div class="form-text">
+          <i class="bi bi-info-circle"></i> Select shared environment variables to use in this function.
+          Hold Cmd/Ctrl to select multiple.
+        </div>
+      </div>
+
+      <hr class="my-4">
+
+      <!-- Function-Specific Variables -->
+      <div>
+        <%= f.label :environment_variables, "Function-Specific Variables (JSON)", class: "form-label" %>
+        <div data-controller="monaco-editor"
+             data-monaco-editor-language-value="json"
+             data-monaco-editor-height-value="200px"
+             data-monaco-editor-minimap-value="false">
+          <div data-monaco-editor-target="container"></div>
+          <%= f.text_area :environment_variables,
+                          value: function.environment_variables.present? ? JSON.pretty_generate(function.environment_variables) : "",
+                          data: { monaco_editor_target: "textarea" } %>
+        </div>
+        <div class="form-text mt-2">
+          <i class="bi bi-shield-lock"></i> Add function-specific variables here. These will override shared variables with the same key.
+          All values are encrypted and securely stored.
+          <br>
+          <strong>Example:</strong>
+          <code>{ "API_TIMEOUT": "30", "MAX_RETRIES": "3", "DEBUG_MODE": "true" }</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dependencies -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="bi bi-box-seam"></i> Dependencies (Optional)
+      </h5>
+    </div>
+    <div class="card-body">
+      <%= f.label :dependencies, "Dependencies (JSON array)", class: "form-label" %>
+      <div data-controller="monaco-editor"
+           data-monaco-editor-language-value="json"
+           data-monaco-editor-height-value="150px"
+           data-monaco-editor-minimap-value="false"
+           data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+           data-field="dependencies">
+        <div data-monaco-editor-target="container"></div>
+        <%= f.text_area :dependencies,
+                        value: function.dependencies.present? ? JSON.pretty_generate(function.dependencies) : "",
+                        data: { monaco_editor_target: "textarea" } %>
+      </div>
+      <div class="form-text mt-2">
+        List of dependencies required by this function (e.g., <code>["httparty", "json"]</code> for Ruby, <code>["requests"]</code> for Python)
+      </div>
+    </div>
+  </div>
+
+  <!-- Example Input/Output -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="bi bi-play-circle"></i> Example (Optional)
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <%= f.label :example_input, "Example Input (JSON)", class: "form-label" %>
+          <div data-controller="monaco-editor"
+               data-monaco-editor-language-value="json"
+               data-monaco-editor-height-value="200px"
+               data-monaco-editor-minimap-value="false"
+               data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+               data-field="example_input">
+            <div data-monaco-editor-target="container"></div>
+            <%= f.text_area :example_input,
+                            data: { monaco_editor_target: "textarea" } %>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <%= f.label :example_output, "Example Output (JSON)", class: "form-label" %>
+          <div data-controller="monaco-editor"
+               data-monaco-editor-language-value="json"
+               data-monaco-editor-height-value="200px"
+               data-monaco-editor-minimap-value="false"
+               data-function-ai-generator-monaco-editor-outlet="monaco-editor"
+               data-field="example_output">
+            <div data-monaco-editor-target="container"></div>
+            <%= f.text_area :example_output,
+                            data: { monaco_editor_target: "textarea" } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="d-flex justify-content-between">
+    <%= link_to "Cancel", function.persisted? ? function_path(function) : functions_path, class: "btn btn-outline-secondary" %>
+    <%= f.submit function.persisted? ? "Update Function" : "Create Function", class: "btn btn-primary" %>
+  </div>
+  <% end %>
+
+  <!-- AI Generation Modal (inside controller scope) -->
+  <div data-controller="modal-fix">
+    <%= render "prompt_tracker/functions/ai_generator_modal" %>
+  </div>
+</div>

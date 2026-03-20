@@ -18,7 +18,9 @@ module PromptTracker
                 api: "assistants",
                 model: "gpt-4o",
                 temperature: 0.7,
-                assistant_id: "asst_abc123"
+                metadata: {
+                  assistant_id: "asst_abc123"
+                }
               })
           end
 

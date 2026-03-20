@@ -1,0 +1,93 @@
+<div class="card">
+  <div class="card-body">
+    <%= form_with model: agent, url: agent.persisted? ? deployed_agent_path(agent.slug) : deployed_agents_path, method: agent.persisted? ? :patch : :post, local: true do |f| %>
+      <%= f.hidden_field :prompt_version_id %>
+
+      <!-- Name -->
+      <div class="mb-3">
+        <%= f.label :name, "Agent Name", class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "e.g., Customer Support Bot", required: true %>
+        <div class="form-text">A friendly name for this deployment</div>
+      </div>
+
+      <!-- Configuration Section -->
+      <h5 class="mt-4 mb-3">Configuration</h5>
+
+      <!-- Conversation TTL -->
+      <div class="mb-3">
+        <%= f.label :conversation_ttl, "Conversation TTL (seconds)", class: "form-label" %>
+        <%= f.fields_for :deployment_config do |config_f| %>
+          <%= config_f.number_field :conversation_ttl,
+              value: agent.config[:conversation_ttl] || 3600,
+              class: "form-control",
+              min: 60,
+              max: 86400 %>
+        <% end %>
+        <div class="form-text">How long to keep conversation state (60 seconds to 24 hours)</div>
+      </div>
+
+      <!-- Rate Limiting -->
+      <div class="mb-3">
+        <%= f.label :rate_limit, "Rate Limit (requests per minute)", class: "form-label" %>
+        <%= f.fields_for :deployment_config do |config_f| %>
+          <%= config_f.fields_for :rate_limit do |rate_f| %>
+            <%= rate_f.number_field :requests_per_minute,
+                value: agent.config.dig(:rate_limit, :requests_per_minute) || 60,
+                class: "form-control",
+                min: 1,
+                max: 1000 %>
+          <% end %>
+        <% end %>
+        <div class="form-text">Maximum requests per minute (leave blank for unlimited)</div>
+      </div>
+
+      <!-- Authentication Type -->
+      <div class="mb-3">
+        <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
+        <%= f.fields_for :deployment_config do |config_f| %>
+          <%= config_f.fields_for :auth do |auth_f| %>
+            <%= auth_f.select :type,
+                options_for_select([["API Key", "api_key"], ["None", "none"]], agent.config.dig(:auth, :type) || "api_key"),
+                {},
+                class: "form-select" %>
+          <% end %>
+        <% end %>
+        <div class="form-text">How clients authenticate with this agent</div>
+      </div>
+
+      <!-- CORS Origins -->
+      <div class="mb-3">
+        <%= f.label :cors_origins, "CORS Allowed Origins", class: "form-label" %>
+        <%= f.fields_for :deployment_config do |config_f| %>
+          <%= config_f.fields_for :cors do |cors_f| %>
+            <%= cors_f.text_field :allowed_origins,
+                value: (agent.config.dig(:cors, :allowed_origins) || []).join(", "),
+                class: "form-control",
+                placeholder: "https://example.com, https://app.example.com" %>
+          <% end %>
+        <% end %>
+        <div class="form-text">Comma-separated list of allowed origins (leave blank for all)</div>
+      </div>
+
+      <!-- Enable Web UI -->
+      <div class="mb-3">
+        <div class="form-check form-switch">
+          <%= f.fields_for :deployment_config do |config_f| %>
+            <%= config_f.check_box :enable_web_ui,
+                checked: agent.config[:enable_web_ui] != false,
+                class: "form-check-input",
+                id: "enable_web_ui" %>
+            <%= config_f.label :enable_web_ui, "Enable Browser Chat Interface", class: "form-check-label", for: "enable_web_ui" %>
+          <% end %>
+        </div>
+        <div class="form-text">Allow users to chat with this agent via browser at /agents/<%= agent.slug || 'your-slug' %>/chat</div>
+      </div>
+
+      <!-- Submit Buttons -->
+      <div class="d-flex gap-2 mt-4">
+        <%= f.submit agent.persisted? ? "Update Agent" : "Deploy Agent", class: "btn btn-primary" %>
+        <%= link_to "Cancel", agent.persisted? ? deployed_agent_path(agent.slug) : deployed_agents_path, class: "btn btn-outline-secondary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

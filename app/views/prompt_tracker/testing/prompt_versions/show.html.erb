@@ -25,24 +25,70 @@
           </p>
         <% end %>
       </div>
-      <div class="d-flex gap-2 align-items-start">
-        <%= link_to testing_prompt_prompt_version_datasets_path(@prompt, @version), class: "btn btn-outline-primary" do %>
-          <i class="bi bi-database"></i> Datasets
-        <% end %>
-        <%= link_to monitoring_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-success" do %>
-          <i class="bi bi-activity"></i> View in Monitoring
-        <% end %>
-        <% unless @version.active? %>
-          <%= button_to activate_testing_prompt_prompt_version_path(@prompt, @version), method: :post, class: "btn btn-success", data: { confirm: "Activate this version? This will deprecate all other versions." } do %>
-            <i class="bi bi-check-circle"></i> Activate Version
+      <%# Actions Dropdown - All actions consolidated %>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-three-dots-vertical"></i> Actions
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <%# Primary Actions %>
+          <li>
+            <%= link_to testing_prompt_prompt_version_playground_path(@prompt, @version), class: "dropdown-item" do %>
+              <i class="bi bi-pencil-square text-primary"></i> Edit in Playground
+            <% end %>
+          </li>
+
+          <%# Agent Action: Deploy or View (mutually exclusive) %>
+          <% if @version.deployed_agents.any? %>
+            <li>
+              <%= link_to deployed_agent_path(@version.deployed_agents.first), class: "dropdown-item" do %>
+                <i class="bi bi-eye text-purple"></i> View Deployed Agent
+              <% end %>
+            </li>
+          <% else %>
+            <li>
+              <%= link_to new_deployed_agent_path(prompt_version_id: @version.id), class: "dropdown-item" do %>
+                <i class="bi bi-robot text-purple"></i> Deploy Agent
+              <% end %>
+            </li>
           <% end %>
-        <% end %>
-        <%= link_to testing_prompt_prompt_version_playground_path(@prompt, @version), class: "btn btn-primary" do %>
-          <i class="bi bi-pencil-square"></i> Edit in Playground
-        <% end %>
-        <%= link_to compare_testing_prompt_prompt_version_path(@prompt, @version), class: "btn btn-outline-info" do %>
-          <i class="bi bi-arrow-left-right"></i> Compare Versions
-        <% end %>
+
+          <li><hr class="dropdown-divider"></li>
+
+          <%# Navigation Links %>
+          <li>
+            <%= link_to testing_prompt_prompt_version_datasets_path(@prompt, @version), class: "dropdown-item" do %>
+              <i class="bi bi-database text-primary"></i> Datasets
+            <% end %>
+          </li>
+          <li>
+            <%= link_to monitoring_prompt_prompt_version_path(@prompt, @version), class: "dropdown-item" do %>
+              <i class="bi bi-activity text-success"></i> View in Monitoring
+            <% end %>
+          </li>
+
+          <%# Version Actions %>
+          <% unless @version.active? %>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <%= button_to activate_testing_prompt_prompt_version_path(@prompt, @version),
+                  method: :post,
+                  class: "dropdown-item",
+                  data: { confirm: "Activate this version? This will deprecate all other versions." },
+                  form: { style: "display: inline;" } do %>
+                <i class="bi bi-check-circle text-success"></i> Activate Version
+              <% end %>
+            </li>
+          <% end %>
+
+          <% if @prompt.prompt_versions.count > 1 %>
+            <li>
+              <%= link_to compare_testing_prompt_prompt_version_path(@prompt, @version), class: "dropdown-item" do %>
+                <i class="bi bi-arrow-left-right text-info"></i> Compare Versions
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
       </div>
     </div>
   </div>

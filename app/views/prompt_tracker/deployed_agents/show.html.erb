@@ -1,0 +1,153 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item active"><%= @agent.name %></li>
+<% end %>
+
+<div class="deployed-agent-show">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #F3E8FF; border-left: 4px solid #9333EA; padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1 style="color: #581C87; margin: 0;">
+          <i class="bi bi-robot"></i> <%= @agent.name %>
+          <% case @agent.status %>
+          <% when "active" %>
+            <span class="badge bg-success">Active</span>
+          <% when "paused" %>
+            <span class="badge bg-warning">Paused</span>
+          <% when "error" %>
+            <span class="badge bg-danger">Error</span>
+          <% end %>
+        </h1>
+        <div style="margin-top: 0.5rem;">
+          <code style="background-color: #E9D5FF; color: #581C87; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;">
+            slug: "<%= @agent.slug %>"
+          </code>
+        </div>
+        <p style="color: #581C87; margin: 0.5rem 0 0 0;">
+          Deployed <%= time_ago_in_words(@agent.deployed_at) %> ago from
+          <%= link_to "#{@prompt.name} v#{@version.version_number}",
+              testing_prompt_prompt_version_path(@prompt, @version),
+              style: "color: #581C87; text-decoration: underline;" %>
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <% if @agent.status == "active" %>
+          <%= button_to pause_deployed_agent_path(@agent.slug), method: :post, class: "btn btn-warning" do %>
+            <i class="bi bi-pause-circle"></i> Pause
+          <% end %>
+        <% elsif @agent.status == "paused" %>
+          <%= button_to resume_deployed_agent_path(@agent.slug), method: :post, class: "btn btn-success" do %>
+            <i class="bi bi-play-circle"></i> Resume
+          <% end %>
+        <% end %>
+        <%= link_to edit_deployed_agent_path(@agent.slug), class: "btn btn-outline-primary" do %>
+          <i class="bi bi-gear"></i> Settings
+        <% end %>
+        <%= button_to deployed_agent_path(@agent.slug), method: :delete, class: "btn btn-outline-danger",
+            data: { confirm: "Are you sure? This will delete the agent and all its conversations." } do %>
+          <i class="bi bi-trash"></i> Delete
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-chat-dots"></i> Total Conversations</h6>
+          <h3 class="mb-0"><%= number_with_delimiter(@total_conversations) %></h3>
+          <small class="text-success"><%= @active_conversations %> active</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Total Requests</h6>
+          <h3 class="mb-0"><%= number_with_delimiter(@total_requests) %></h3>
+          <small class="text-success"><%= @successful_requests %> successful</small>
+          <small class="text-danger ms-2"><%= @failed_requests %> failed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-speedometer2"></i> Avg Response Time</h6>
+          <h3 class="mb-0">
+            <% if @avg_response_time %>
+              <%= @avg_response_time %>ms
+            <% else %>
+              <span class="text-muted">N/A</span>
+            <% end %>
+          </h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-clock-history"></i> Last Request</h6>
+          <h3 class="mb-0" style="font-size: 1.2rem;">
+            <% if @agent.last_request_at %>
+              <%= time_ago_in_words(@agent.last_request_at) %> ago
+            <% else %>
+              <span class="text-muted">Never</span>
+            <% end %>
+          </h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="agentTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+        <i class="bi bi-info-circle"></i> Overview
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+        <i class="bi bi-list-ul"></i> Logs
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="functions-tab" data-bs-toggle="tab" data-bs-target="#functions" type="button" role="tab">
+        <i class="bi bi-code-square"></i> Functions
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="conversations-tab" data-bs-toggle="tab" data-bs-target="#conversations" type="button" role="tab">
+        <i class="bi bi-chat-dots"></i> Conversations
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content" id="agentTabsContent">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+      <%= render "prompt_tracker/deployed_agents/tabs/overview", agent: @agent, prompt: @prompt, version: @version %>
+    </div>
+
+    <!-- Logs Tab -->
+    <div class="tab-pane fade" id="logs" role="tabpanel">
+      <%= render "prompt_tracker/deployed_agents/tabs/logs", agent: @agent, recent_responses: @recent_responses %>
+    </div>
+
+    <!-- Functions Tab -->
+    <div class="tab-pane fade" id="functions" role="tabpanel">
+      <%= render "prompt_tracker/deployed_agents/tabs/functions", agent: @agent %>
+    </div>
+
+    <!-- Conversations Tab -->
+    <div class="tab-pane fade" id="conversations" role="tabpanel">
+      <%= render "prompt_tracker/deployed_agents/tabs/conversations", agent: @agent, recent_conversations: @recent_conversations %>
+    </div>
+  </div>
+</div>
+

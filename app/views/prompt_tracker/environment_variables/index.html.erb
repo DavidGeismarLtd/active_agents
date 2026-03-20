@@ -1,0 +1,76 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-shield-lock"></i> Shared Environment Variables</h1>
+    <%= link_to "New Variable", new_environment_variable_path, class: "btn btn-primary" %>
+  </div>
+
+  <!-- Search -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <%= form_with url: environment_variables_path, method: :get, local: true, class: "row g-3" do |f| %>
+        <div class="col-md-10">
+          <%= f.text_field :q, value: params[:q], class: "form-control", placeholder: "Search by name, key, or description..." %>
+        </div>
+        <div class="col-md-2">
+          <%= f.submit "Search", class: "btn btn-primary w-100" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Environment Variables Table -->
+  <div class="card">
+    <div class="card-body">
+      <% if @environment_variables.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Key</th>
+                <th>Description</th>
+                <th>Used By</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @environment_variables.each do |env_var| %>
+                <tr>
+                  <td><strong><%= env_var.name %></strong></td>
+                  <td><code><%= env_var.key %></code></td>
+                  <td><%= env_var.description.presence || "-" %></td>
+                  <td>
+                    <% if env_var.in_use? %>
+                      <span class="badge bg-info"><%= env_var.usage_count %> function(s)</span>
+                    <% else %>
+                      <span class="text-muted">Not used</span>
+                    <% end %>
+                  </td>
+                  <td><%= time_ago_in_words(env_var.created_at) %> ago</td>
+                  <td>
+                    <%= link_to "Edit", edit_environment_variable_path(env_var), class: "btn btn-sm btn-outline-primary" %>
+                    <%= button_to "Delete",
+                                  environment_variable_path(env_var),
+                                  method: :delete,
+                                  data: { confirm: "Are you sure? This will affect #{env_var.usage_count} function(s)." },
+                                  class: "btn btn-sm btn-outline-danger" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%= paginate @environment_variables %>
+      <% else %>
+        <div class="text-center py-5">
+          <i class="bi bi-shield-lock" style="font-size: 4rem; color: #ccc;"></i>
+          <p class="text-muted mt-3">No environment variables found.</p>
+          <%= link_to "Create your first variable", new_environment_variable_path, class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+

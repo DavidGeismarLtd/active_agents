@@ -24,6 +24,8 @@
 # 14. datasets - Reusable test data collections (polymorphic)
 # 15. dataset_rows - Individual rows of test data
 # 16. human_evaluations - Human review of evaluations/responses
+# 17. function_definitions - Reusable executable functions for agents
+# 18. function_executions - Individual function execution logs
 class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
   def change
     # Enable PostgreSQL extension
@@ -450,6 +452,58 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     end
 
     # ============================================================================
+    # TABLE 15: function_definitions
+    # Reusable executable functions for agents
+    # ============================================================================
+    create_table :prompt_tracker_function_definitions do |t|
+      t.string :name, null: false
+      t.text :description
+      t.jsonb :parameters, default: {}, null: false  # JSON Schema
+      t.text :code, null: false  # Ruby source code
+      t.string :language, null: false, default: "ruby"
+      t.string :category
+      t.jsonb :tags, default: []
+      t.text :environment_variables  # Encrypted by Rails
+      t.jsonb :dependencies, default: []  # Array of gem names/versions
+      t.jsonb :example_input, default: {}
+      t.jsonb :example_output, default: {}
+      t.integer :version, default: 1, null: false
+      t.string :created_by
+      t.integer :usage_count, default: 0, null: false
+      t.datetime :last_executed_at
+      t.integer :execution_count, default: 0, null: false
+      t.integer :average_execution_time_ms
+      t.timestamps
+    end
+
+    add_index :prompt_tracker_function_definitions, :name, unique: true
+    add_index :prompt_tracker_function_definitions, :category
+    add_index :prompt_tracker_function_definitions, :language
+    add_index :prompt_tracker_function_definitions, :last_executed_at
+    add_index :prompt_tracker_function_definitions, :created_at
+
+    # ============================================================================
+    # TABLE 16: function_executions
+    # Individual function execution logs for analytics and debugging
+    # ============================================================================
+    create_table :prompt_tracker_function_executions do |t|
+      t.bigint :function_definition_id, null: false
+      t.jsonb :arguments, default: {}, null: false
+      t.jsonb :result
+      t.boolean :success, null: false, default: true
+      t.text :error_message
+      t.integer :execution_time_ms
+      t.datetime :executed_at, null: false
+      t.timestamps
+    end
+
+    add_index :prompt_tracker_function_executions, :function_definition_id
+    add_index :prompt_tracker_function_executions, :executed_at
+    add_index :prompt_tracker_function_executions, :success
+    add_index :prompt_tracker_function_executions, [ :function_definition_id, :executed_at ],
+              name: "index_function_executions_on_definition_and_executed_at"
+
+    # ============================================================================
     # FOREIGN KEYS
     # Add all foreign key constraints
     # ============================================================================
@@ -471,5 +525,6 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
     add_foreign_key :prompt_tracker_prompt_versions, :prompt_tracker_prompts, column: :prompt_id
     add_foreign_key :prompt_tracker_spans, :prompt_tracker_spans, column: :parent_span_id
     add_foreign_key :prompt_tracker_spans, :prompt_tracker_traces, column: :trace_id
+    add_foreign_key :prompt_tracker_function_executions, :prompt_tracker_function_definitions, column: :function_definition_id
   end
 end

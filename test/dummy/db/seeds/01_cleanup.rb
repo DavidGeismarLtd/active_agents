@@ -12,6 +12,8 @@ PromptTracker::AbTest.delete_all
 PromptTracker::EvaluatorConfig.delete_all
 PromptTracker::DatasetRow.delete_all  # Delete dataset rows before datasets
 PromptTracker::Dataset.delete_all  # Delete datasets before prompt versions
+PromptTracker::AgentConversation.delete_all  # Delete conversations before deployed agents (messages are JSONB, not separate table)
+PromptTracker::DeployedAgent.delete_all  # Delete deployed agents before prompt versions
 PromptTracker::PromptVersion.delete_all
 PromptTracker::Prompt.delete_all
 

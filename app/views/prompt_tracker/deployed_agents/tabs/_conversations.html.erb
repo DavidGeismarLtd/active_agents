@@ -1,0 +1,68 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="bi bi-chat-dots"></i> Recent Conversations</h5>
+  </div>
+  <div class="card-body p-0">
+    <% if recent_conversations.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Conversation ID</th>
+              <th>Messages</th>
+              <th>Last Message</th>
+              <th>Expires At</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% recent_conversations.each do |conversation| %>
+              <tr style="cursor: pointer;" onclick="window.location='<%= agent_conversation_path(conversation) %>'">
+                <td>
+                  <code><%= conversation.conversation_id.truncate(30) %></code>
+                </td>
+                <td>
+                  <%= conversation.message_count %>
+                </td>
+                <td>
+                  <% if conversation.last_message_at %>
+                    <%= time_ago_in_words(conversation.last_message_at) %> ago
+                  <% else %>
+                    <span class="text-muted">No messages</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if conversation.expires_at %>
+                    <% if conversation.expired? %>
+                      <span class="text-danger">
+                        Expired <%= time_ago_in_words(conversation.expires_at) %> ago
+                      </span>
+                    <% else %>
+                      <span class="text-success">
+                        In <%= distance_of_time_in_words(Time.current, conversation.expires_at) %>
+                      </span>
+                    <% end %>
+                  <% else %>
+                    <span class="text-muted">N/A</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if conversation.expired? %>
+                    <span class="badge bg-secondary">Expired</span>
+                  <% else %>
+                    <span class="badge bg-success">Active</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="bi bi-chat-dots" style="font-size: 3rem; color: #9CA3AF;"></i>
+        <p class="text-muted mt-3">No conversations yet</p>
+      </div>
+    <% end %>
+  </div>
+</div>

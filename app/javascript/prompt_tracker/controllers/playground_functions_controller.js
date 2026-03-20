@@ -21,8 +21,13 @@ export default class extends Controller {
     "functionDescription",
     "functionOutputDescription",
     "functionParameters",
-    "functionStrict"
+    "functionStrict",
+    "definedFunctionSelect"
   ]
+
+  static values = {
+    functionDefinitions: Array
+  }
 
   /**
    * Add a new function definition
@@ -39,11 +44,47 @@ export default class extends Controller {
   }
 
   /**
+   * Add a defined function from the library
+   * @param {Event} event - Change event from select
+   */
+  addDefinedFunction(event) {
+    const functionId = event.target.value
+    if (!functionId) return
+
+    // Find the function definition
+    const functionDef = this.functionDefinitionsValue.find(fd => fd.id === parseInt(functionId))
+    if (!functionDef) {
+      console.warn(`Function definition with id ${functionId} not found`)
+      return
+    }
+
+    // Remove "no functions" message if present
+    if (this.hasNoFunctionsMessageTarget) {
+      this.noFunctionsMessageTarget.remove()
+    }
+
+    // Create function item with the defined function data
+    const index = this.functionItemTargets.length
+    const template = this.createFunctionTemplate(index, functionDef)
+    this.functionsListTarget.insertAdjacentHTML("beforeend", template)
+
+    // Reset the select
+    event.target.value = ""
+
+    this.dispatchConfigChange()
+  }
+
+  /**
    * Create HTML template for a new function item
    * @param {number} index - Function index
+   * @param {Object} functionData - Optional function data to pre-fill
    * @returns {string} HTML template string
    */
-  createFunctionTemplate(index) {
+  createFunctionTemplate(index, functionData = null) {
+    const name = functionData?.name || ""
+    const description = functionData?.description || ""
+    const parameters = functionData?.parameters ? JSON.stringify(functionData.parameters, null, 2) : ""
+
     return `
       <div class="function-item card mb-2" data-playground-functions-target="functionItem" data-function-index="${index}">
         <div class="card-body p-2">
@@ -52,11 +93,13 @@ export default class extends Controller {
               <input type="text"
                      class="form-control form-control-sm mb-1"
                      placeholder="Function name (e.g., get_weather)"
+                     value="${this.escapeHtml(name)}"
                      data-playground-functions-target="functionName"
                      data-action="input->playground-functions#onFunctionChange">
               <input type="text"
                      class="form-control form-control-sm mb-2"
                      placeholder="Description"
+                     value="${this.escapeHtml(description)}"
                      data-playground-functions-target="functionDescription"
                      data-action="input->playground-functions#onFunctionChange">
               <textarea class="form-control form-control-sm"
@@ -91,7 +134,7 @@ export default class extends Controller {
                       placeholder='{"type": "object", "properties": {...}, "required": [...]}'
                       data-playground-functions-target="functionParameters"
                       data-function-index="${index}"
-                      data-action="input->playground-functions#onFunctionChange"></textarea>
+                      data-action="input->playground-functions#onFunctionChange">${this.escapeHtml(parameters)}</textarea>
             <div class="form-text small">
               Define parameters using JSON Schema format.
               <a href="https://json-schema.org/understanding-json-schema/" target="_blank">Learn more</a>
@@ -111,6 +154,17 @@ export default class extends Controller {
         </div>
       </div>
     `
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
   }
 
   /**

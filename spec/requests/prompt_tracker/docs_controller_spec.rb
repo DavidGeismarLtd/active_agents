@@ -18,13 +18,17 @@ RSpec.describe "PromptTracker::DocsController", type: :request do
     context "with prompt and version context" do
       let(:prompt) { create(:prompt, name: "test_prompt") }
       let(:version) do
-        create(:prompt_version,
-               prompt: prompt,
-               status: "active",
-               variables_schema: [
-                 { "name" => "user_name", "type" => "string", "required" => true },
-                 { "name" => "topic", "type" => "string", "required" => true }
-               ])
+        v = create(:prompt_version,
+                   prompt: prompt,
+                   user_prompt: "Hello {{user_name}}, let's discuss {{topic}}",
+                   status: "active")
+        # Update variables_schema after creation to set specific schema
+        # (extract_variables_schema callback extracts from user_prompt)
+        v.update_column(:variables_schema, [
+          { "name" => "user_name", "type" => "string", "required" => true },
+          { "name" => "topic", "type" => "string", "required" => true }
+        ])
+        v
       end
 
       it "shows context-specific example" do

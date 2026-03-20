@@ -37,6 +37,7 @@ module PromptTracker
 
       @sample_variables = build_sample_variables(@variables)
       @available_providers = helpers.enabled_providers
+      @function_definitions = FunctionDefinition.order(name: :asc)
 
       # DEBUG LOGGING
       Rails.logger.debug "========== PLAYGROUND CONTROLLER SHOW =========="

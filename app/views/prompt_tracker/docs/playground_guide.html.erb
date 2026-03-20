@@ -1,0 +1,850 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item">Documentation</li>
+  <li class="breadcrumb-item active" aria-current="page">Playground Guide</li>
+<% end %>
+
+<div class="docs-playground-guide">
+  <!-- Header -->
+  <div class="page-header" style="background-color: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1.5rem; margin-bottom: 2rem;">
+    <h1 style="color: #1E40AF; margin: 0;">
+      <i class="bi bi-play-circle"></i> Playground Guide: Creating an Agent
+    </h1>
+    <p style="color: #1E40AF; margin: 0.5rem 0 0 0;">
+      Step-by-step guide to creating and configuring AI agents using the PromptTracker Playground
+    </p>
+  </div>
+
+  <!-- Quick Start -->
+  <div class="alert alert-info mb-4">
+    <h5><i class="bi bi-lightbulb"></i> What is the Playground?</h5>
+    <p class="mb-0">
+      The Playground is an interactive environment where you can design, test, and configure AI agents (prompts) before deploying them to production.
+      It supports multiple LLM providers (OpenAI, Anthropic, Google) and various APIs (Chat Completions, Assistants, Responses).
+    </p>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="bi bi-list-ol"></i> Table of Contents</h5>
+    </div>
+    <div class="card-body">
+      <ol class="mb-0">
+        <li><a href="#step-1">Getting Started: Accessing the Playground</a></li>
+        <li><a href="#step-2">Choosing Your Provider and API</a></li>
+        <li><a href="#step-3">Writing Your Prompts</a></li>
+        <li><a href="#step-4">Configuring Model Settings</a></li>
+        <li><a href="#step-5">Adding Tools (Optional)</a></li>
+        <li><a href="#step-6">Working with Variables</a></li>
+        <li><a href="#step-7">Testing Your Agent</a></li>
+        <li><a href="#step-8">Structured Outputs (JSON Schema)</a></li>
+        <li><a href="#step-9">Saving Your Agent</a></li>
+        <li><a href="#step-10">Syncing with OpenAI Assistants</a></li>
+        <li><a href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- Step 1: Getting Started -->
+  <div class="card mb-4" id="step-1">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-1-circle"></i> Getting Started: Accessing the Playground</h3>
+    </div>
+    <div class="card-body">
+      <h5>Option A: Create a New Agent (Standalone Mode)</h5>
+      <ol>
+        <li>Navigate to the <strong>Testing</strong> section from the main menu</li>
+        <li>Click the <strong>"New Prompt"</strong> button in the top right</li>
+        <li>Select <strong>"Create in Playground"</strong> from the dropdown</li>
+        <li>You'll see a blank playground ready for configuration</li>
+      </ol>
+
+      <h5 class="mt-4">Option B: Edit an Existing Agent</h5>
+      <ol>
+        <li>Go to <strong>Testing → Prompts</strong></li>
+        <li>Click on any existing prompt</li>
+        <li>Click the <strong>"Open in Playground"</strong> button</li>
+        <li>The playground will load with the current version's configuration</li>
+      </ol>
+
+      <h5 class="mt-4">Option C: Import from OpenAI</h5>
+      <ol>
+        <li>In the <strong>Testing</strong> dashboard, click <strong>"Sync OpenAI Assistants"</strong></li>
+        <li>Your OpenAI assistants will be imported as prompts</li>
+        <li>Open any imported prompt in the playground to edit it</li>
+      </ol>
+
+      <div class="alert alert-success mt-3">
+        <i class="bi bi-check-circle"></i> <strong>Tip:</strong> Use the standalone mode when creating a brand new agent from scratch.
+        Use the edit mode when iterating on existing agents.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Choosing Provider and API -->
+  <div class="card mb-4" id="step-2">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-2-circle"></i> Choosing Your Provider and API</h3>
+    </div>
+    <div class="card-body">
+      <p>The playground supports multiple LLM providers and APIs. Your choice determines which features are available.</p>
+
+      <h5>1. Select a Provider</h5>
+      <p>In the <strong>Model Configuration</strong> panel (right side), choose from:</p>
+      <ul>
+        <li><strong>OpenAI</strong> - GPT models (gpt-4o, gpt-4o-mini, etc.)</li>
+        <li><strong>Anthropic</strong> - Claude models (claude-3-5-sonnet, etc.)</li>
+        <li><strong>Google</strong> - Gemini models</li>
+      </ul>
+
+      <h5 class="mt-3">2. Select an API</h5>
+      <p>Different APIs offer different capabilities:</p>
+
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>API</th>
+              <th>Provider</th>
+              <th>Best For</th>
+              <th>Features</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Chat Completions</strong></td>
+              <td>OpenAI, Anthropic, Google</td>
+              <td>Simple chat interactions, general-purpose agents</td>
+              <td>System prompt, user prompt template, variables, tools</td>
+            </tr>
+            <tr>
+              <td><strong>Assistants</strong></td>
+              <td>OpenAI</td>
+              <td>Stateful conversations, file analysis, code execution</td>
+              <td>Instructions, tools (file_search, code_interpreter), vector stores</td>
+            </tr>
+            <tr>
+              <td><strong>Responses</strong></td>
+              <td>OpenAI</td>
+              <td>Advanced multi-turn conversations</td>
+              <td>System prompt, conversation testing, built-in tools</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h5 class="mt-3">3. Select a Model</h5>
+      <p>After choosing provider and API, select the specific model:</p>
+      <ul>
+        <li><strong>gpt-4o</strong> - Most capable OpenAI model, best for complex tasks</li>
+        <li><strong>gpt-4o-mini</strong> - Faster and cheaper, good for simple tasks</li>
+        <li><strong>claude-3-5-sonnet</strong> - Anthropic's most capable model</li>
+      </ul>
+
+      <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong> The UI will automatically show/hide sections based on your API selection.
+        For example, Assistants API shows only "Instructions" while Chat Completions shows "System Prompt" and "User Prompt Template".
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Writing Prompts -->
+  <div class="card mb-4" id="step-3">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-3-circle"></i> Writing Your Prompts</h3>
+    </div>
+    <div class="card-body">
+      <p>The playground provides different prompt editors depending on your selected API:</p>
+
+      <h5>For Chat Completions & Responses APIs:</h5>
+
+      <h6 class="mt-3">System Prompt (Optional but Recommended)</h6>
+      <p>The system prompt sets the AI's role, behavior, and guidelines. It's like giving the AI its job description.</p>
+
+      <div class="card bg-light mb-3">
+        <div class="card-body">
+          <h6>Best Practices for System Prompts:</h6>
+          <ul class="mb-0">
+            <li>Use structured sections: <code>#role</code>, <code>#goal</code>, <code>#context</code>, <code>#tone_style</code>, <code>#guidelines</code></li>
+            <li>Be specific about what the AI should and shouldn't do</li>
+            <li>Define the expected tone and style</li>
+            <li>Include examples of good responses if helpful</li>
+          </ul>
+        </div>
+      </div>
+
+      <pre><code class="language-text">#role
+You are a helpful customer support agent for an e-commerce platform.
+
+#goal
+Assist customers with order inquiries, returns, and general questions.
+
+#tone_style
+- Professional yet friendly
+- Empathetic and patient
+- Clear and concise
+
+#guidelines
+- Always verify order details before providing information
+- Offer solutions, not just explanations
+- Escalate to human agent if issue is complex
+- Never share customer data with unauthorized parties</code></pre>
+
+      <h6 class="mt-4">User Prompt Template (Required)</h6>
+      <p>The user prompt template is the actual message sent to the AI. Use <code>{{ variable_name }}</code> syntax for dynamic content.</p>
+
+      <pre><code class="language-text">Customer: {{ customer_name }}
+Order ID: {{ order_id }}
+Question: {{ customer_question }}
+
+Please provide a helpful response to the customer's question.</code></pre>
+
+      <h5 class="mt-4">For Assistants API:</h5>
+
+      <h6>Instructions (Required)</h6>
+      <p>Assistants use a single "Instructions" field that combines system-level guidance with task instructions.</p>
+
+      <pre><code class="language-text">#role
+You are a data analysis assistant with access to file search and code execution.
+
+#capabilities
+- Analyze CSV and Excel files
+- Generate visualizations
+- Perform statistical calculations
+- Answer questions about uploaded data
+
+#guidelines
+- Always verify data before analysis
+- Explain your methodology
+- Provide visualizations when helpful
+- Cite specific data points in your answers</code></pre>
+
+      <h5 class="mt-4">AI-Powered Prompt Generation</h5>
+      <p>Don't want to write prompts from scratch? Use the <strong>"Generate with AI"</strong> button!</p>
+
+      <ol>
+        <li>Click the <strong><i class="bi bi-magic"></i> Generate with AI</strong> button</li>
+        <li>Describe what you want your agent to do in plain English</li>
+        <li>The AI will generate a complete prompt with proper structure</li>
+        <li>Review and edit the generated prompt as needed</li>
+      </ol>
+
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-stars"></i> <strong>Enhancement Mode:</strong> If you already have content in your prompts, the button changes to
+        "Enhance with AI" and will suggest specific improvements rather than generating from scratch.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Model Settings -->
+  <div class="card mb-4" id="step-4">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-4-circle"></i> Configuring Model Settings</h3>
+    </div>
+    <div class="card-body">
+      <p>Fine-tune your agent's behavior with these settings in the <strong>Model Configuration</strong> panel:</p>
+
+      <h5>Basic Settings</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Setting</th>
+              <th>Range</th>
+              <th>Description</th>
+              <th>Recommendation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Temperature</strong></td>
+              <td>0.0 - 2.0</td>
+              <td>Controls randomness and creativity</td>
+              <td>
+                <strong>0.0-0.3:</strong> Factual, consistent responses<br>
+                <strong>0.7-1.0:</strong> Balanced creativity<br>
+                <strong>1.5-2.0:</strong> Very creative, unpredictable
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Max Tokens</strong></td>
+              <td>1 - model limit</td>
+              <td>Maximum length of response</td>
+              <td>
+                <strong>256:</strong> Short answers<br>
+                <strong>1024:</strong> Medium responses<br>
+                <strong>4096+:</strong> Long-form content
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Top P</strong></td>
+              <td>0.0 - 1.0</td>
+              <td>Alternative to temperature (nucleus sampling)</td>
+              <td>
+                <strong>0.9-1.0:</strong> Standard (use with temperature)<br>
+                <strong>0.1-0.5:</strong> More focused (don't use with low temperature)
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Don't set both temperature and top_p to extreme values.
+        Use temperature for most cases, and leave top_p at 1.0.
+      </div>
+
+      <h5 class="mt-4">Advanced Settings</h5>
+      <p>Click <strong>"Advanced Options"</strong> to access additional settings:</p>
+      <ul>
+        <li><strong>Frequency Penalty</strong> (0.0-2.0) - Reduces repetition of tokens based on frequency</li>
+        <li><strong>Presence Penalty</strong> (0.0-2.0) - Encourages talking about new topics</li>
+        <li><strong>Stop Sequences</strong> - Custom strings that stop generation</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Step 5: Adding Tools -->
+  <div class="card mb-4" id="step-5">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-5-circle"></i> Adding Tools (Optional)</h3>
+    </div>
+    <div class="card-body">
+      <p>Tools extend your agent's capabilities beyond text generation. Available tools depend on your selected API.</p>
+
+      <h5>Built-in Tools</h5>
+
+      <h6 class="mt-3"><i class="bi bi-search"></i> File Search (Assistants & Responses APIs)</h6>
+      <p>Allows the agent to search through uploaded documents and files.</p>
+      <ol>
+        <li>In the <strong>Tools</strong> section, click the <strong>File Search</strong> card to enable it</li>
+        <li>Click <strong>"Configure Vector Stores"</strong></li>
+        <li>Either select existing vector stores or create a new one</li>
+        <li>Upload files (PDF, TXT, DOCX, etc.) to the vector store</li>
+        <li>The agent can now search and reference these files</li>
+      </ol>
+
+      <h6 class="mt-3"><i class="bi bi-code-square"></i> Code Interpreter (Assistants API)</h6>
+      <p>Enables the agent to write and execute Python code.</p>
+      <ol>
+        <li>Click the <strong>Code Interpreter</strong> card to enable it</li>
+        <li>The agent can now perform calculations, data analysis, and generate visualizations</li>
+        <li>Useful for math, data processing, and chart generation</li>
+      </ol>
+
+      <h6 class="mt-3"><i class="bi bi-globe"></i> Web Search (Responses API)</h6>
+      <p>Allows the agent to search the web for current information.</p>
+      <ol>
+        <li>Click the <strong>Web Search</strong> card to enable it</li>
+        <li>The agent can now fetch real-time information from the internet</li>
+      </ol>
+
+      <h5 class="mt-4">Custom Functions (Advanced)</h5>
+      <p>Define custom functions that the agent can call to interact with your application.</p>
+
+      <ol>
+        <li>In the Tools section, click <strong>"Add Function"</strong></li>
+        <li>Define the function schema:
+          <ul>
+            <li><strong>Name:</strong> Function identifier (e.g., "get_order_status")</li>
+            <li><strong>Description:</strong> What the function does (helps the AI decide when to call it)</li>
+            <li><strong>Parameters:</strong> JSON Schema defining the function's inputs</li>
+          </ul>
+        </li>
+        <li>In your application code, implement the function handler</li>
+        <li>The agent will call this function when needed</li>
+      </ol>
+
+      <div class="card bg-light mt-3">
+        <div class="card-body">
+          <h6>Example Function Definition:</h6>
+          <pre><code class="language-json">{
+  "name": "get_order_status",
+  "description": "Retrieves the current status of a customer order",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "string",
+        "description": "The unique order identifier"
+      }
+    },
+    "required": ["order_id"]
+  }
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="alert alert-success mt-3">
+        <i class="bi bi-check-circle"></i> <strong>Tip:</strong> Start without tools and add them only when needed.
+        Tools add complexity and can increase response time.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6: Variables -->
+  <div class="card mb-4" id="step-6">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-6-circle"></i> Working with Variables</h3>
+    </div>
+    <div class="card-body">
+      <p>Variables make your prompts dynamic and reusable. They're automatically detected from your prompt templates.</p>
+
+      <h5>Defining Variables in Your Prompt</h5>
+      <p>Use the <code>{{ variable_name }}</code> syntax anywhere in your user prompt template:</p>
+
+      <pre><code class="language-text">Hello {{ customer_name }},
+
+Thank you for contacting us about {{ issue_type }}.
+Your order {{ order_id }} is currently {{ order_status }}.</code></pre>
+
+      <h5 class="mt-3">Variable Schema (Auto-Generated)</h5>
+      <p>The playground automatically detects variables and creates a schema in the <strong>Variables</strong> panel:</p>
+      <ul>
+        <li>Each variable is listed with its name</li>
+        <li>You can set the type (string, number, boolean, array, object)</li>
+        <li>Mark variables as required or optional</li>
+        <li>Add descriptions to help other developers</li>
+      </ul>
+
+      <h5 class="mt-3">Testing with Sample Values</h5>
+      <p>In the Variables panel, you can enter sample values to test your prompt:</p>
+      <ol>
+        <li>Fill in sample values for each variable</li>
+        <li>Click <strong>"Preview"</strong> to see the rendered prompt</li>
+        <li>The preview shows exactly what will be sent to the LLM</li>
+      </ol>
+
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Use descriptive variable names like <code>customer_email</code> instead of <code>email</code>
+        to make your prompts more maintainable.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 7: Testing -->
+  <div class="card mb-4" id="step-7">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-7-circle"></i> Testing Your Agent</h3>
+    </div>
+    <div class="card-body">
+      <p>The playground provides multiple ways to test your agent before deploying it.</p>
+
+      <h5>Preview Mode (Template-based APIs)</h5>
+      <p>For Chat Completions and similar APIs:</p>
+      <ol>
+        <li>Fill in sample values in the <strong>Variables</strong> panel</li>
+        <li>Click <strong>"Preview"</strong></li>
+        <li>See the fully rendered prompt with variables replaced</li>
+        <li>Verify the prompt looks correct before testing</li>
+      </ol>
+
+      <h5 class="mt-3">Conversation Testing (Responses & Assistants APIs)</h5>
+      <p>For APIs that support multi-turn conversations:</p>
+      <ol>
+        <li>Look for the <strong>Conversation</strong> panel (appears automatically for supported APIs)</li>
+        <li>Type a message in the input field</li>
+        <li>Click <strong>"Send"</strong> or press Enter</li>
+        <li>The agent will respond based on your configuration</li>
+        <li>Continue the conversation to test multi-turn interactions</li>
+        <li>Click <strong>"Reset"</strong> to start a new conversation</li>
+      </ol>
+
+      <h5 class="mt-3">What to Test</h5>
+      <div class="card bg-light">
+        <div class="card-body">
+          <h6>Testing Checklist:</h6>
+          <ul class="mb-0">
+            <li><strong>Edge Cases:</strong> Test with unusual or extreme inputs</li>
+            <li><strong>Variable Combinations:</strong> Try different variable values</li>
+            <li><strong>Tone & Style:</strong> Verify the response matches your guidelines</li>
+            <li><strong>Tool Usage:</strong> If using tools, verify they're called appropriately</li>
+            <li><strong>Error Handling:</strong> Test with missing or invalid data</li>
+            <li><strong>Response Length:</strong> Check if max_tokens is appropriate</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i> <strong>Note:</strong> Playground testing uses real API calls and consumes tokens.
+        Monitor your usage to avoid unexpected costs.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 8: Structured Outputs -->
+  <div class="card mb-4" id="step-8">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-8-circle"></i> Structured Outputs (JSON Schema)</h3>
+    </div>
+    <div class="card-body">
+      <p>Structured outputs guarantee that the LLM response matches a specific JSON schema. This is useful for:</p>
+      <ul>
+        <li>Extracting structured data from text</li>
+        <li>Ensuring consistent response formats</li>
+        <li>Integrating with downstream systems</li>
+        <li>Building reliable APIs</li>
+      </ul>
+
+      <h5 class="mt-3">Configuring Structured Outputs</h5>
+      <ol>
+        <li>In the Model Configuration panel, expand <strong>"Advanced Options"</strong></li>
+        <li>Expand the <strong>"Structured Output (JSON Schema)"</strong> section</li>
+        <li>Define your JSON Schema in the textarea</li>
+        <li>Click <strong>"Validate JSON"</strong> to check syntax</li>
+      </ol>
+
+      <h5 class="mt-3">Example: Sentiment Analysis</h5>
+      <pre><code class="language-json">{
+  "type": "object",
+  "properties": {
+    "sentiment": {
+      "type": "string",
+      "enum": ["positive", "negative", "neutral"],
+      "description": "The overall sentiment of the text"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score between 0 and 1"
+    },
+    "key_phrases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Important phrases that influenced the sentiment"
+    }
+  },
+  "required": ["sentiment", "confidence"],
+  "additionalProperties": false
+}</code></pre>
+
+      <h5 class="mt-3">Example: Data Extraction</h5>
+      <pre><code class="language-json">{
+  "type": "object",
+  "properties": {
+    "customer_name": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string",
+      "pattern": "^ORD-[0-9]{6}$"
+    },
+    "issue_category": {
+      "type": "string",
+      "enum": ["shipping", "refund", "product_quality", "other"]
+    },
+    "urgency": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    }
+  },
+  "required": ["customer_name", "issue_category", "urgency"]
+}</code></pre>
+
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i> <strong>Supported Models:</strong> Structured outputs work with OpenAI gpt-4o models and Anthropic Claude 3+.
+        Check the <a href="https://platform.openai.com/docs/guides/structured-outputs" target="_blank">OpenAI documentation</a> for details.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 9: Saving -->
+  <div class="card mb-4" id="step-9">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-9-circle"></i> Saving Your Agent</h3>
+    </div>
+    <div class="card-body">
+      <p>Once you're happy with your agent configuration, it's time to save it.</p>
+
+      <h5>Saving a New Agent (Standalone Mode)</h5>
+      <ol>
+        <li>Click the <strong>"Create Prompt"</strong> button</li>
+        <li>A modal will appear asking for:
+          <ul>
+            <li><strong>Prompt Name:</strong> A descriptive name (e.g., "Customer Support Agent")</li>
+            <li><strong>Slug:</strong> Auto-generated URL-friendly identifier (e.g., "customer_support_agent")</li>
+            <li><strong>Notes:</strong> Optional description of this version</li>
+          </ul>
+        </li>
+        <li>Click <strong>"Save"</strong></li>
+        <li>You'll be redirected to the prompt's detail page</li>
+      </ol>
+
+      <h5 class="mt-3">Updating an Existing Agent</h5>
+      <p>When editing an existing prompt, the save behavior depends on the version's state:</p>
+
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Version State</th>
+              <th>Condition</th>
+              <th>Save Behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge bg-secondary">Development</span></td>
+              <td>No tests, datasets, or production responses</td>
+              <td><strong>Updates in place</strong> - Changes are saved to the current version</td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-warning">Testing</span></td>
+              <td>Has tests or datasets</td>
+              <td><strong>Conditional:</strong> Non-structural changes update in place, structural changes create new version</td>
+            </tr>
+            <tr>
+              <td><span class="badge bg-success">Production</span></td>
+              <td>Has production responses (tracked calls)</td>
+              <td><strong>Always creates new version</strong> - Original version is immutable</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h6 class="mt-3">Structural vs Non-Structural Changes</h6>
+      <p><strong>Structural changes</strong> (force new version in Testing state):</p>
+      <ul>
+        <li>Provider, API, or model changes</li>
+        <li>Tool configuration changes</li>
+        <li>Variables schema changes</li>
+        <li>Response schema changes</li>
+      </ul>
+
+      <p><strong>Non-structural changes</strong> (can update in place):</p>
+      <ul>
+        <li>Prompt text edits</li>
+        <li>Temperature, max_tokens, and other parameters</li>
+        <li>Notes and descriptions</li>
+      </ul>
+
+      <div class="alert alert-success mt-3">
+        <i class="bi bi-check-circle"></i> <strong>Best Practice:</strong> Add meaningful notes when creating new versions to track what changed and why.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 10: Syncing with OpenAI -->
+  <div class="card mb-4" id="step-10">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0"><i class="bi bi-10-circle"></i> Syncing with OpenAI Assistants</h3>
+    </div>
+    <div class="card-body">
+      <p>If you're using the OpenAI Assistants API, you can sync your agent with OpenAI's platform.</p>
+
+      <h5>Push to OpenAI (Create/Update Assistant)</h5>
+      <p>Send your local configuration to OpenAI to create or update an assistant:</p>
+      <ol>
+        <li>Configure your agent in the playground with <strong>Provider: OpenAI</strong> and <strong>API: Assistants</strong></li>
+        <li>Click the <strong>"Push to OpenAI"</strong> button in the sync section</li>
+        <li>If no assistant exists, a new one will be created</li>
+        <li>If an assistant already exists (has assistant_id), it will be updated</li>
+        <li>The assistant_id is stored in the version's metadata</li>
+      </ol>
+
+      <h5 class="mt-3">Pull from OpenAI (Import Changes)</h5>
+      <p>Fetch the latest configuration from an existing OpenAI assistant:</p>
+      <ol>
+        <li>Click the <strong>"Pull from OpenAI"</strong> button</li>
+        <li>The latest configuration from OpenAI will be fetched</li>
+        <li>Your local version will be updated with the remote changes</li>
+        <li>The page will reload to show the updated configuration</li>
+      </ol>
+
+      <h5 class="mt-3">Bulk Import Assistants</h5>
+      <p>Import all your OpenAI assistants at once:</p>
+      <ol>
+        <li>Go to the <strong>Testing</strong> dashboard</li>
+        <li>Click <strong>"Sync OpenAI Assistants"</strong></li>
+        <li>All assistants from your OpenAI account will be imported as prompts</li>
+        <li>Each assistant becomes a prompt with one version</li>
+        <li>You can then edit them in the playground</li>
+      </ol>
+
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i> <strong>Sync Status:</strong> The playground shows sync status indicators:
+        <ul class="mb-0">
+          <li><span class="badge bg-success">Synced</span> - Local and remote are in sync</li>
+          <li><span class="badge bg-warning">Modified</span> - Local changes not pushed</li>
+          <li><span class="badge bg-secondary">Not Synced</span> - Never synced with OpenAI</li>
+        </ul>
+      </div>
+
+      <div class="alert alert-warning mt-3">
+        <i class="bi bi-exclamation-triangle"></i> <strong>Important:</strong> Pushing to OpenAI requires a valid OpenAI API key configured in your PromptTracker settings.
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts -->
+  <div class="card mb-4" id="keyboard-shortcuts">
+    <div class="card-header bg-secondary text-white">
+      <h3 class="mb-0"><i class="bi bi-keyboard"></i> Keyboard Shortcuts</h3>
+    </div>
+    <div class="card-body">
+      <p>Speed up your workflow with these keyboard shortcuts:</p>
+
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Shortcut</th>
+              <th>Context</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Save</td>
+              <td><kbd>Cmd/Ctrl</kbd> + <kbd>S</kbd></td>
+              <td>Anywhere in playground</td>
+            </tr>
+            <tr>
+              <td>Preview</td>
+              <td><kbd>Cmd/Ctrl</kbd> + <kbd>P</kbd></td>
+              <td>When variables are filled</td>
+            </tr>
+            <tr>
+              <td>Send Message</td>
+              <td><kbd>Enter</kbd></td>
+              <td>In conversation input</td>
+            </tr>
+            <tr>
+              <td>New Line</td>
+              <td><kbd>Shift</kbd> + <kbd>Enter</kbd></td>
+              <td>In conversation input</td>
+            </tr>
+            <tr>
+              <td>Tab Indent</td>
+              <td><kbd>Tab</kbd></td>
+              <td>In JSON editors (response schema, functions)</td>
+            </tr>
+            <tr>
+              <td>Show Shortcuts</td>
+              <td><kbd>?</kbd></td>
+              <td>Anywhere in playground</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Press <kbd>?</kbd> in the playground to see all available shortcuts.
+      </div>
+    </div>
+  </div>
+
+  <!-- Best Practices -->
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white">
+      <h3 class="mb-0"><i class="bi bi-star"></i> Best Practices & Tips</h3>
+    </div>
+    <div class="card-body">
+      <h5>Prompt Engineering</h5>
+      <ul>
+        <li>Use structured sections (#role, #goal, #guidelines) for clarity</li>
+        <li>Be specific about what you want and don't want</li>
+        <li>Include examples of good responses when helpful</li>
+        <li>Test with edge cases and unusual inputs</li>
+        <li>Iterate based on real-world results</li>
+      </ul>
+
+      <h5 class="mt-3">Configuration</h5>
+      <ul>
+        <li>Start with default settings (temperature: 0.7, top_p: 1.0)</li>
+        <li>Lower temperature (0.0-0.3) for factual, consistent responses</li>
+        <li>Higher temperature (1.0-1.5) for creative tasks</li>
+        <li>Set appropriate max_tokens to avoid truncation</li>
+        <li>Use structured outputs for reliable data extraction</li>
+      </ul>
+
+      <h5 class="mt-3">Tools</h5>
+      <ul>
+        <li>Only enable tools you actually need</li>
+        <li>Test tool usage thoroughly before production</li>
+        <li>Provide clear function descriptions to help the AI</li>
+        <li>Monitor tool usage costs (file_search, code_interpreter)</li>
+      </ul>
+
+      <h5 class="mt-3">Version Management</h5>
+      <ul>
+        <li>Add meaningful notes when creating versions</li>
+        <li>Test thoroughly before activating a version</li>
+        <li>Use the Testing section to validate before production</li>
+        <li>Monitor production responses in the Monitoring section</li>
+        <li>Set up auto-evaluators to catch issues early</li>
+      </ul>
+
+      <h5 class="mt-3">Cost Optimization</h5>
+      <ul>
+        <li>Use cheaper models (gpt-4o-mini) for simple tasks</li>
+        <li>Set appropriate max_tokens to avoid waste</li>
+        <li>Cache system prompts when possible</li>
+        <li>Monitor token usage in the Monitoring section</li>
+        <li>Test with smaller datasets before scaling</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Common Issues -->
+  <div class="card mb-4">
+    <div class="card-header bg-warning">
+      <h3 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Common Issues & Solutions</h3>
+    </div>
+    <div class="card-body">
+      <h5>Issue: Variables not detected</h5>
+      <p><strong>Solution:</strong> Make sure you're using the correct syntax: <code>{{ variable_name }}</code> with double curly braces and spaces.</p>
+
+      <h5 class="mt-3">Issue: Preview shows "unfilled variables"</h5>
+      <p><strong>Solution:</strong> Fill in all required variables in the Variables panel before clicking Preview.</p>
+
+      <h5 class="mt-3">Issue: Tools not appearing</h5>
+      <p><strong>Solution:</strong> Tools are only available for certain APIs. Check that you've selected an API that supports tools (Chat Completions, Assistants, Responses).</p>
+
+      <h5 class="mt-3">Issue: Can't update existing version</h5>
+      <p><strong>Solution:</strong> If the version has production responses, it's immutable. Your changes will create a new version instead.</p>
+
+      <h5 class="mt-3">Issue: Structured output validation fails</h5>
+      <p><strong>Solution:</strong> Click "Validate JSON" to check your schema syntax. Make sure it's valid JSON Schema format.</p>
+
+      <h5 class="mt-3">Issue: Sync to OpenAI fails</h5>
+      <p><strong>Solution:</strong> Verify your OpenAI API key is configured correctly in the PromptTracker settings. Check that you have permission to create/modify assistants.</p>
+
+      <h5 class="mt-3">Issue: Response is truncated</h5>
+      <p><strong>Solution:</strong> Increase the max_tokens setting in Model Configuration → Advanced Options.</p>
+    </div>
+  </div>
+
+  <!-- Next Steps -->
+  <div class="alert alert-success">
+    <h5><i class="bi bi-check-circle"></i> Next Steps</h5>
+    <p>Now that you've created your agent, here's what to do next:</p>
+    <ol class="mb-0">
+      <li><strong>Create Tests:</strong> Go to the Testing section and create test cases for your agent</li>
+      <li><strong>Set Up Datasets:</strong> Create datasets with various input scenarios</li>
+      <li><strong>Run Test Runs:</strong> Execute your tests to validate behavior</li>
+      <li><strong>Activate Version:</strong> Once satisfied, activate your version for production use</li>
+      <li><strong>Integrate in Code:</strong> Use <code>PromptTracker::LlmCallService.track</code> to call your agent from your application</li>
+      <li><strong>Configure Auto-Evaluators:</strong> Set up automatic evaluation of production calls</li>
+      <li><strong>Monitor Performance:</strong> Track usage, costs, and quality in the Monitoring section</li>
+    </ol>
+  </div>
+
+  <!-- Footer Links -->
+  <div class="text-center mt-4">
+    <div class="btn-group" role="group">
+      <%= link_to testing_root_path, class: "btn btn-primary" do %>
+        <i class="bi bi-arrow-left"></i> Back to Testing
+      <% end %>
+      <%= link_to testing_playground_path, class: "btn btn-success" do %>
+        <i class="bi bi-play-circle"></i> Open Playground
+      <% end %>
+      <%= link_to docs_tracking_path, class: "btn btn-outline-secondary" do %>
+        <i class="bi bi-book"></i> Integration Guide
+      <% end %>
+    </div>
+  </div>
+</div>

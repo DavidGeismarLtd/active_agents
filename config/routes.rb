@@ -171,6 +171,40 @@ PromptTracker::Engine.routes.draw do
   end
 
   # ========================================
+  # FUNCTION LIBRARY - Code-based functions
+  # ========================================
+  resources :functions do
+    collection do
+      post :generate_with_ai # POST /functions/generate_with_ai - Generate function using AI
+    end
+    member do
+      post :test      # POST /functions/:id/test - Test function with sample inputs
+      post :deploy    # POST /functions/:id/deploy - Deploy function to AWS Lambda
+      delete :undeploy # DELETE /functions/:id/undeploy - Remove function from AWS Lambda
+    end
+  end
+
+  # Function Executions (for viewing execution details)
+  resources :function_executions, only: [ :show ]
+
+  # Environment Variables (shared secrets for functions)
+  resources :environment_variables, path: "environment-variables"
+
+  # Agent Conversations (for viewing conversation details)
+  resources :agent_conversations, only: [ :show ]
+
+  # ========================================
+  # DEPLOYED AGENTS - Live agent deployments
+  # ========================================
+  resources :deployed_agents, path: "agents", param: :slug do
+    member do
+      post :pause
+      post :resume
+      post :regenerate_api_key
+    end
+  end
+
+  # ========================================
   # API SECTION - Internal API endpoints
   # ========================================
   namespace :api do

@@ -146,6 +146,21 @@
             </li>
           <% end %>
 
+          <!-- Functions Section (Purple) -->
+          <% if PromptTracker.configuration.feature_enabled?(:functions) %>
+            <li class="nav-item">
+              <%= link_to functions_path, class: "nav-link #{'active' if controller_path == 'prompt_tracker/functions'}" do %>
+                <i class="bi bi-code-square"></i> Functions
+              <% end %>
+            </li>
+          <% end %>
+
+          <!-- Deployed Agents Section (Purple) -->
+          <li class="nav-item">
+            <%= link_to deployed_agents_path, class: "nav-link #{'active' if controller_path == 'prompt_tracker/deployed_agents'}" do %>
+              <i class="bi bi-robot"></i> Agents
+            <% end %>
+          </li>
 
         </ul>
 
