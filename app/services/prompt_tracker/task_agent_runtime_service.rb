@@ -94,8 +94,12 @@ module PromptTracker
       # Phase 2: Autonomous multi-turn execution loop
       final_output = execute_autonomous_loop(max_iterations, timeout_seconds)
 
-      # Mark task as completed
-      task_run.complete!(output: final_output)
+        # Persist final output without overriding a cancelled status
+        if task_run.status_cancelled?
+          task_run.update!(output_summary: final_output)
+        else
+          task_run.complete!(output: final_output)
+        end
       task_run.update_stats!
 
       @logger.info "[TaskAgentRuntimeService] Task run #{task_run.id} completed successfully"
@@ -191,53 +195,74 @@ module PromptTracker
       broadcast_planning_phase_update
     end
 
-    # Execute autonomous loop with multi-turn conversation
-    def execute_autonomous_loop(max_iterations, timeout_seconds)
-      last_response_text = nil
+      # Execute autonomous loop with multi-turn conversation
+      def execute_autonomous_loop(max_iterations, timeout_seconds)
+        last_response_text = nil
 
-      loop do
-        @iteration_count += 1
+        loop do
+          @iteration_count += 1
 
-        # Check timeout first (higher priority than iteration limit)
-        if Time.current - @start_time > timeout_seconds
-          @logger.warn "[TaskAgentRuntimeService] Timeout (#{timeout_seconds}s) reached"
+          # Check if task has been cancelled
+          task_run.reload
+          if task_run.status_cancelled?
+            @logger.warn "[TaskAgentRuntimeService] Task run cancelled by user"
 
-          # If planning is enabled, force completion
-          if @planning_enabled
-            force_plan_completion("Timeout (#{timeout_seconds}s) reached")
+            task_run.metadata ||= {}
+            task_run.metadata["termination_reason"] = "cancelled"
+            task_run.save!
+
+            return "Task cancelled by user"
           end
 
-          return "Task incomplete: Timeout reached"
-        end
+          # Check timeout first (higher priority than iteration limit)
+          if Time.current - @start_time > timeout_seconds
+            @logger.warn "[TaskAgentRuntimeService] Timeout (#{timeout_seconds}s) reached"
 
-        # Check iteration limit
-        if @iteration_count > max_iterations
-          @logger.warn "[TaskAgentRuntimeService] Max iterations (#{max_iterations}) reached"
+            # If planning is enabled, force completion
+            if @planning_enabled
+              force_plan_completion("Timeout (#{timeout_seconds}s) reached")
+            end
 
-          # If planning is enabled, force completion
-          if @planning_enabled
-            force_plan_completion("Maximum iterations (#{max_iterations}) reached without explicit completion")
+            return "Task incomplete: Timeout reached"
           end
 
-          return "Task incomplete: Maximum iterations reached"
+          # Check iteration limit
+          if @iteration_count > max_iterations
+            @logger.warn "[TaskAgentRuntimeService] Max iterations (#{max_iterations}) reached"
+
+            # If planning is enabled, force completion
+            if @planning_enabled
+              force_plan_completion("Maximum iterations (#{max_iterations}) reached without explicit completion")
+            end
+
+            task_run.metadata ||= {}
+            task_run.metadata["termination_reason"] = "max_iterations"
+            task_run.save!
+
+            return "Task incomplete: Maximum iterations reached"
+          end
+
+          # Execute one iteration
+          llm_response = execute_iteration
+
+          # Store response text
+          last_response_text = llm_response[:text]
+
+          # Check if task is complete
+          if task_complete?(llm_response)
+            @logger.info "[TaskAgentRuntimeService] Task completed after #{@iteration_count} iteration(s)"
+
+            task_run.metadata ||= {}
+            task_run.metadata["termination_reason"] = "success"
+            task_run.save!
+
+            return last_response_text
+          end
+
+          # If LLM made function calls, results are already in conversation history
+          # Continue to next iteration
         end
-
-        # Execute one iteration
-        llm_response = execute_iteration
-
-        # Store response text
-        last_response_text = llm_response[:text]
-
-        # Check if task is complete
-        if task_complete?(llm_response)
-          @logger.info "[TaskAgentRuntimeService] Task completed after #{@iteration_count} iteration(s)"
-          return last_response_text
-        end
-
-        # If LLM made function calls, results are already in conversation history
-        # Continue to next iteration
       end
-    end
 
     # Execute a single iteration of the autonomous loop
     def execute_iteration
@@ -316,7 +341,7 @@ module PromptTracker
       end
 
       # Build tools array from function definitions + planning functions
-      tools = build_tools_array
+      tools = build_tools_array(phase: phase)
 
       @logger.info "[TaskAgentRuntimeService] Calling LLM with #{tools.length} function(s)"
       @logger.info "[TaskAgentRuntimeService] User message: #{messages.last[:content][0..200]}..."
@@ -371,20 +396,48 @@ module PromptTracker
       service.call
     end
 
-    def build_tools_array
-      tools = task_agent.function_definitions.map do |func_def|
-        {
-          "name" => func_def.name,
-          "description" => func_def.description,
-          "parameters" => func_def.parameters
-        }
-      end
+    def build_tools_array(phase: :execution)
+      tools = []
 
-      # Inject planning functions if enabled
-      if @planning_enabled
-        planning_tools = build_planning_functions
-        @logger.info "[TaskAgentRuntimeService] Injecting #{planning_tools.size} planning functions"
-        tools += planning_tools
+      # During planning phase, ONLY include create_plan function
+      if phase == :planning
+        if @planning_enabled && !task_run.metadata&.dig("plan")
+          tools << {
+            "name" => "create_plan",
+            "description" => "Create an execution plan with specific steps. MUST be called before starting work on the first iteration.",
+            "parameters" => {
+              "type" => "object",
+              "required" => [ "goal", "steps" ],
+              "properties" => {
+                "goal" => {
+                  "type" => "string",
+                  "description" => "Clear statement of what you're trying to achieve"
+                },
+                "steps" => {
+                  "type" => "array",
+                  "description" => "List of 3-7 specific steps to accomplish the goal",
+                  "items" => { "type" => "string" }
+                }
+              }
+            }
+          }
+        end
+      else
+        # During execution phase, include all regular functions
+        tools = task_agent.function_definitions.map do |func_def|
+          {
+            "name" => func_def.name,
+            "description" => func_def.description,
+            "parameters" => func_def.parameters
+          }
+        end
+
+        # Inject planning functions if enabled (but not create_plan)
+        if @planning_enabled
+          planning_tools = build_planning_functions
+          @logger.info "[TaskAgentRuntimeService] Injecting #{planning_tools.size} planning functions"
+          tools += planning_tools
+        end
       end
 
       @logger.info "[TaskAgentRuntimeService] Total tools available: #{tools.size} (#{tools.map { |t| t['name'] }.join(', ')})"
@@ -579,101 +632,73 @@ module PromptTracker
       result
     end
 
-    def build_planning_functions
-      functions = []
-
-      # Only include create_plan if no plan exists yet
-      unless task_run.metadata&.dig("plan")
-        functions << {
-          "name" => "create_plan",
-          "description" => "Create an execution plan with specific steps. MUST be called before starting work on the first iteration.",
-          "parameters" => {
-            "type" => "object",
-            "required" => [ "goal", "steps" ],
-            "properties" => {
-              "goal" => {
-                "type" => "string",
-                "description" => "Clear statement of what you're trying to achieve"
-              },
-              "steps" => {
-                "type" => "array",
-                "description" => "List of 3-7 specific steps to accomplish the goal",
-                "items" => { "type" => "string" }
+      def build_planning_functions
+        [
+          {
+            "name" => "get_plan",
+            "description" => "Get the current execution plan with progress information",
+            "parameters" => {
+              "type" => "object",
+              "properties" => {}
+            }
+          },
+          {
+            "name" => "update_step",
+            "description" => "Update a step's status and add notes about progress",
+            "parameters" => {
+              "type" => "object",
+              "required" => [ "step_id", "status" ],
+              "properties" => {
+                "step_id" => {
+                  "type" => "string",
+                  "description" => "Step ID (e.g., 'step_1', 'step_2')"
+                },
+                "status" => {
+                  "type" => "string",
+                  "enum" => [ "pending", "in_progress", "completed", "failed", "skipped" ],
+                  "description" => "New status for the step"
+                },
+                "notes" => {
+                  "type" => "string",
+                  "description" => "Optional notes about what was done or discovered"
+                }
+              }
+            }
+          },
+          {
+            "name" => "add_step",
+            "description" => "Add a new step to the plan if you discover additional work needed",
+            "parameters" => {
+              "type" => "object",
+              "required" => [ "description" ],
+              "properties" => {
+                "description" => {
+                  "type" => "string",
+                  "description" => "Description of the new step"
+                },
+                "after_step_id" => {
+                  "type" => "string",
+                  "description" => "Optional: Insert after this step ID"
+                }
+              }
+            }
+          },
+          {
+            "name" => "mark_task_complete",
+            "description" => "Mark the entire task as complete with a summary. MUST be called when all steps are done.",
+            "parameters" => {
+              "type" => "object",
+              "required" => [ "summary" ],
+              "properties" => {
+                "summary" => {
+                  "type" => "string",
+                  "description" => "Comprehensive summary of what was accomplished"
+                }
               }
             }
           }
-        }
+        ]
       end
-
-      # Always include these functions
-      functions.concat([
-        {
-          "name" => "get_plan",
-          "description" => "Get the current execution plan with progress information",
-          "parameters" => {
-            "type" => "object",
-            "properties" => {}
-          }
-        },
-        {
-          "name" => "update_step",
-          "description" => "Update a step's status and add notes about progress",
-          "parameters" => {
-            "type" => "object",
-            "required" => [ "step_id", "status" ],
-            "properties" => {
-              "step_id" => {
-                "type" => "string",
-                "description" => "Step ID (e.g., 'step_1', 'step_2')"
-              },
-              "status" => {
-                "type" => "string",
-                "enum" => [ "pending", "in_progress", "completed", "failed", "skipped" ],
-                "description" => "New status for the step"
-              },
-              "notes" => {
-                "type" => "string",
-                "description" => "Optional notes about what was done or discovered"
-              }
-            }
-          }
-        },
-        {
-          "name" => "add_step",
-          "description" => "Add a new step to the plan if you discover additional work needed",
-          "parameters" => {
-            "type" => "object",
-            "required" => [ "description" ],
-            "properties" => {
-              "description" => {
-                "type" => "string",
-                "description" => "Description of the new step"
-              },
-              "after_step_id" => {
-                "type" => "string",
-                "description" => "Optional: Insert after this step ID"
-              }
-            }
-          }
-        },
-        {
-          "name" => "mark_task_complete",
-          "description" => "Mark the entire task as complete with a summary. MUST be called when all steps are done.",
-          "parameters" => {
-            "type" => "object",
-            "required" => [ "summary" ],
-            "properties" => {
-              "summary" => {
-                "type" => "string",
-                "description" => "Comprehensive summary of what was accomplished"
-              }
-            }
-          }
-        }
-      ])
-
-      functions
-    end
 
     def force_plan_completion(reason)
       @logger.warn "[TaskAgentRuntimeService] 🛑 Forcing plan completion: #{reason}"
@@ -818,25 +843,37 @@ module PromptTracker
 
     # Broadcast timeline update to the task run show page
     def broadcast_timeline_update
+      @logger.info "[TaskAgentRuntimeService] 📡 Broadcasting timeline update for task run #{task_run.id}"
+
       # Reload task run to get fresh data
       task_run.reload
 
       # Get all LLM responses and function executions
-      llm_responses = task_run.llm_responses.order(created_at: :asc)
-      function_executions = task_run.function_executions.order(created_at: :asc)
+      llm_responses = task_run.llm_responses.order(created_at: :asc).to_a
+      function_executions = task_run.function_executions.order(created_at: :asc).to_a
+
+      @logger.info "[TaskAgentRuntimeService] 📡 Timeline data: #{llm_responses.count} LLM responses, #{function_executions.count} function executions"
 
       # Rebuild timeline (same logic as controller)
       timeline = build_timeline_for_broadcast(llm_responses, function_executions)
 
-      # Broadcast to the task run's stream
+      @logger.info "[TaskAgentRuntimeService] 📡 Timeline built: #{timeline.count} iterations"
+
+      # Broadcast timeline to the task run's stream
       Turbo::StreamsChannel.broadcast_replace_to(
         "task_run_#{task_run.id}",
         target: "execution_timeline",
         partial: "prompt_tracker/task_runs/timeline",
         locals: { timeline: timeline, task_run: task_run }
       )
+
+      @logger.info "[TaskAgentRuntimeService] ✅ Timeline broadcast successful"
+
+      # Broadcast summary cards update
+      broadcast_summary_cards_update
     rescue StandardError => e
-      @logger.error "[TaskAgentRuntimeService] Failed to broadcast timeline update: #{e.message}"
+      @logger.error "[TaskAgentRuntimeService] ❌ Failed to broadcast timeline update: #{e.message}"
+      @logger.error "[TaskAgentRuntimeService] ❌ Backtrace: #{e.backtrace.first(5).join("\n")}"
       # Don't fail the task if broadcast fails
     end
 
@@ -857,6 +894,38 @@ module PromptTracker
       )
     rescue StandardError => e
       @logger.error "[TaskAgentRuntimeService] Failed to broadcast planning phase update: #{e.message}"
+      # Don't fail the task if broadcast fails
+    end
+
+    # Broadcast summary cards update to the task run show page
+    def broadcast_summary_cards_update
+      @logger.info "[TaskAgentRuntimeService] 📡 Broadcasting summary cards update for task run #{task_run.id}"
+
+      # Reload task run to get fresh data
+      task_run.reload
+
+      # Get counts
+      llm_responses = task_run.llm_responses
+      function_executions = task_run.function_executions
+
+      @logger.info "[TaskAgentRuntimeService] 📡 Summary data: #{llm_responses.count} LLM calls, #{function_executions.count} function calls, iterations: #{task_run.iterations_count}"
+
+      # Broadcast to the task run's stream
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "task_run_#{task_run.id}",
+        target: "summary_cards",
+        partial: "prompt_tracker/task_runs/summary_cards",
+        locals: {
+          task_run: task_run,
+          llm_responses: llm_responses,
+          function_executions: function_executions
+        }
+      )
+
+      @logger.info "[TaskAgentRuntimeService] ✅ Summary cards broadcast successful"
+    rescue StandardError => e
+      @logger.error "[TaskAgentRuntimeService] ❌ Failed to broadcast summary cards update: #{e.message}"
+      @logger.error "[TaskAgentRuntimeService] ❌ Backtrace: #{e.backtrace.first(5).join("\n")}"
       # Don't fail the task if broadcast fails
     end
 

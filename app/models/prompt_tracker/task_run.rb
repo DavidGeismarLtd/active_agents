@@ -91,6 +91,14 @@ module PromptTracker
       )
     end
 
+    # Cancel the task run
+    def cancel!
+      update!(
+        status: "cancelled",
+        completed_at: Time.current
+      )
+    end
+
     # Calculate duration in seconds
     # @return [Float, nil] duration in seconds, or nil if not started
     def duration

@@ -34,8 +34,10 @@ module PromptTracker
         end
 
         # Build tools array from function definitions + planning functions
-        @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🔧 Building tools array..."
-        tools_array = build_tools_array
+        # IMPORTANT: respect the phase so that planning phase (iteration 0)
+        # only exposes the planning tools (typically just create_plan).
+        @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🔧 Building tools array (phase: #{phase})..."
+        tools_array = build_tools_array(phase: phase)
 
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 📞 Calling Responses API with #{tools_array.length} function(s)"
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 📝 User message: #{messages.last[:content][0..200]}..."
@@ -76,7 +78,7 @@ module PromptTracker
 
         # Handle function call loop
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🔄 Starting function call loop..."
-        response = handle_function_call_loop(response, model_config, initial_prompt: user_prompt)
+        response = handle_function_call_loop(response, model_config, initial_prompt: user_prompt, phase: phase)
 
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] ✅ call_llm completed successfully"
         response
@@ -89,8 +91,9 @@ module PromptTracker
       # @param initial_response [NormalizedLlmResponse] the initial API response
       # @param model_config [Hash] model configuration
       # @param initial_prompt [String] the initial user prompt (for tracking)
+      # @param phase [Symbol] :planning or :execution
       # @return [NormalizedLlmResponse] final response after all function calls
-      def handle_function_call_loop(initial_response, model_config, initial_prompt: nil)
+      def handle_function_call_loop(initial_response, model_config, initial_prompt: nil, phase: :execution)
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🔄 Entering function call loop handler"
 
         response = initial_response
@@ -132,7 +135,8 @@ module PromptTracker
             input: input_items,
             previous_response_id: response_id,
             tools: [ :functions ],
-            tool_config: { "functions" => build_tools_array }
+            # Use the same phase-aware tool selection as the initial call
+            tool_config: { "functions" => build_tools_array(phase: phase) }
           )
 
           @logger.info "[TaskAgentRuntimeService::OpenaiResponses] ✅ Continuation call completed"

@@ -224,5 +224,31 @@ RSpec.describe PromptTracker::TaskAgentRuntimeService, type: :service do
         expect(result[:output]).to include("Task incomplete: Timeout reached")
       end
     end
+
+      context "when task run is cancelled during execution" do
+        it "does not overwrite cancelled status with completed and still records output" do
+          # Arrange: mock a single LLM call that will see the cancelled status
+          mock_service = instance_double(PromptTracker::LlmClients::RubyLlmService)
+          allow(PromptTracker::LlmClients::RubyLlmService).to receive(:new).and_return(mock_service)
+
+          # Simulate the autonomous loop detecting cancellation immediately
+          allow_any_instance_of(described_class).to receive(:execute_autonomous_loop) do
+            task_run.cancel!
+            "Task cancelled by user"
+          end
+
+          result = described_class.call(
+            task_agent: task_agent,
+            task_run: task_run,
+            variables: variables
+          )
+
+          task_run.reload
+          expect(task_run.status).to eq("cancelled")
+          expect(task_run.output_summary).to eq("Task cancelled by user")
+          expect(result[:success]).to be true
+          expect(result[:output]).to eq("Task cancelled by user")
+        end
+      end
   end
 end

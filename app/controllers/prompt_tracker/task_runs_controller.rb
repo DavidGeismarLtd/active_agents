@@ -4,7 +4,7 @@ module PromptTracker
   # Controller for viewing task run history
   class TaskRunsController < ApplicationController
     before_action :set_agent
-    before_action :set_task_run, only: [ :show ]
+    before_action :set_task_run, only: [ :show, :cancel ]
 
     # GET /agents/:slug/runs
     def index
@@ -35,6 +35,19 @@ module PromptTracker
 
       # Build timeline of events
       @timeline = build_timeline(@llm_responses, @function_executions)
+    end
+
+    # POST /agents/:slug/runs/:id/cancel
+    def cancel
+      if @task_run.finished?
+        redirect_to deployed_agent_task_run_path(@agent.slug, @task_run),
+                    alert: "Cannot cancel a #{@task_run.status} task run."
+        return
+      end
+
+      @task_run.cancel!
+      redirect_to deployed_agent_task_run_path(@agent.slug, @task_run),
+                  notice: "Task run cancelled successfully."
     end
 
     private

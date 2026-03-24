@@ -165,5 +165,84 @@ module PromptTracker
         expect(FunctionExecution.average_execution_time).to eq(200.0)
       end
     end
+
+      describe "#display_name" do
+        let(:base_planning_attrs) do
+          {
+            function_definition: nil,
+            arguments: {},
+            success: true,
+            execution_time_ms: 10,
+            executed_at: Time.current
+          }
+        end
+
+        it "returns create_plan for create_plan-style results" do
+          execution = FunctionExecution.new(
+            base_planning_attrs.merge(
+              result: {
+                "success" => true,
+                "plan" => { "goal" => "Do something", "steps" => [] }
+              }
+            )
+          )
+
+          expect(execution.display_name).to eq("create_plan")
+        end
+
+        it "returns get_plan for get_plan-style results with progress fields" do
+          execution = FunctionExecution.new(
+            base_planning_attrs.merge(
+              result: {
+                "success" => true,
+                "plan" => { "goal" => "Do something", "steps" => [] },
+                "progress_percentage" => 0,
+                "completed_steps" => 0,
+                "total_steps" => 2
+              }
+            )
+          )
+
+          expect(execution.display_name).to eq("get_plan")
+        end
+
+        it "returns update_step when result has a step and arguments include step_id" do
+          execution = FunctionExecution.new(
+            base_planning_attrs.merge(
+              arguments: { "step_id" => "step_1", "status" => "in_progress" },
+              result: {
+                "success" => true,
+                "step" => { "id" => "step_1" }
+              }
+            )
+          )
+
+          expect(execution.display_name).to eq("update_step")
+        end
+
+        it "returns add_step when result has a step and arguments include description only" do
+          execution = FunctionExecution.new(
+            base_planning_attrs.merge(
+              arguments: { "description" => "New step" },
+              result: {
+                "success" => true,
+                "step" => { "id" => "step_new" }
+              }
+            )
+          )
+
+          expect(execution.display_name).to eq("add_step")
+        end
+
+        it "returns mark_task_complete when summary is present" do
+          execution = FunctionExecution.new(
+            base_planning_attrs.merge(
+              result: { "success" => true, "summary" => "All done" }
+            )
+          )
+
+          expect(execution.display_name).to eq("mark_task_complete")
+        end
+      end
   end
 end

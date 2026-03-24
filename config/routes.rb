@@ -212,7 +212,11 @@ PromptTracker::Engine.routes.draw do
     end
 
     # Task runs (nested under agents)
-    resources :task_runs, only: [ :index, :show ], path: "runs"
+    resources :task_runs, only: [ :index, :show ], path: "runs" do
+      member do
+        post :cancel
+      end
+    end
   end
 
   # ========================================

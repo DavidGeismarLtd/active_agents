@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_23_073243) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_24_114251) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -216,19 +216,19 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_23_073243) do
   end
 
   create_table "prompt_tracker_function_executions", force: :cascade do |t|
-    t.bigint "function_definition_id", null: false
+    t.bigint "function_definition_id"
     t.jsonb "arguments", default: {}, null: false
     t.jsonb "result"
     t.boolean "success", default: true, null: false
     t.text "error_message"
     t.integer "execution_time_ms"
     t.datetime "executed_at", null: false
+    t.string "planning_step_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "deployed_agent_id"
     t.bigint "agent_conversation_id"
     t.bigint "task_run_id"
-    t.string "planning_step_id"
     t.index [ "agent_conversation_id" ], name: "idx_on_agent_conversation_id_74963468f2"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_function_executions_on_deployed_agent_id"
     t.index [ "executed_at" ], name: "index_prompt_tracker_function_executions_on_executed_at"
@@ -284,12 +284,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_23_073243) do
     t.string "previous_response_id"
     t.jsonb "tools_used", default: []
     t.jsonb "tool_outputs", default: {}
+    t.jsonb "tool_calls", default: []
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "deployed_agent_id"
     t.bigint "agent_conversation_id"
     t.bigint "task_run_id"
-    t.jsonb "tool_calls", default: []
     t.index [ "ab_test_id", "ab_variant" ], name: "index_llm_responses_on_ab_test_and_variant"
     t.index [ "ab_test_id" ], name: "index_prompt_tracker_llm_responses_on_ab_test_id"
     t.index [ "agent_conversation_id" ], name: "index_prompt_tracker_llm_responses_on_agent_conversation_id"

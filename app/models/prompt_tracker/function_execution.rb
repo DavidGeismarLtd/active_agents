@@ -103,21 +103,42 @@ module PromptTracker
 
     # Get the function name for display
     # For regular functions, use the function_definition name
-    # For planning functions (no function_definition), infer from result
+    # For planning functions (no function_definition), infer from result/arguments
     #
     # @return [String] function name
     def display_name
       return function_definition.name if function_definition.present?
 
-      # For planning functions, try to infer from result
-      # Planning functions typically return { success: true, plan: {...} } or similar
+      # For planning functions, try to infer from result shape
       if result.is_a?(Hash)
-        # Check if result has a "plan" key (create_plan, get_plan)
-        return "create_plan" if result.key?("plan") && result["plan"].is_a?(Hash) && result["plan"].key?("goal")
-        return "get_plan" if result.key?("plan") && result["plan"].is_a?(Hash)
-        # Check if result has a "step_id" key (update_step)
-        return "update_step" if result.key?("step_id")
-        # Check if result has a "summary" key (mark_task_complete)
+        # Distinguish create_plan vs get_plan when a plan payload is present
+        if result.key?("plan") && result["plan"].is_a?(Hash)
+          # get_plan adds progress fields alongside the plan
+          if result.key?("progress_percentage") || result.key?("completed_steps") || result.key?("total_steps")
+            return "get_plan"
+          end
+
+          # create_plan returns only the plan payload
+          return "create_plan" if result["plan"].key?("goal")
+
+          # Fallback: any other structured plan
+          return "get_plan"
+        end
+
+        # update_step / add_step both return a "step" hash
+        if result.key?("step") && result["step"].is_a?(Hash)
+          if arguments.is_a?(Hash)
+            # If we have a step_id argument, it's an update to an existing step
+            return "update_step" if arguments.key?("step_id")
+            # If we only have a description, it's a newly added step
+            return "add_step" if arguments.key?("description")
+          end
+
+          # Default to update_step when a step hash is returned
+          return "update_step"
+        end
+
+        # mark_task_complete returns a summary
         return "mark_task_complete" if result.key?("summary")
       end
 
