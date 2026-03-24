@@ -12,7 +12,8 @@ Welcome to the PromptTracker documentation! This guide will help you get started
 
 ### For Different Asset Pipelines
 
-- **[Webpacker Setup Guide](webpacker_setup.md)** - Install PromptTracker in Webpacker/Shakapacker projects
+- **[Webpacker Setup Guide](webpacker_setup.md)** - Install PromptTracker in Webpacker/Shakapacker projects (with importmap - recommended)
+- **[Pure Webpacker Setup](client_webpacker_setup.md)** - Advanced: Use Webpacker only (without importmap)
 - **[Webpacker Example](examples/webpacker_rails_app_setup.md)** - Complete step-by-step example
 
 ### Configuration
@@ -135,4 +136,3 @@ We welcome contributions! 🎉
 ---
 
 **Need help?** Open an issue on [GitHub](https://github.com/DavidGeismarLtd/PromptTracker/issues) or check the [Troubleshooting](#-troubleshooting) section above.
-
