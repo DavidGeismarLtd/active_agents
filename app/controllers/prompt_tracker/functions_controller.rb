@@ -5,7 +5,7 @@ module PromptTracker
   # Provides CRUD operations for code-based functions
   class FunctionsController < ApplicationController
     before_action :set_function, only: [ :show, :edit, :update, :destroy, :test, :deploy, :undeploy ]
-    skip_before_action :verify_authenticity_token, only: [ :test, :deploy, :undeploy, :generate_with_ai ]
+    skip_forgery_protection only: [ :test, :deploy, :undeploy, :generate_with_ai ]
     # GET /functions
     # List all functions with search and filtering
     def index

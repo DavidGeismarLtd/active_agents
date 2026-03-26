@@ -20,7 +20,7 @@ module Agents
     include ActionController::HttpAuthentication::Token::ControllerMethods
 
     # Skip CSRF for API requests (POST with JSON)
-    skip_before_action :verify_authenticity_token, if: :json_request?
+    skip_forgery_protection if: :json_request?
 
     before_action :load_agent
     before_action :check_agent_status

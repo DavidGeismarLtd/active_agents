@@ -9,7 +9,7 @@ module PromptTracker
     # TODO: Investigate why CSRF token verification fails for conversation actions
     # The token is correctly sent in X-CSRF-Token header but Rails still rejects it.
     # Other actions (save, preview) work fine with the same pattern.
-    skip_before_action :verify_authenticity_token, only: [ :run_conversation, :reset_conversation, :preview, :generate, :save, :check_version_impact ]
+    skip_forgery_protection only: [ :run_conversation, :reset_conversation, :preview, :generate, :save, :check_version_impact ]
 
     before_action :set_prompt, if: -> { params[:prompt_id].present? }
     before_action :set_prompt_version, if: -> { params[:prompt_version_id].present? }
