@@ -110,6 +110,15 @@ PromptTracker.configure do |config|
       # as command-line arguments, NOT environment variables
       args: [ "-y", "@modelcontextprotocol/server-filesystem", "/tmp", Rails.root.to_s ],
       env: {}
+    },
+    slack: {
+      transport: "stdio",
+      command: "npx",
+      args: [ "-y", "@modelcontextprotocol/server-slack" ],
+      env: {
+        "SLACK_BOT_TOKEN" => ENV["SLACK_BOT_TOKEN"],
+        "SLACK_TEAM_ID" => ENV["SLACK_TEAM_ID"]
+      }
     }
     # Add more MCP servers here as needed:
     # github: {
