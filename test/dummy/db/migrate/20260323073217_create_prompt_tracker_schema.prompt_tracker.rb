@@ -120,6 +120,9 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.jsonb :tools_used, default: []   # Array of tool names used in this call
       t.jsonb :tool_outputs, default: {} # Hash of tool name => output data
 
+      # Task Agent Timeline: Store LLM's intent to call tools (before execution)
+      t.jsonb :tool_calls, default: []   # Array of tool call objects from LLM response
+
       t.timestamps
     end
 
@@ -494,11 +497,16 @@ class CreatePromptTrackerSchema < ActiveRecord::Migration[7.2]
       t.text :error_message
       t.integer :execution_time_ms
       t.datetime :executed_at, null: false
+
+      # Task Agent Timeline: Link to planning step that triggered this execution
+      t.string :planning_step_id  # References step ID from task_run.metadata["plan"]["steps"]
+
       t.timestamps
     end
 
     add_index :prompt_tracker_function_executions, :function_definition_id
     add_index :prompt_tracker_function_executions, :executed_at
+    add_index :prompt_tracker_function_executions, :planning_step_id
     add_index :prompt_tracker_function_executions, :success
     add_index :prompt_tracker_function_executions, [ :function_definition_id, :executed_at ],
               name: "index_function_executions_on_definition_and_executed_at"

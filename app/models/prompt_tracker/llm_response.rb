@@ -109,6 +109,11 @@ module PromptTracker
                optional: true,
                inverse_of: :llm_responses
 
+    belongs_to :task_run,
+               class_name: "PromptTracker::TaskRun",
+               optional: true,
+               inverse_of: :llm_responses
+
     # Callbacks
     # Auto-evaluate all production tracked calls
     after_create :trigger_auto_evaluation

@@ -57,35 +57,79 @@ RSpec.describe PromptTracker::DeployedAgentsController, type: :controller do
   end
 
   describe "POST #create" do
-    let(:valid_params) do
-      {
-        deployed_agent: {
-          prompt_version_id: version.id,
-          name: "Test Agent",
-          deployment_config: {
-            conversation_ttl: 3600,
-            rate_limit: { requests_per_minute: 60 },
-            auth: { type: "api_key" },
-            cors: { allowed_origins: "https://example.com" }
+    context "with conversational agent" do
+      let(:valid_params) do
+        {
+          deployed_agent: {
+            prompt_version_id: version.id,
+            name: "Test Agent",
+            agent_type: "conversational",
+            deployment_config: {
+              conversation_ttl: 3600,
+              rate_limit: { requests_per_minute: 60 },
+              auth: { type: "api_key" },
+              cors: { allowed_origins: "https://example.com" }
+            }
           }
         }
-      }
-    end
+      end
 
-    it "creates a new agent" do
-      expect {
+      it "creates a new agent" do
+        expect {
+          post :create, params: valid_params
+        }.to change(PromptTracker::DeployedAgent, :count).by(1)
+      end
+
+      it "redirects to the agent show page" do
         post :create, params: valid_params
-      }.to change(PromptTracker::DeployedAgent, :count).by(1)
+        expect(response).to redirect_to(deployed_agent_path(PromptTracker::DeployedAgent.last.slug))
+      end
+
+      it "displays the API key in the flash message" do
+        post :create, params: valid_params
+        expect(flash[:notice]).to include("API Key:")
+      end
     end
 
-    it "redirects to the agent show page" do
-      post :create, params: valid_params
-      expect(response).to redirect_to(deployed_agent_path(PromptTracker::DeployedAgent.last.slug))
-    end
+    context "with task agent" do
+      let(:task_params) do
+        {
+          deployed_agent: {
+            prompt_version_id: version.id,
+            name: "Task Agent",
+            agent_type: "task",
+            task_config: {
+              initial_prompt: "Fetch data from {{source_url}}",
+              variables: '{"source_url": "https://example.com"}',
+              execution: {
+                max_iterations: 10,
+                timeout_seconds: 7200
+              }
+            }
+          }
+        }
+      end
 
-    it "displays the API key in the flash message" do
-      post :create, params: valid_params
-      expect(flash[:notice]).to include("API Key:")
+      it "creates a new task agent" do
+        expect {
+          post :create, params: task_params
+        }.to change(PromptTracker::DeployedAgent, :count).by(1)
+
+        agent = PromptTracker::DeployedAgent.last
+        expect(agent.agent_type).to eq("task")
+        expect(agent.task_config[:initial_prompt]).to eq("Fetch data from {{source_url}}")
+        expect(agent.task_config[:variables]).to eq({ "source_url" => "https://example.com" })
+        expect(agent.task_config.dig(:execution, :max_iterations)).to eq(10)
+        expect(agent.task_config.dig(:execution, :timeout_seconds)).to eq(7200)
+      end
+
+      it "sets default execution values" do
+        post :create, params: task_params
+        agent = PromptTracker::DeployedAgent.last
+        expect(agent.task_config.dig(:execution, :retry_on_failure)).to eq(false)
+        expect(agent.task_config.dig(:execution, :max_retries)).to eq(3)
+        expect(agent.task_config.dig(:completion_criteria, :type)).to eq("auto")
+      end
     end
   end
 

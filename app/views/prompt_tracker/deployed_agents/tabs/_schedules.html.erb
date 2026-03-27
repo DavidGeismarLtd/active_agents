@@ -1,0 +1,95 @@
+<div class="schedules-tab">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-calendar-event"></i> Task Schedules</h4>
+    <%= link_to new_deployed_agent_task_schedule_path(agent.slug), class: "btn btn-primary" do %>
+      <i class="bi bi-plus-circle"></i> New Schedule
+    <% end %>
+  </div>
+
+  <% if task_schedules.any? %>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Schedule</th>
+            <th>Timezone</th>
+            <th>Next Run</th>
+            <th>Last Run</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% task_schedules.each do |schedule| %>
+            <tr>
+              <td>
+                <% if schedule.schedule_type_cron? %>
+                  <span class="badge bg-info">Cron</span>
+                <% else %>
+                  <span class="badge bg-secondary">Interval</span>
+                <% end %>
+              </td>
+              <td>
+                <% if schedule.schedule_type_cron? %>
+                  <code><%= schedule.cron_expression %></code>
+                <% else %>
+                  Every <%= schedule.interval_value %> <%= schedule.interval_unit %>
+                <% end %>
+              </td>
+              <td><%= schedule.timezone %></td>
+              <td>
+                <% if schedule.next_run_at %>
+                  <%= time_ago_in_words(schedule.next_run_at) %> from now
+                  <br>
+                  <small class="text-muted"><%= schedule.next_run_at.strftime("%Y-%m-%d %H:%M %Z") %></small>
+                <% else %>
+                  <span class="text-muted">Not scheduled</span>
+                <% end %>
+              </td>
+              <td>
+                <% if schedule.last_run_at %>
+                  <%= time_ago_in_words(schedule.last_run_at) %> ago
+                <% else %>
+                  <span class="text-muted">Never</span>
+                <% end %>
+              </td>
+              <td>
+                <% if schedule.enabled? %>
+                  <span class="badge bg-success">Enabled</span>
+                <% else %>
+                  <span class="badge bg-warning">Disabled</span>
+                <% end %>
+              </td>
+              <td>
+                <div class="btn-group btn-group-sm" role="group">
+                  <%= button_to toggle_deployed_agent_task_schedule_path(agent.slug, schedule), 
+                                method: :post, 
+                                class: "btn btn-outline-#{schedule.enabled? ? 'warning' : 'success'}" do %>
+                    <i class="bi bi-#{schedule.enabled? ? 'pause' : 'play'}-circle"></i>
+                  <% end %>
+                  <%= link_to edit_deployed_agent_task_schedule_path(agent.slug, schedule), 
+                              class: "btn btn-outline-primary" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                  <%= button_to deployed_agent_task_schedule_path(agent.slug, schedule), 
+                                method: :delete, 
+                                class: "btn btn-outline-danger",
+                                data: { confirm: "Are you sure you want to delete this schedule?" } do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i> No schedules configured yet.
+      <%= link_to "Create your first schedule", new_deployed_agent_task_schedule_path(agent.slug), class: "alert-link" %>
+    </div>
+  <% end %>
+</div>
+

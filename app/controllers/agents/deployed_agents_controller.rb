@@ -67,7 +67,7 @@ module Agents
         name: @agent.name,
         slug: @agent.slug,
         status: @agent.status,
-        model: @agent.prompt_version.model_config[:model],
+        model: @agent.prompt_version.model_config["model"],
         functions: @agent.function_definitions.pluck(:name, :description).map do |name, desc|
           { name: name, description: desc }
         end

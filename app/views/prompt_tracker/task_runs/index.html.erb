@@ -1,0 +1,172 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item"><%= link_to @agent.name, deployed_agent_path(@agent.slug) %></li>
+  <li class="breadcrumb-item active">Task Runs</li>
+<% end %>
+
+<div class="task-runs-index">
+  <!-- Header -->
+  <div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1><i class="bi bi-list-check"></i> Task Run History</h1>
+        <p class="text-muted">All task executions for <%= @agent.name %></p>
+      </div>
+      <%= button_to run_now_deployed_agent_path(@agent.slug),
+                    method: :post,
+                    class: "btn btn-success" do %>
+        <i class="bi bi-play-fill"></i> Run Now
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-play-circle"></i> Total Runs</h6>
+          <h3 class="mb-0"><%= number_with_delimiter(@total_runs) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-check-circle"></i> Successful</h6>
+          <h3 class="mb-0 text-success"><%= number_with_delimiter(@successful_runs) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-x-circle"></i> Failed</h6>
+          <h3 class="mb-0 text-danger"><%= number_with_delimiter(@failed_runs) %></h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Running</h6>
+          <h3 class="mb-0 text-primary"><%= number_with_delimiter(@running_runs) %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <%= form_with url: deployed_agent_task_runs_path(@agent.slug), method: :get, local: true, class: "row g-3" do |f| %>
+        <div class="col-md-4">
+          <%= f.label :status, "Status", class: "form-label" %>
+          <%= f.select :status,
+                       [["All", ""], ["Completed", "completed"], ["Failed", "failed"], ["Running", "running"], ["Queued", "queued"], ["Cancelled", "cancelled"]],
+                       { selected: params[:status] },
+                       class: "form-select" %>
+        </div>
+        <div class="col-md-4">
+          <%= f.label :trigger_type, "Trigger Type", class: "form-label" %>
+          <%= f.select :trigger_type,
+                       [["All", ""], ["Manual", "manual"], ["Scheduled", "scheduled"], ["API", "api"]],
+                       { selected: params[:trigger_type] },
+                       class: "form-select" %>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <%= f.submit "Filter", class: "btn btn-primary me-2" %>
+          <%= link_to "Clear", deployed_agent_task_runs_path(@agent.slug), class: "btn btn-secondary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Task Runs Table -->
+  <div class="card">
+    <div class="card-body">
+      <% if @task_runs.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Trigger</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Iterations</th>
+                <th>Result</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @task_runs.each do |run| %>
+                <tr>
+                  <td><%= link_to "##{run.id}", deployed_agent_task_run_path(@agent.slug, run) %></td>
+                  <td>
+                    <% case run.status %>
+                    <% when "completed" %>
+                      <span class="badge bg-success">Completed</span>
+                    <% when "failed" %>
+                      <span class="badge bg-danger">Failed</span>
+                    <% when "running" %>
+                      <span class="badge bg-primary">Running</span>
+                    <% when "queued" %>
+                      <span class="badge bg-secondary">Queued</span>
+                    <% when "cancelled" %>
+                      <span class="badge bg-warning">Cancelled</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% case run.trigger_type %>
+                    <% when "manual" %>
+                      <i class="bi bi-hand-index"></i> Manual
+                    <% when "scheduled" %>
+                      <i class="bi bi-calendar-event"></i> Scheduled
+                    <% when "api" %>
+                      <i class="bi bi-code"></i> API
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= time_ago_in_words(run.created_at) %> ago
+                    <br>
+                    <small class="text-muted"><%= run.created_at.strftime("%Y-%m-%d %H:%M") %></small>
+                  </td>
+                  <td>
+                    <% if run.completed_at && run.started_at %>
+                      <%= ((run.completed_at - run.started_at) * 1000).round(0) %>ms
+                    <% elsif run.started_at %>
+                      <span class="text-muted">Running...</span>
+                    <% else %>
+                      <span class="text-muted">N/A</span>
+                    <% end %>
+                  </td>
+                  <td><%= run.iterations_count || 0 %></td>
+                  <td>
+                    <% if run.output_summary.present? %>
+                      <code class="text-truncate d-inline-block" style="max-width: 200px;"><%= run.output_summary %></code>
+                    <% else %>
+                      <span class="text-muted">N/A</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= link_to deployed_agent_task_run_path(@agent.slug, run), class: "btn btn-sm btn-outline-primary" do %>
+                      <i class="bi bi-eye"></i> View
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%= paginate @task_runs %>
+      <% else %>
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> No task runs found matching your filters.
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

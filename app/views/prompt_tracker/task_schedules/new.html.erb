@@ -1,0 +1,21 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item"><%= link_to @agent.name, deployed_agent_path(@agent.slug) %></li>
+  <li class="breadcrumb-item active">New Schedule</li>
+<% end %>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-lg-8 offset-lg-2">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="mb-0"><i class="bi bi-calendar-plus"></i> Create New Schedule</h3>
+        </div>
+        <div class="card-body">
+          <%= render "form", agent: @agent, schedule: @schedule %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

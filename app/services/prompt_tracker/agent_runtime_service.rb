@@ -165,7 +165,7 @@ module PromptTracker
       Rails.logger.info "[AgentRuntimeService] Calling LLM with #{tools.length} function(s): #{tools.map { |t| t['name'] }.join(', ')}"
 
       # Determine API type
-      api_type = ApiTypes.from_config(model_config[:provider], model_config[:api])
+      api_type = ApiTypes.from_config(model_config["provider"], model_config["api"])
 
       # Call appropriate LLM service based on API type
       case api_type
@@ -225,13 +225,13 @@ module PromptTracker
       end
 
       LlmClients::RubyLlmService.call(
-        model: model_config[:model],
+        model: model_config["model"],
         prompt: user_prompt,
         system: system_prompt,
         tools: parse_tool_symbols(tools),
         tool_config: { "functions" => tools }, # Use string key for RubyLlmService
         function_executor: executor, # Pass our custom executor
-        temperature: model_config[:temperature]
+        temperature: model_config["temperature"]
       )
     end
 
@@ -341,7 +341,7 @@ module PromptTracker
     def track_response(llm_response, conversation)
       # Create LlmResponse record for monitoring
       model_config = deployed_agent.prompt_version.model_config
-      provider = model_config["provider"] || model_config[:provider] || "openai"
+      provider = model_config["provider"] || "openai"
 
       PromptTracker::LlmResponse.create!(
         prompt_version: deployed_agent.prompt_version,

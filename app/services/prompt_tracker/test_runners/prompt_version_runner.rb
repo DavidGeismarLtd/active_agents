@@ -205,7 +205,7 @@ module PromptTracker
         completion_tokens = tokens["completion_tokens"]
         return nil unless prompt_tokens && completion_tokens
 
-        model_name = output_data["model"] || model_config[:model]
+        model_name = output_data["model"] || model_config["model"]
         return nil unless model_name
 
         model_info = RubyLLM.models.find(model_name)

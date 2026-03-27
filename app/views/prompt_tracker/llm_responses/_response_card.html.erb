@@ -1,0 +1,42 @@
+<div class="llm-response-card">
+  <% if response.status == "success" %>
+    <% if response.rendered_prompt.present? %>
+      <div class="mb-3">
+        <strong>Prompt Sent:</strong>
+        <pre class="mb-0 mt-1 bg-light p-2 border rounded"><code><%= response.rendered_prompt %></code></pre>
+      </div>
+    <% end %>
+    <div class="mb-2">
+      <strong>Response:</strong>
+      <pre class="mb-0 mt-1"><code><%= response.response_text %></code></pre>
+    </div>
+    <% if response.tools_used.present? %>
+      <div class="mb-2">
+        <strong>Tools Used:</strong>
+        <ul class="mb-0">
+          <% response.tools_used.each do |tool_name| %>
+            <li>
+              <code><%= tool_name %></code>
+              <% if response.tool_outputs[tool_name].present? %>
+                <pre class="mt-1 mb-0"><code><%= JSON.pretty_generate(response.tool_outputs[tool_name]) %></code></pre>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+    <div class="text-muted small">
+      <i class="bi bi-clock"></i> <%= response.response_time_ms %>ms
+      <% if response.tokens_total %>
+        | <i class="bi bi-hash"></i> <%= response.tokens_total %> tokens
+      <% end %>
+      <% if response.cost_usd %>
+        | <i class="bi bi-currency-dollar"></i> $<%= number_with_precision(response.cost_usd, precision: 4) %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="alert alert-danger mb-0">
+      <strong>Error:</strong> <%= response.error_message %>
+    </div>
+  <% end %>
+</div>

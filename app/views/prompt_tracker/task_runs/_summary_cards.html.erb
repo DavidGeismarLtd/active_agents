@@ -1,0 +1,45 @@
+<%# Summary Cards - extracted for Turbo Stream updates %>
+<div id="summary_cards">
+  <div class="row mb-4">
+	  <div class="col-md-3">
+	    <div class="card">
+	      <div class="card-body">
+	        <h6 class="text-muted mb-2"><i class="bi bi-clock"></i> Duration</h6>
+	        <h3 class="mb-0">
+	          <% if task_run.completed_at && task_run.started_at %>
+	            <%= ((task_run.completed_at - task_run.started_at) * 1000).round(0) %>ms
+	          <% elsif task_run.started_at %>
+	            <span class="text-muted">Running...</span>
+	          <% else %>
+	            <span class="text-muted">N/A</span>
+	          <% end %>
+	        </h3>
+	      </div>
+	    </div>
+	  </div>
+	  <div class="col-md-3">
+	    <div class="card">
+	      <div class="card-body">
+	        <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Iterations</h6>
+	        <h3 class="mb-0"><%= task_run.iterations_count || 0 %></h3>
+	      </div>
+	    </div>
+	  </div>
+	  <div class="col-md-3">
+	    <div class="card">
+	      <div class="card-body">
+	        <h6 class="text-muted mb-2"><i class="bi bi-chat-left-text"></i> LLM Calls</h6>
+	        <h3 class="mb-0"><%= llm_responses.count %></h3>
+	      </div>
+	    </div>
+	  </div>
+	  <div class="col-md-3">
+	    <div class="card">
+	      <div class="card-body">
+	        <h6 class="text-muted mb-2"><i class="bi bi-code-square"></i> Function Calls</h6>
+	        <h3 class="mb-0"><%= function_executions.count %></h3>
+	      </div>
+	    </div>
+	  </div>
+  </div>
+</div>

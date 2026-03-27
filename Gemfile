@@ -22,6 +22,9 @@ gem "ruby-openai", "~> 8.0"
 gem "sidekiq", "~> 7.0"
 gem "redis", "~> 5.0"
 
+# Cron expression parsing for task scheduling
+gem "fugit", "~> 1.11"
+
 # Hotwire's SPA-like page accelerator and real-time updates
 gem "turbo-rails"
 gem "stimulus-rails"

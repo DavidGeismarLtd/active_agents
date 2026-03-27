@@ -63,12 +63,12 @@ module PromptTracker
     def validate_input!
       raise ConversationError, "Message content is required" if content.blank?
       raise ConversationError, "Model configuration is required" if model_config.blank?
-      raise ConversationError, "Provider is required" if model_config[:provider].blank?
-      raise ConversationError, "API is required" if model_config[:api].blank?
+      raise ConversationError, "Provider is required" if model_config["provider"].blank?
+      raise ConversationError, "API is required" if model_config["api"].blank?
     end
 
     def execute_via_llm_client
-      api_type = ApiTypes.from_config(model_config[:provider], model_config[:api])
+      api_type = ApiTypes.from_config(model_config["provider"], model_config["api"])
 
       case api_type
       when :openai_responses
@@ -88,29 +88,28 @@ module PromptTracker
       if previous_response_id.present?
         # Follow-up turn: use previous_response_id for context
         LlmClients::OpenaiResponseService.call_with_context(
-          model: model_config[:model],
+          model: model_config["model"],
           input: content,
           previous_response_id: previous_response_id,
           tools: parse_tools,
-          tool_config: model_config[:tool_config],
-          temperature: model_config[:temperature]
+          tool_config: model_config["tool_config"],
+          temperature: model_config["temperature"]
         )
       else
         # First turn: pass instructions and user message
         LlmClients::OpenaiResponseService.call(
-          model: model_config[:model],
+          model: model_config["model"],
           input: content,
           instructions: rendered_system_prompt,
           tools: parse_tools,
-          tool_config: model_config[:tool_config],
-          temperature: model_config[:temperature]
+          tool_config: model_config["tool_config"],
+          temperature: model_config["temperature"]
         )
       end
     end
 
     def execute_assistants_api
-      assistant_id = model_config.dig(:metadata, :assistant_id) ||
-                     model_config.dig("metadata", "assistant_id")
+      assistant_id = model_config.dig("metadata", "assistant_id")
 
       LlmClients::OpenaiAssistantService.call(
         assistant_id: assistant_id,
@@ -123,23 +122,23 @@ module PromptTracker
       # For multi-turn conversations, we pass the current user message
       # (conversation history is managed by the playground state)
       LlmClients::RubyLlmService.call(
-        model: model_config[:model],
+        model: model_config["model"],
         prompt: content,
         system: rendered_system_prompt,
         tools: parse_tools,
-        tool_config: model_config[:tool_config],
-        temperature: model_config[:temperature]
+        tool_config: model_config["tool_config"],
+        temperature: model_config["temperature"]
       )
     end
 
     def execute_chat_completion
       # For chat completion APIs, build the full prompt with conversation history
       LlmClientService.call(
-        provider: model_config[:provider],
-        api: model_config[:api],
-        model: model_config[:model],
+        provider: model_config["provider"],
+        api: model_config["api"],
+        model: model_config["model"],
         prompt: build_chat_prompt,
-        temperature: model_config[:temperature],
+        temperature: model_config["temperature"],
         system_prompt: rendered_system_prompt
       )
     end
@@ -166,7 +165,7 @@ module PromptTracker
     end
 
     def parse_tools
-      tools_config = model_config[:tools]
+      tools_config = model_config["tools"]
       return [] if tools_config.blank?
 
       Array(tools_config).map(&:to_sym)

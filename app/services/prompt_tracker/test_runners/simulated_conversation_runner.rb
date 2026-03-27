@@ -57,42 +57,42 @@ module PromptTracker
       #
       # @return [String] the model name
       def model
-        model_config[:model] || "gpt-4o"
+        model_config["model"] || "gpt-4o"
       end
 
       # Get the temperature from config
       #
       # @return [Float] the temperature
       def temperature
-        model_config[:temperature] || 0.7
+        model_config["temperature"] || 0.7
       end
 
       # Get the tools from config
       #
       # @return [Array] array of tools
       def tools
-        model_config[:tools] || []
+        model_config["tools"] || []
       end
 
       # Get the tool_config from config
       #
       # @return [Hash] tool configuration
       def tool_config
-        model_config[:tool_config] || {}
+        model_config["tool_config"] || {}
       end
 
       # Get the provider from config
       #
       # @return [String] the provider name
       def provider
-        model_config[:provider] || "openai"
+        model_config["provider"] || "openai"
       end
 
       # Get the API type from config
       #
       # @return [String, nil] the API type (e.g., "chat_completions", "responses")
       def api
-        model_config[:api]
+        model_config["api"]
       end
 
       # Build standard output data structure

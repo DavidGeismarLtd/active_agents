@@ -56,7 +56,7 @@ module PromptTracker
       # @param max_tokens [Integer, nil] maximum output tokens
       # @param options [Hash] additional API parameters
       # @return [NormalizedLlmResponse] normalized response
-      def self.call(model:, input:, instructions: nil, tools: [], tool_config: {}, temperature: 0.7, max_tokens: nil, **options)
+      def self.call(model:, input:, instructions: nil, tools: [], tool_config: {}, temperature: nil, max_tokens: nil, **options)
         new(
           model: model,
           input: input,
@@ -93,7 +93,7 @@ module PromptTracker
                   :tools, :tool_config, :temperature, :max_tokens, :options
 
       def initialize(model:, input:, instructions: nil, previous_response_id: nil,
-                     tools: [], tool_config: {}, temperature: 0.7, max_tokens: nil, **options)
+                     tools: [], tool_config: {}, temperature: nil, max_tokens: nil, **options)
         @model = model
         @input = input
         @instructions = instructions
@@ -109,11 +109,16 @@ module PromptTracker
       #
       # @return [Hash] normalized response
       def call
-        response = client.responses.create(parameters: build_parameters)
+        params = build_parameters
+        Rails.logger.debug "[OpenaiResponseService] Full request parameters:"
+        Rails.logger.debug JSON.pretty_generate(params)
+
+        response = client.responses.create(parameters: params)
 
         normalize_response(response)
       rescue Faraday::BadRequestError => e
         # Extract detailed error information from the response body
+        Rails.logger.error "[OpenaiResponseService] Raw error response: #{e.response.inspect}"
         error_body = JSON.parse(e.response[:body]) rescue {}
         error_message = error_body.dig("error", "message") || e.message
         error_type = error_body.dig("error", "type")
@@ -126,6 +131,7 @@ module PromptTracker
         detailed_error += "\nError Code: #{error_code}" if error_code
         detailed_error += "\nError Param: #{error_param}" if error_param
         detailed_error += "\n\nFull error body: #{error_body.inspect}"
+        detailed_error += "\n\nRaw response body: #{e.response[:body]}"
         detailed_error += "\n\nRequest parameters: #{redact_sensitive_params(build_parameters).inspect}"
 
         raise ResponseApiError, detailed_error
@@ -142,7 +148,9 @@ module PromptTracker
           api_key = PromptTracker.configuration.api_key_for(:openai)
           raise ResponseApiError, "OpenAI API key not configured" if api_key.blank?
 
-          OpenAI::Client.new(access_token: api_key)
+          # GPT-5 models can be VERY slow due to extended reasoning
+          # Use a 10-minute timeout to accommodate complex reasoning tasks
+          OpenAI::Client.new(access_token: api_key, request_timeout: 600)
         end
       end
 

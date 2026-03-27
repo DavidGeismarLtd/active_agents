@@ -10,6 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
+
 ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -111,6 +112,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
     t.text "api_key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "agent_type", default: "conversational", null: false
+    t.jsonb "task_config", default: {}, null: false
+    t.index [ "agent_type" ], name: "index_prompt_tracker_deployed_agents_on_agent_type"
     t.index [ "created_at" ], name: "index_prompt_tracker_deployed_agents_on_created_at"
     t.index [ "prompt_version_id" ], name: "index_prompt_tracker_deployed_agents_on_prompt_version_id"
     t.index [ "slug" ], name: "index_prompt_tracker_deployed_agents_on_slug", unique: true
@@ -213,23 +217,27 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
   end
 
   create_table "prompt_tracker_function_executions", force: :cascade do |t|
-    t.bigint "function_definition_id", null: false
+    t.bigint "function_definition_id"
     t.jsonb "arguments", default: {}, null: false
     t.jsonb "result"
     t.boolean "success", default: true, null: false
     t.text "error_message"
     t.integer "execution_time_ms"
     t.datetime "executed_at", null: false
+    t.string "planning_step_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "deployed_agent_id"
     t.bigint "agent_conversation_id"
+    t.bigint "task_run_id"
     t.index [ "agent_conversation_id" ], name: "idx_on_agent_conversation_id_74963468f2"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_function_executions_on_deployed_agent_id"
     t.index [ "executed_at" ], name: "index_prompt_tracker_function_executions_on_executed_at"
     t.index [ "function_definition_id", "executed_at" ], name: "index_function_executions_on_definition_and_executed_at"
     t.index [ "function_definition_id" ], name: "idx_on_function_definition_id_ac862f4b59"
+    t.index [ "planning_step_id" ], name: "index_prompt_tracker_function_executions_on_planning_step_id"
     t.index [ "success" ], name: "index_prompt_tracker_function_executions_on_success"
+    t.index [ "task_run_id" ], name: "index_prompt_tracker_function_executions_on_task_run_id"
   end
 
   create_table "prompt_tracker_human_evaluations", force: :cascade do |t|
@@ -277,10 +285,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
     t.string "previous_response_id"
     t.jsonb "tools_used", default: []
     t.jsonb "tool_outputs", default: {}
+    t.jsonb "tool_calls", default: []
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "deployed_agent_id"
     t.bigint "agent_conversation_id"
+    t.bigint "task_run_id"
     t.index [ "ab_test_id", "ab_variant" ], name: "index_llm_responses_on_ab_test_and_variant"
     t.index [ "ab_test_id" ], name: "index_prompt_tracker_llm_responses_on_ab_test_id"
     t.index [ "agent_conversation_id" ], name: "index_prompt_tracker_llm_responses_on_agent_conversation_id"
@@ -298,6 +308,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
     t.index [ "span_id" ], name: "index_prompt_tracker_llm_responses_on_span_id"
     t.index [ "status", "created_at" ], name: "index_llm_responses_on_status_and_created_at"
     t.index [ "status" ], name: "index_prompt_tracker_llm_responses_on_status"
+    t.index [ "task_run_id" ], name: "index_prompt_tracker_llm_responses_on_task_run_id"
     t.index [ "tools_used" ], name: "index_prompt_tracker_llm_responses_on_tools_used", using: :gin
     t.index [ "trace_id" ], name: "index_prompt_tracker_llm_responses_on_trace_id"
     t.index [ "user_id" ], name: "index_prompt_tracker_llm_responses_on_user_id"
@@ -397,6 +408,48 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
     t.index [ "trace_id" ], name: "index_prompt_tracker_spans_on_trace_id"
   end
 
+  create_table "prompt_tracker_task_runs", force: :cascade do |t|
+    t.bigint "deployed_agent_id", null: false
+    t.string "status", default: "queued", null: false
+    t.string "trigger_type", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.jsonb "variables_used", default: {}, null: false
+    t.text "output_summary"
+    t.text "error_message"
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "llm_calls_count", default: 0, null: false
+    t.integer "function_calls_count", default: 0, null: false
+    t.integer "iterations_count", default: 0, null: false
+    t.decimal "total_cost_usd", precision: 10, scale: 6
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "deployed_agent_id", "created_at" ], name: "index_task_runs_on_agent_and_created"
+    t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_task_runs_on_deployed_agent_id"
+    t.index [ "started_at" ], name: "index_prompt_tracker_task_runs_on_started_at"
+    t.index [ "status" ], name: "index_prompt_tracker_task_runs_on_status"
+    t.index [ "trigger_type" ], name: "index_prompt_tracker_task_runs_on_trigger_type"
+  end
+
+  create_table "prompt_tracker_task_schedules", force: :cascade do |t|
+    t.bigint "deployed_agent_id", null: false
+    t.string "schedule_type", null: false
+    t.string "cron_expression"
+    t.integer "interval_value"
+    t.string "interval_unit"
+    t.string "timezone", default: "UTC", null: false
+    t.boolean "enabled", default: true, null: false
+    t.datetime "last_run_at"
+    t.datetime "next_run_at"
+    t.integer "run_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_task_schedules_on_deployed_agent_id", unique: true
+    t.index [ "enabled", "next_run_at" ], name: "index_task_schedules_on_enabled_and_next_run"
+    t.index [ "enabled" ], name: "index_prompt_tracker_task_schedules_on_enabled"
+    t.index [ "next_run_at" ], name: "index_prompt_tracker_task_schedules_on_next_run_at"
+  end
+
   create_table "prompt_tracker_test_runs", force: :cascade do |t|
     t.bigint "test_id", null: false
     t.bigint "dataset_id"
@@ -469,6 +522,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
   add_foreign_key "prompt_tracker_function_executions", "prompt_tracker_agent_conversations", column: "agent_conversation_id"
   add_foreign_key "prompt_tracker_function_executions", "prompt_tracker_deployed_agents", column: "deployed_agent_id"
   add_foreign_key "prompt_tracker_function_executions", "prompt_tracker_function_definitions", column: "function_definition_id"
+  add_foreign_key "prompt_tracker_function_executions", "prompt_tracker_task_runs", column: "task_run_id"
   add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_evaluations", column: "evaluation_id"
   add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_llm_responses", column: "llm_response_id"
   add_foreign_key "prompt_tracker_human_evaluations", "prompt_tracker_test_runs", column: "test_run_id"
@@ -477,10 +531,13 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_deployed_agents", column: "deployed_agent_id"
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_prompt_versions", column: "prompt_version_id"
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_spans", column: "span_id"
+  add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_task_runs", column: "task_run_id"
   add_foreign_key "prompt_tracker_llm_responses", "prompt_tracker_traces", column: "trace_id"
   add_foreign_key "prompt_tracker_prompt_versions", "prompt_tracker_prompts", column: "prompt_id"
   add_foreign_key "prompt_tracker_spans", "prompt_tracker_spans", column: "parent_span_id"
   add_foreign_key "prompt_tracker_spans", "prompt_tracker_traces", column: "trace_id"
+  add_foreign_key "prompt_tracker_task_runs", "prompt_tracker_deployed_agents", column: "deployed_agent_id"
+  add_foreign_key "prompt_tracker_task_schedules", "prompt_tracker_deployed_agents", column: "deployed_agent_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_dataset_rows", column: "dataset_row_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_datasets", column: "dataset_id"
   add_foreign_key "prompt_tracker_test_runs", "prompt_tracker_tests", column: "test_id"

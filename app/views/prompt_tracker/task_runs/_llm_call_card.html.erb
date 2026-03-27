@@ -1,0 +1,114 @@
+<%# LLM Call Card - Shows LLM response with tool calls (intent) %>
+<div class="card border-primary" data-task-timeline-target="eventCard">
+  <div class="card-header bg-primary bg-opacity-10 cursor-pointer"
+       data-action="click->task-timeline#toggleCard"
+       data-bs-toggle="collapse"
+       data-bs-target="#llm-response-<%= response.id %>">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h6 class="mb-0">
+          <i class="bi bi-chat-left-text"></i> LLM Response
+          <% if response.tool_calls.present? %>
+            <span class="badge bg-warning text-dark"><%= response.tool_calls.count %> tool call<%= response.tool_calls.count == 1 ? '' : 's' %></span>
+          <% end %>
+        </h6>
+      </div>
+      <div>
+        <small class="text-muted"><%= timestamp.strftime("%H:%M:%S.%L") %></small>
+        <i class="bi bi-chevron-down ms-2"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="llm-response-<%= response.id %>" class="collapse">
+    <div class="card-body">
+      <!-- Tool Calls (Intent) -->
+      <% if response.tool_calls.present? %>
+        <div class="mb-3">
+          <h6 class="text-warning">
+            <i class="bi bi-lightning"></i> Tool Calls (Intent)
+          </h6>
+          <% response.tool_calls.each do |tool_call| %>
+            <div class="card bg-warning bg-opacity-10 mb-2">
+              <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong><%= tool_call["function_name"] || tool_call[:function_name] %></strong>
+                    <small class="text-muted d-block">ID: <%= tool_call["id"] || tool_call[:id] %></small>
+                  </div>
+                  <span class="badge bg-warning text-dark">Intent</span>
+                </div>
+                <% arguments = tool_call["arguments"] || tool_call[:arguments] %>
+                <% if arguments.present? %>
+                  <details class="mt-2">
+                    <summary class="text-muted" style="cursor: pointer;">Arguments</summary>
+                    <pre class="mb-0 mt-2 code-block-scrollable"><code><%= JSON.pretty_generate(arguments) %></code></pre>
+                  </details>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Response Text -->
+      <% if response.response_text.present? %>
+        <div class="mb-3">
+          <h6><i class="bi bi-chat-quote"></i> Response Text</h6>
+          <div class="p-3 bg-light rounded">
+            <%= simple_format(response.response_text) %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Metadata -->
+      <details>
+        <summary class="text-muted" style="cursor: pointer;">Metadata</summary>
+        <div class="mt-2">
+          <table class="table table-sm">
+            <tr>
+              <th>Model</th>
+              <td><%= response.model %></td>
+            </tr>
+            <tr>
+              <th>Provider</th>
+              <td><%= response.provider %></td>
+            </tr>
+            <tr>
+              <th>Tokens</th>
+              <td>
+                <%= response.tokens_prompt %> prompt +
+                <%= response.tokens_completion %> completion =
+                <%= response.tokens_total %> total
+              </td>
+            </tr>
+            <% if response.cost_usd.present? %>
+              <tr>
+                <th>Cost</th>
+                <td>$<%= response.cost_usd %></td>
+              </tr>
+            <% end %>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<style>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.card-header:hover {
+  background-color: rgba(13, 110, 253, 0.15) !important;
+}
+
+.bi-chevron-down {
+  transition: transform 0.2s;
+}
+
+.collapsed .bi-chevron-down {
+  transform: rotate(-90deg);
+}
+</style>

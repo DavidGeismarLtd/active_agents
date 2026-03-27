@@ -336,5 +336,22 @@ module PromptTracker
 
       result.html_safe
     end
+
+    # Get Bootstrap color class for step status
+    #
+    # @param status [String] the step status
+    # @return [String] Bootstrap color class
+    # @example
+    #   step_status_color("completed") # => "success"
+    def step_status_color(status)
+      case status.to_s
+      when "completed" then "success"
+      when "in_progress" then "primary"
+      when "failed" then "danger"
+      when "skipped" then "secondary"
+      when "pending" then "light"
+      else "secondary"
+      end
+    end
   end
 end

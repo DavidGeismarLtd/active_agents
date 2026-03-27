@@ -19,3 +19,13 @@ seed_files.each do |file|
   puts "\n📄 Loading #{filename}..."
   load file
 end
+
+# Associate existing Lambda functions with FunctionDefinitions
+puts "\n🔗 Associating existing Lambda functions..."
+begin
+  Rake::Task["prompt_tracker:functions:associate_lambda_functions"].invoke
+rescue StandardError => e
+  puts "⚠️  Could not associate Lambda functions: #{e.message}"
+  puts "   You can run this manually later with:"
+  puts "   bin/rails prompt_tracker:functions:associate_lambda_functions"
+end

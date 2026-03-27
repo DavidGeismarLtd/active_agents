@@ -25,6 +25,12 @@ module PromptTracker
     # Temporary storage for plain API key (only available during creation)
     attr_accessor :plain_api_key
 
+    # Agent type enum
+    enum agent_type: {
+      conversational: "conversational",
+      task: "task"
+    }, _prefix: true
+
     # Associations
     belongs_to :prompt_version,
                class_name: "PromptTracker::PromptVersion",
@@ -39,11 +45,24 @@ module PromptTracker
              through: :deployed_agent_functions,
              class_name: "PromptTracker::FunctionDefinition"
 
+    # Conversational agent associations
     has_many :agent_conversations,
              class_name: "PromptTracker::AgentConversation",
              dependent: :destroy,
              inverse_of: :deployed_agent
 
+    # Task agent associations
+    has_many :task_runs,
+             class_name: "PromptTracker::TaskRun",
+             dependent: :destroy,
+             inverse_of: :deployed_agent
+
+    has_many :task_schedules,
+             class_name: "PromptTracker::TaskSchedule",
+             dependent: :destroy,
+             inverse_of: :deployed_agent
+
+    # Shared associations
     has_many :llm_responses,
              class_name: "PromptTracker::LlmResponse",
              dependent: :nullify,
@@ -60,6 +79,10 @@ module PromptTracker
                      uniqueness: true,
                      format: { with: /\A[a-z0-9-]+\z/, message: "must be lowercase alphanumeric with hyphens" }
     validates :status, inclusion: { in: %w[active paused error] }
+    validates :agent_type, presence: true
+
+    # Task agent specific validations
+    validate :task_config_present_for_task_agents, if: :agent_type_task?
 
     # Encrypted attributes
     encrypts :api_key
@@ -75,6 +98,14 @@ module PromptTracker
     scope :paused, -> { where(status: "paused") }
     scope :with_errors, -> { where(status: "error") }
     scope :recent, -> { order(created_at: :desc) }
+    scope :conversational_agents, -> { where(agent_type: "conversational") }
+    scope :task_agents, -> { where(agent_type: "task") }
+
+    # Override task_config to ensure it's always a HashWithIndifferentAccess
+    def task_config
+      config = super
+      config.is_a?(Hash) ? config.with_indifferent_access : config
+    end
 
     # Use slug for URLs instead of ID
     # @return [String] the slug
@@ -130,12 +161,51 @@ module PromptTracker
     # Get deployment configuration with defaults
     # @return [Hash]
     def config
-      # Convert deployment_config string keys to symbols for proper merging
-      config_with_symbols = (deployment_config || {}).deep_symbolize_keys
-      PromptTracker.configuration.default_deployment_config.deep_merge(config_with_symbols)
+      if agent_type_conversational?
+        # Convert deployment_config string keys to symbols for proper merging
+        config_with_symbols = (deployment_config || {}).deep_symbolize_keys
+        PromptTracker.configuration.default_deployment_config.deep_merge(config_with_symbols)
+      else
+        # For task agents, return task_config
+        (task_config || {}).deep_symbolize_keys
+      end
+    end
+
+    # Get task configuration with defaults
+    # @return [Hash]
+    def task_configuration
+      return {} unless agent_type_task?
+
+      defaults = {
+        execution: {
+          max_iterations: 5,
+          timeout_seconds: 3600,
+          retry_on_failure: false,
+          max_retries: 3
+        },
+        completion_criteria: {
+          type: "auto" # or "explicit"
+        },
+        planning: {
+          enabled: false,
+          max_steps: 20,
+          allow_plan_modifications: true
+        }
+      }
+
+      defaults.deep_merge((task_config || {}).deep_symbolize_keys)
     end
 
     private
+
+    def task_config_present_for_task_agents
+      return unless agent_type_task?
+
+      initial_prompt = task_config&.[](:initial_prompt) || task_config&.[]("initial_prompt")
+      return if initial_prompt.present?
+
+      errors.add(:task_config, "must include initial_prompt for task agents")
+    end
 
     def generate_slug
       return if slug.present? # Don't regenerate if slug is already set

@@ -1,6 +1,6 @@
 <div class="card">
   <div class="card-body">
-    <%= form_with model: agent, url: agent.persisted? ? deployed_agent_path(agent.slug) : deployed_agents_path, method: agent.persisted? ? :patch : :post, local: true do |f| %>
+    <%= form_with model: agent, url: agent.persisted? ? deployed_agent_path(agent.slug) : deployed_agents_path, method: agent.persisted? ? :patch : :post, local: true, data: { controller: "agent-type-selector" } do |f| %>
       <%= f.hidden_field :prompt_version_id %>
 
       <!-- Name -->
@@ -10,77 +10,219 @@
         <div class="form-text">A friendly name for this deployment</div>
       </div>
 
-      <!-- Configuration Section -->
-      <h5 class="mt-4 mb-3">Configuration</h5>
+      <!-- Agent Type Selection -->
+      <div class="mb-4">
+        <%= f.label :agent_type, "Agent Type", class: "form-label" %>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="deployed_agent[agent_type]" id="agent_type_conversational" value="conversational" <%= "checked" if agent.agent_type_conversational? || agent.new_record? %> data-action="change->agent-type-selector#toggleType">
+          <label class="btn btn-outline-primary" for="agent_type_conversational">
+            <i class="bi bi-chat-dots"></i> Conversational Agent
+            <div class="small text-muted">Interactive chat with users</div>
+          </label>
 
-      <!-- Conversation TTL -->
-      <div class="mb-3">
-        <%= f.label :conversation_ttl, "Conversation TTL (seconds)", class: "form-label" %>
-        <%= f.fields_for :deployment_config do |config_f| %>
-          <%= config_f.number_field :conversation_ttl,
-              value: agent.config[:conversation_ttl] || 3600,
-              class: "form-control",
-              min: 60,
-              max: 86400 %>
-        <% end %>
-        <div class="form-text">How long to keep conversation state (60 seconds to 24 hours)</div>
-      </div>
-
-      <!-- Rate Limiting -->
-      <div class="mb-3">
-        <%= f.label :rate_limit, "Rate Limit (requests per minute)", class: "form-label" %>
-        <%= f.fields_for :deployment_config do |config_f| %>
-          <%= config_f.fields_for :rate_limit do |rate_f| %>
-            <%= rate_f.number_field :requests_per_minute,
-                value: agent.config.dig(:rate_limit, :requests_per_minute) || 60,
-                class: "form-control",
-                min: 1,
-                max: 1000 %>
-          <% end %>
-        <% end %>
-        <div class="form-text">Maximum requests per minute (leave blank for unlimited)</div>
-      </div>
-
-      <!-- Authentication Type -->
-      <div class="mb-3">
-        <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
-        <%= f.fields_for :deployment_config do |config_f| %>
-          <%= config_f.fields_for :auth do |auth_f| %>
-            <%= auth_f.select :type,
-                options_for_select([["API Key", "api_key"], ["None", "none"]], agent.config.dig(:auth, :type) || "api_key"),
-                {},
-                class: "form-select" %>
-          <% end %>
-        <% end %>
-        <div class="form-text">How clients authenticate with this agent</div>
-      </div>
-
-      <!-- CORS Origins -->
-      <div class="mb-3">
-        <%= f.label :cors_origins, "CORS Allowed Origins", class: "form-label" %>
-        <%= f.fields_for :deployment_config do |config_f| %>
-          <%= config_f.fields_for :cors do |cors_f| %>
-            <%= cors_f.text_field :allowed_origins,
-                value: (agent.config.dig(:cors, :allowed_origins) || []).join(", "),
-                class: "form-control",
-                placeholder: "https://example.com, https://app.example.com" %>
-          <% end %>
-        <% end %>
-        <div class="form-text">Comma-separated list of allowed origins (leave blank for all)</div>
-      </div>
-
-      <!-- Enable Web UI -->
-      <div class="mb-3">
-        <div class="form-check form-switch">
-          <%= f.fields_for :deployment_config do |config_f| %>
-            <%= config_f.check_box :enable_web_ui,
-                checked: agent.config[:enable_web_ui] != false,
-                class: "form-check-input",
-                id: "enable_web_ui" %>
-            <%= config_f.label :enable_web_ui, "Enable Browser Chat Interface", class: "form-check-label", for: "enable_web_ui" %>
-          <% end %>
+          <input type="radio" class="btn-check" name="deployed_agent[agent_type]" id="agent_type_task" value="task" <%= "checked" if agent.agent_type_task? %> data-action="change->agent-type-selector#toggleType">
+          <label class="btn btn-outline-primary" for="agent_type_task">
+            <i class="bi bi-robot"></i> Task Agent
+            <div class="small text-muted">Autonomous scheduled tasks</div>
+          </label>
         </div>
-        <div class="form-text">Allow users to chat with this agent via browser at /agents/<%= agent.slug || 'your-slug' %>/chat</div>
+      </div>
+
+      <!-- Task Configuration Section (only for task agents) -->
+      <div data-agent-type-selector-target="taskConfig" style="<%= 'display: none;' unless agent.agent_type_task? %>">
+        <h5 class="mt-4 mb-3"><i class="bi bi-gear"></i> Task Configuration</h5>
+
+        <!-- Initial Prompt -->
+        <div class="mb-3">
+          <%= f.label :initial_prompt, "Initial Prompt", class: "form-label" %>
+          <%= f.fields_for :task_config do |task_f| %>
+            <%= task_f.text_area :initial_prompt,
+                value: agent.task_config[:initial_prompt],
+                class: "form-control font-monospace",
+                rows: 4,
+                placeholder: "Fetch data from {{source_url}} and process it..." %>
+          <% end %>
+          <div class="form-text">The prompt that starts the task. Use {{variable_name}} for variables.</div>
+        </div>
+
+        <!-- Variables (JSON) -->
+        <div class="mb-3">
+          <%= f.label :variables, "Variables (JSON)", class: "form-label" %>
+          <%= f.fields_for :task_config do |task_f| %>
+            <%= task_f.text_area :variables,
+                value: agent.task_config[:variables]&.to_json || "{}",
+                class: "form-control font-monospace",
+                rows: 4,
+                placeholder: '{"source_url": "https://example.com"}' %>
+          <% end %>
+          <div class="form-text">Variables to substitute in the initial prompt (JSON format)</div>
+        </div>
+
+        <!-- Execution Settings -->
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <%= f.label :max_iterations, "Max Iterations", class: "form-label" %>
+            <%= f.fields_for :task_config do |task_f| %>
+              <%= task_f.fields_for :execution do |exec_f| %>
+                <%= exec_f.number_field :max_iterations,
+                    value: agent.task_config.dig(:execution, :max_iterations) || 5,
+                    class: "form-control",
+                    min: 1,
+                    max: 50 %>
+              <% end %>
+            <% end %>
+            <div class="form-text">Maximum LLM calls before stopping</div>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <%= f.label :timeout_seconds, "Timeout (seconds)", class: "form-label" %>
+            <%= f.fields_for :task_config do |task_f| %>
+              <%= task_f.fields_for :execution do |exec_f| %>
+                <%= exec_f.number_field :timeout_seconds,
+                    value: agent.task_config.dig(:execution, :timeout_seconds) || 3600,
+                    class: "form-control",
+                    min: 60,
+                    max: 86400 %>
+              <% end %>
+            <% end %>
+            <div class="form-text">Maximum execution time</div>
+          </div>
+        </div>
+
+        <!-- Planning Configuration -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-list-check"></i> Planning Mode</h6>
+          </div>
+          <div class="card-body">
+            <div class="form-check mb-3">
+              <%= f.fields_for :task_config do |task_f| %>
+                <%= task_f.fields_for :planning do |planning_f| %>
+                  <%= planning_f.check_box :enabled,
+                      checked: agent.task_config.dig(:planning, :enabled) || false,
+                      class: "form-check-input",
+                      data: { action: "change->agent-type-selector#togglePlanning" } %>
+                  <%= planning_f.label :enabled, class: "form-check-label" do %>
+                    <strong>Enable Planning Mode</strong>
+                    <div class="text-muted small">
+                      Requires agent to create explicit plans and mark tasks complete.
+                      Improves goal tracking and prevents over-iteration.
+                    </div>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+
+            <div id="planning_options" style="<%= 'display: none;' unless agent.task_config.dig(:planning, :enabled) %>" data-agent-type-selector-target="planningOptions">
+              <div class="mb-3">
+                <%= f.label :max_plan_steps, "Maximum Plan Steps", class: "form-label" %>
+                <%= f.fields_for :task_config do |task_f| %>
+                  <%= task_f.fields_for :planning do |planning_f| %>
+                    <%= planning_f.number_field :max_steps,
+                        value: agent.task_config.dig(:planning, :max_steps) || 20,
+                        class: "form-control",
+                        min: 3,
+                        max: 50 %>
+                  <% end %>
+                <% end %>
+                <div class="form-text">
+                  Maximum number of steps allowed in a plan (3-50)
+                </div>
+              </div>
+
+              <div class="form-check">
+                <%= f.fields_for :task_config do |task_f| %>
+                  <%= task_f.fields_for :planning do |planning_f| %>
+                    <%= planning_f.check_box :allow_plan_modifications,
+                        checked: agent.task_config.dig(:planning, :allow_plan_modifications) != false,
+                        class: "form-check-input" %>
+                    <%= planning_f.label :allow_plan_modifications, class: "form-check-label" do %>
+                      Allow plan modifications during execution
+                      <div class="text-muted small">
+                        Agent can add new steps or modify existing ones as it learns more
+                      </div>
+                    <% end %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversational Configuration Section (only for conversational agents) -->
+      <div data-agent-type-selector-target="conversationalConfig" style="<%= 'display: none;' if agent.agent_type_task? %>">
+        <h5 class="mt-4 mb-3">Configuration</h5>
+
+        <!-- Conversation TTL -->
+        <div class="mb-3">
+          <%= f.label :conversation_ttl, "Conversation TTL (seconds)", class: "form-label" %>
+          <%= f.fields_for :deployment_config do |config_f| %>
+            <%= config_f.number_field :conversation_ttl,
+                value: agent.config[:conversation_ttl] || 3600,
+                class: "form-control",
+                min: 60,
+                max: 86400 %>
+          <% end %>
+          <div class="form-text">How long to keep conversation state (60 seconds to 24 hours)</div>
+        </div>
+
+        <!-- Rate Limiting -->
+        <div class="mb-3">
+          <%= f.label :rate_limit, "Rate Limit (requests per minute)", class: "form-label" %>
+          <%= f.fields_for :deployment_config do |config_f| %>
+            <%= config_f.fields_for :rate_limit do |rate_f| %>
+              <%= rate_f.number_field :requests_per_minute,
+                  value: agent.config.dig(:rate_limit, :requests_per_minute) || 60,
+                  class: "form-control",
+                  min: 1,
+                  max: 1000 %>
+            <% end %>
+          <% end %>
+          <div class="form-text">Maximum requests per minute (leave blank for unlimited)</div>
+        </div>
+
+        <!-- Authentication Type -->
+        <div class="mb-3">
+          <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
+          <%= f.fields_for :deployment_config do |config_f| %>
+            <%= config_f.fields_for :auth do |auth_f| %>
+              <%= auth_f.select :type,
+                  options_for_select([["API Key", "api_key"], ["None", "none"]], agent.config.dig(:auth, :type) || "api_key"),
+                  {},
+                  class: "form-select" %>
+            <% end %>
+          <% end %>
+          <div class="form-text">How clients authenticate with this agent</div>
+        </div>
+
+        <!-- CORS Origins -->
+        <div class="mb-3">
+          <%= f.label :cors_origins, "CORS Allowed Origins", class: "form-label" %>
+          <%= f.fields_for :deployment_config do |config_f| %>
+            <%= config_f.fields_for :cors do |cors_f| %>
+              <%= cors_f.text_field :allowed_origins,
+                  value: (agent.config.dig(:cors, :allowed_origins) || []).join(", "),
+                  class: "form-control",
+                  placeholder: "https://example.com, https://app.example.com" %>
+            <% end %>
+          <% end %>
+          <div class="form-text">Comma-separated list of allowed origins (leave blank for all)</div>
+        </div>
+
+        <!-- Enable Web UI -->
+        <div class="mb-3">
+          <div class="form-check form-switch">
+            <%= f.fields_for :deployment_config do |config_f| %>
+              <%= config_f.check_box :enable_web_ui,
+                  checked: agent.config[:enable_web_ui] != false,
+                  class: "form-check-input",
+                  id: "enable_web_ui" %>
+              <%= config_f.label :enable_web_ui, "Enable Browser Chat Interface", class: "form-check-label", for: "enable_web_ui" %>
+            <% end %>
+          </div>
+          <div class="form-text">Allow users to chat with this agent via browser at /agents/<%= agent.slug || 'your-slug' %>/chat</div>
+        </div>
       </div>
 
       <!-- Submit Buttons -->

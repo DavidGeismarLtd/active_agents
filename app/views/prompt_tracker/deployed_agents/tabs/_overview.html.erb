@@ -1,77 +1,113 @@
 <div class="row">
-  <!-- API Endpoint -->
+  <!-- API Endpoint / Task Actions -->
   <div class="col-md-12 mb-4">
     <div class="card">
       <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-link-45deg"></i> API Endpoint</h5>
+        <h5 class="mb-0">
+          <% if agent.agent_type_task? %>
+            <i class="bi bi-play-circle"></i> Task Actions
+          <% else %>
+            <i class="bi bi-link-45deg"></i> API Endpoint
+          <% end %>
+        </h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label fw-bold">Chat Endpoint</label>
-          <div class="input-group">
-            <input type="text" class="form-control font-monospace" value="<%= agent.public_url %>" readonly>
-            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('<%= agent.public_url %>')">
-              <i class="bi bi-clipboard"></i> Copy
+        <% if agent.agent_type_task? %>
+          <!-- Task Agent Actions -->
+          <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#runNowModal">
+              <i class="bi bi-play-fill"></i> Run Now
             </button>
-            <% if agent.config[:enable_web_ui] %>
-              <%= link_to "/agents/#{agent.slug}/chat", class: "btn btn-primary", target: "_blank" do %>
-                <i class="bi bi-chat-dots"></i> Test Agent
-              <% end %>
+            <%= link_to new_deployed_agent_task_schedule_path(agent.slug), class: "btn btn-outline-primary" do %>
+              <i class="bi bi-calendar-plus"></i> Create Schedule
             <% end %>
           </div>
-        </div>
 
-        <!-- API Key Section -->
-        <% if agent.config.dig(:auth, :type) == "api_key" %>
-          <div class="mb-3" data-controller="api-key">
-            <label class="form-label fw-bold">API Key</label>
+          <!-- API Endpoint Info -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">API Trigger Endpoint</label>
+            <div class="input-group">
+              <input type="text" class="form-control font-monospace small" value="<%= public_trigger_task_agent_url(agent.slug) %>" readonly>
+              <button class="btn btn-outline-secondary btn-sm" type="button" onclick="navigator.clipboard.writeText('<%= public_trigger_task_agent_url(agent.slug) %>')">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+            <small class="text-muted">POST with Authorization: Bearer YOUR_API_KEY</small>
+          </div>
 
-            <% if agent.api_key.present? %>
-              <div class="input-group">
-                <input type="password"
-                       class="form-control font-monospace"
-                       value="<%= agent.api_key %>"
-                       readonly
-                       data-api-key-target="key">
-                <button class="btn btn-outline-secondary"
-                        type="button"
-                        data-action="api-key#toggle"
-                        title="Show/Hide API Key">
-                  <i class="bi bi-eye" data-api-key-target="toggleIcon"></i>
-                </button>
-                <button class="btn btn-outline-secondary"
-                        type="button"
-                        data-action="api-key#copy"
-                        data-api-key-target="copyButton"
-                        title="Copy to Clipboard">
-                  <i class="bi bi-clipboard"></i> Copy
-                </button>
-              </div>
-            <% else %>
-              <div class="alert alert-warning">
-                <i class="bi bi-exclamation-triangle"></i> No API key generated yet. Click "Generate API Key" below to create one.
-              </div>
-            <% end %>
-
-            <!-- Regenerate/Generate Button -->
-            <div class="mt-2">
-              <%= button_to regenerate_api_key_deployed_agent_path(agent.slug),
-                  method: :post,
-                  class: "btn btn-sm btn-outline-#{agent.api_key.present? ? 'warning' : 'primary'}",
-                  data: {
-                    turbo_confirm: agent.api_key.present? ? "Are you sure? The old API key will stop working immediately." : nil
-                  } do %>
-                <i class="bi bi-arrow-clockwise"></i> <%= agent.api_key.present? ? 'Regenerate' : 'Generate' %> API Key
+          <div class="alert alert-info mb-0">
+            <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Task Execution</h6>
+            <p class="mb-0">Task agents run autonomously based on schedules or manual triggers. They execute the initial prompt with configured variables and can make multiple LLM calls with function calling.</p>
+          </div>
+        <% else %>
+          <!-- Conversational Agent Endpoint -->
+          <div class="mb-3">
+            <label class="form-label fw-bold">Chat Endpoint</label>
+            <div class="input-group">
+              <input type="text" class="form-control font-monospace" value="<%= agent.public_url %>" readonly>
+              <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText('<%= agent.public_url %>')">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+              <% if agent.config[:enable_web_ui] %>
+                <%= link_to "/agents/#{agent.slug}/chat", class: "btn btn-primary", target: "_blank" do %>
+                  <i class="bi bi-chat-dots"></i> Test Agent
+                <% end %>
               <% end %>
             </div>
           </div>
-        <% end %>
 
-        <div class="alert alert-info mb-0">
-          <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Authentication</h6>
-          <p class="mb-0">Include the API key in the <code>Authorization</code> header:</p>
-          <pre class="mb-0 mt-2"><code>Authorization: Bearer YOUR_API_KEY</code></pre>
-        </div>
+          <!-- API Key Section -->
+          <% if agent.config.dig(:auth, :type) == "api_key" %>
+            <div class="mb-3" data-controller="api-key">
+              <label class="form-label fw-bold">API Key</label>
+
+              <% if agent.api_key.present? %>
+                <div class="input-group">
+                  <input type="password"
+                         class="form-control font-monospace"
+                         value="<%= agent.api_key %>"
+                         readonly
+                         data-api-key-target="key">
+                  <button class="btn btn-outline-secondary"
+                          type="button"
+                          data-action="api-key#toggle"
+                          title="Show/Hide API Key">
+                    <i class="bi bi-eye" data-api-key-target="toggleIcon"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary"
+                          type="button"
+                          data-action="api-key#copy"
+                          data-api-key-target="copyButton"
+                          title="Copy to Clipboard">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+              <% else %>
+                <div class="alert alert-warning">
+                  <i class="bi bi-exclamation-triangle"></i> No API key generated yet. Click "Generate API Key" below to create one.
+                </div>
+              <% end %>
+
+              <!-- Regenerate/Generate Button -->
+              <div class="mt-2">
+                <%= button_to regenerate_api_key_deployed_agent_path(agent.slug),
+                    method: :post,
+                    class: "btn btn-sm btn-outline-#{agent.api_key.present? ? 'warning' : 'primary'}",
+                    data: {
+                      turbo_confirm: agent.api_key.present? ? "Are you sure? The old API key will stop working immediately." : nil
+                    } do %>
+                  <i class="bi bi-arrow-clockwise"></i> <%= agent.api_key.present? ? 'Regenerate' : 'Generate' %> API Key
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="alert alert-info mb-0">
+            <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Authentication</h6>
+            <p class="mb-0">Include the API key in the <code>Authorization</code> header:</p>
+            <pre class="mb-0 mt-2"><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
@@ -83,43 +119,86 @@
         <h5 class="mb-0"><i class="bi bi-gear"></i> Configuration</h5>
       </div>
       <div class="card-body">
-        <table class="table table-sm">
-          <tbody>
-            <tr>
-              <th style="width: 40%;">Conversation TTL</th>
-              <td><%= agent.config[:conversation_ttl] %> seconds (<%= distance_of_time_in_words(agent.config[:conversation_ttl]) %>)</td>
-            </tr>
-            <tr>
-              <th>Rate Limit</th>
-              <td><%= agent.config.dig(:rate_limit, :requests_per_minute) || "Unlimited" %> requests/min</td>
-            </tr>
-            <tr>
-              <th>Auth Type</th>
-              <td><%= agent.config.dig(:auth, :type)&.titleize || "None" %></td>
-            </tr>
-            <tr>
-              <th>Web UI</th>
-              <td>
-                <% if agent.config[:enable_web_ui] %>
-                  <span class="badge bg-success">Enabled</span>
-                <% else %>
-                  <span class="badge bg-secondary">Disabled</span>
-                <% end %>
-              </td>
-            </tr>
-            <tr>
-              <th>CORS Origins</th>
-              <td>
-                <% origins = agent.config.dig(:cors, :allowed_origins) %>
-                <% if origins.present? %>
-                  <%= origins.is_a?(Array) ? origins.join(", ") : origins %>
-                <% else %>
-                  <span class="text-muted">All origins</span>
-                <% end %>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <% if agent.agent_type_task? %>
+          <!-- Task Agent Configuration -->
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <th style="width: 40%;">Initial Prompt</th>
+                <td>
+                  <div class="font-monospace small text-truncate" style="max-width: 300px;" title="<%= agent.task_config[:initial_prompt] %>">
+                    <%= agent.task_config[:initial_prompt] %>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <th>Variables</th>
+                <td>
+                  <% if agent.task_config[:variables].present? %>
+                    <code class="small"><%= agent.task_config[:variables].to_json %></code>
+                  <% else %>
+                    <span class="text-muted">None</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>Max Iterations</th>
+                <td><%= agent.task_config.dig(:execution, :max_iterations) || 5 %></td>
+              </tr>
+              <tr>
+                <th>Timeout</th>
+                <td><%= agent.task_config.dig(:execution, :timeout_seconds) || 3600 %> seconds</td>
+              </tr>
+              <tr>
+                <th>Completion Type</th>
+                <td>
+                  <span class="badge bg-info">
+                    <%= agent.task_config.dig(:completion_criteria, :type)&.titleize || "Auto" %>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        <% else %>
+          <!-- Conversational Agent Configuration -->
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <th style="width: 40%;">Conversation TTL</th>
+                <td><%= agent.config[:conversation_ttl] %> seconds (<%= distance_of_time_in_words(agent.config[:conversation_ttl]) %>)</td>
+              </tr>
+              <tr>
+                <th>Rate Limit</th>
+                <td><%= agent.config.dig(:rate_limit, :requests_per_minute) || "Unlimited" %> requests/min</td>
+              </tr>
+              <tr>
+                <th>Auth Type</th>
+                <td><%= agent.config.dig(:auth, :type)&.titleize || "None" %></td>
+              </tr>
+              <tr>
+                <th>Web UI</th>
+                <td>
+                  <% if agent.config[:enable_web_ui] %>
+                    <span class="badge bg-success">Enabled</span>
+                  <% else %>
+                    <span class="badge bg-secondary">Disabled</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <th>CORS Origins</th>
+                <td>
+                  <% origins = agent.config.dig(:cors, :allowed_origins) %>
+                  <% if origins.present? %>
+                    <%= origins.is_a?(Array) ? origins.join(", ") : origins %>
+                  <% else %>
+                    <span class="text-muted">All origins</span>
+                  <% end %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        <% end %>
       </div>
     </div>
   </div>

@@ -1,0 +1,117 @@
+<%= form_with(model: [@agent, @schedule], url: @schedule.persisted? ? deployed_agent_task_schedule_path(@agent.slug, @schedule) : deployed_agent_task_schedules_path(@agent.slug), local: true) do |f| %>
+  <% if @schedule.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(@schedule.errors.count, "error") %> prohibited this schedule from being saved:</h4>
+      <ul>
+        <% @schedule.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= f.label :schedule_type, "Schedule Type", class: "form-label" %>
+    <%= f.select :schedule_type, 
+                 [["Cron Expression", "cron"], ["Interval", "interval"]], 
+                 {}, 
+                 class: "form-select",
+                 data: { action: "change->schedule-form#toggleScheduleType" } %>
+    <div class="form-text">Choose between cron expressions or simple intervals</div>
+  </div>
+
+  <!-- Cron Expression Fields -->
+  <div id="cron-fields" data-schedule-form-target="cronFields" style="display: none;">
+    <div class="mb-3">
+      <%= f.label :cron_expression, "Cron Expression", class: "form-label" %>
+      <%= f.text_field :cron_expression, class: "form-control", placeholder: "0 9 * * *" %>
+      <div class="form-text">
+        Examples:
+        <ul class="mb-0">
+          <li><code>0 9 * * *</code> - Every day at 9:00 AM</li>
+          <li><code>0 */6 * * *</code> - Every 6 hours</li>
+          <li><code>0 9 * * 1</code> - Every Monday at 9:00 AM</li>
+          <li><code>*/15 * * * *</code> - Every 15 minutes</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Quick Presets</label>
+      <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="click->schedule-form#setCron" data-cron="0 9 * * *">Daily 9AM</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="click->schedule-form#setCron" data-cron="0 */6 * * *">Every 6h</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="click->schedule-form#setCron" data-cron="0 9 * * 1">Weekly Mon</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="click->schedule-form#setCron" data-cron="*/15 * * * *">Every 15min</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interval Fields -->
+  <div id="interval-fields" data-schedule-form-target="intervalFields" style="display: none;">
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <%= f.label :interval_value, "Interval Value", class: "form-label" %>
+        <%= f.number_field :interval_value, class: "form-control", min: 1, placeholder: "1" %>
+      </div>
+      <div class="col-md-6 mb-3">
+        <%= f.label :interval_unit, "Interval Unit", class: "form-label" %>
+        <%= f.select :interval_unit, 
+                     [["Minutes", "minutes"], ["Hours", "hours"], ["Days", "days"], ["Weeks", "weeks"]], 
+                     {}, 
+                     class: "form-select" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :timezone, "Timezone", class: "form-label" %>
+    <%= f.select :timezone, 
+                 ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] }, 
+                 { selected: @schedule.timezone || "UTC" }, 
+                 class: "form-select" %>
+    <div class="form-text">Schedule will run according to this timezone</div>
+  </div>
+
+  <div class="mb-3 form-check">
+    <%= f.check_box :enabled, class: "form-check-input" %>
+    <%= f.label :enabled, "Enabled", class: "form-check-label" %>
+    <div class="form-text">Disabled schedules will not run automatically</div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit @schedule.persisted? ? "Update Schedule" : "Create Schedule", class: "btn btn-primary" %>
+    <%= link_to "Cancel", deployed_agent_path(@agent.slug), class: "btn btn-secondary" %>
+  </div>
+<% end %>
+
+<script>
+  // Simple inline script for schedule type toggling
+  document.addEventListener('DOMContentLoaded', function() {
+    const scheduleTypeSelect = document.querySelector('[name="task_schedule[schedule_type]"]');
+    const cronFields = document.getElementById('cron-fields');
+    const intervalFields = document.getElementById('interval-fields');
+
+    function toggleFields() {
+      if (scheduleTypeSelect.value === 'cron') {
+        cronFields.style.display = 'block';
+        intervalFields.style.display = 'none';
+      } else {
+        cronFields.style.display = 'none';
+        intervalFields.style.display = 'block';
+      }
+    }
+
+    scheduleTypeSelect.addEventListener('change', toggleFields);
+    toggleFields(); // Initial state
+
+    // Preset buttons
+    document.querySelectorAll('[data-cron]').forEach(button => {
+      button.addEventListener('click', function() {
+        const cronInput = document.querySelector('[name="task_schedule[cron_expression]"]');
+        cronInput.value = this.dataset.cron;
+      });
+    });
+  });
+</script>
+

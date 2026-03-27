@@ -13,3 +13,16 @@
  *= require_tree .
  *= require_self
  */
+
+/* Scrollable code blocks - prevents overflow on timeline and other views */
+.code-block-scrollable {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+  word-wrap: normal;
+}
+
+.code-block-scrollable code {
+  display: block;
+  max-width: 100%;
+}

@@ -1,0 +1,24 @@
+<div class="function-execution-card">
+  <div class="mb-2">
+    <strong>Arguments:</strong>
+    <pre class="mb-0 mt-1"><code><%= JSON.pretty_generate(execution.arguments) %></code></pre>
+  </div>
+  <% if execution.success %>
+    <div class="mb-2">
+      <strong>Result:</strong>
+      <pre class="mb-0 mt-1"><code><%= JSON.pretty_generate(execution.result) %></code></pre>
+    </div>
+    <div class="text-muted small">
+      <i class="bi bi-clock"></i> <%= execution.execution_time_ms %>ms
+      <span class="badge bg-success">Success</span>
+    </div>
+  <% else %>
+    <div class="alert alert-danger mb-2">
+      <strong>Error:</strong> <%= execution.error_message %>
+    </div>
+    <div class="text-muted small">
+      <i class="bi bi-clock"></i> <%= execution.execution_time_ms %>ms
+      <span class="badge bg-danger">Failed</span>
+    </div>
+  <% end %>
+</div>

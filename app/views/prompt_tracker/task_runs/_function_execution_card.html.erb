@@ -1,0 +1,118 @@
+<%# Function Execution Card - Shows actual function execution result %>
+<div class="card <%= execution.success ? 'border-success' : 'border-danger' %>" data-task-timeline-target="eventCard">
+  <div class="card-header <%= execution.success ? 'bg-success' : 'bg-danger' %> bg-opacity-10 cursor-pointer"
+       data-action="click->task-timeline#toggleCard"
+       data-bs-toggle="collapse"
+       data-bs-target="#function-execution-<%= execution.id %>">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h6 class="mb-0">
+          <% if execution.function_definition.present? %>
+            <i class="bi bi-code-square"></i> Function: <%= execution.function_definition.name %>
+          <% else %>
+            <i class="bi bi-lightbulb text-primary"></i> Planning: <%= execution.display_name %>
+          <% end %>
+          <% if execution.success %>
+            <span class="badge bg-success">Success</span>
+          <% else %>
+            <span class="badge bg-danger">Failed</span>
+          <% end %>
+          <% if execution.planning_step_id.present? %>
+            <span class="badge bg-info">Step: <%= execution.planning_step_id %></span>
+          <% end %>
+        </h6>
+      </div>
+      <div>
+        <small class="text-muted">
+          <%= timestamp.strftime("%H:%M:%S.%L") %>
+          <% if execution.execution_time_ms.present? %>
+            • <%= execution.execution_time_ms %>ms
+          <% end %>
+        </small>
+        <i class="bi bi-chevron-down ms-2"></i>
+      </div>
+    </div>
+  </div>
+
+  <div id="function-execution-<%= execution.id %>" class="collapse">
+    <div class="card-body">
+      <!-- Arguments -->
+      <% if execution.arguments.present? %>
+        <div class="mb-3">
+          <h6><i class="bi bi-input-cursor"></i> Arguments</h6>
+          <pre class="mb-0 p-3 bg-light rounded code-block-scrollable"><code><%= JSON.pretty_generate(execution.arguments) %></code></pre>
+        </div>
+      <% end %>
+
+      <!-- Result -->
+      <% if execution.success && execution.result.present? %>
+        <div class="mb-3">
+          <h6 class="text-success"><i class="bi bi-check-circle"></i> Result</h6>
+          <pre class="mb-0 p-3 bg-success bg-opacity-10 rounded code-block-scrollable"><code><%= JSON.pretty_generate(execution.result) %></code></pre>
+        </div>
+      <% end %>
+
+      <!-- Error -->
+      <% if !execution.success && execution.error_message.present? %>
+        <div class="mb-3">
+          <h6 class="text-danger"><i class="bi bi-exclamation-triangle"></i> Error</h6>
+          <div class="alert alert-danger mb-0">
+            <%= execution.error_message %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Metadata -->
+      <details>
+        <summary class="text-muted" style="cursor: pointer;">Metadata</summary>
+        <div class="mt-2">
+          <table class="table table-sm">
+            <% if execution.function_definition.present? %>
+              <tr>
+                <th>Function ID</th>
+                <td><%= execution.function_definition.id %></td>
+              </tr>
+            <% else %>
+              <tr>
+                <th>Function Type</th>
+                <td><span class="badge bg-primary">Planning Function</span></td>
+              </tr>
+            <% end %>
+            <tr>
+              <th>Execution Time</th>
+              <td><%= execution.execution_time_ms %>ms</td>
+            </tr>
+            <tr>
+              <th>Executed At</th>
+              <td><%= execution.executed_at.strftime("%Y-%m-%d %H:%M:%S.%L") %></td>
+            </tr>
+            <% if execution.planning_step_id.present? %>
+              <tr>
+                <th>Planning Step</th>
+                <td><%= execution.planning_step_id %></td>
+              </tr>
+            <% end %>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<style>
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.card-header:hover {
+  opacity: 0.9;
+}
+
+.bi-chevron-down {
+  transition: transform 0.2s;
+}
+
+.collapsed .bi-chevron-down {
+  transform: rotate(-90deg);
+}
+</style>

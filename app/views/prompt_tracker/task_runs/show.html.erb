@@ -1,0 +1,119 @@
+<% content_for :breadcrumbs do %>
+  <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
+  <li class="breadcrumb-item"><%= link_to @agent.name, deployed_agent_path(@agent.slug) %></li>
+  <li class="breadcrumb-item"><%= link_to "Task Runs", deployed_agent_task_runs_path(@agent.slug) %></li>
+  <li class="breadcrumb-item active">Run #<%= @task_run.id %></li>
+<% end %>
+
+<%= turbo_stream_from "task_run_#{@task_run.id}" %>
+
+<div class="task-run-show">
+  <!-- Header -->
+  <div class="page-header mb-4">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h1>
+          <i class="bi bi-play-circle"></i> Task Run #<%= @task_run.id %>
+          <% case @task_run.status %>
+          <% when "completed" %>
+            <span class="badge bg-success">Completed</span>
+          <% when "failed" %>
+            <span class="badge bg-danger">Failed</span>
+          <% when "running" %>
+            <span class="badge bg-primary">Running</span>
+          <% when "queued" %>
+            <span class="badge bg-secondary">Queued</span>
+          <% when "cancelled" %>
+            <span class="badge bg-warning">Cancelled</span>
+          <% end %>
+        </h1>
+        <p class="text-muted">
+          Triggered <%= time_ago_in_words(@task_run.created_at) %> ago via
+          <% case @task_run.trigger_type %>
+          <% when "manual" %>
+            <i class="bi bi-hand-index"></i> Manual
+          <% when "scheduled" %>
+            <i class="bi bi-calendar-event"></i> Scheduled
+          <% when "api" %>
+            <i class="bi bi-code"></i> API
+          <% end %>
+        </p>
+      </div>
+      <div>
+        <% if @task_run.status_running? || @task_run.status_queued? %>
+          <%= button_to cancel_deployed_agent_task_run_path(@agent.slug, @task_run),
+                        method: :post,
+                        class: "btn btn-warning me-2",
+                        data: { confirm: "Are you sure you want to cancel this task run?" } do %>
+            <i class="bi bi-x-circle"></i> Cancel Task
+          <% end %>
+        <% end %>
+        <%= link_to deployed_agent_task_runs_path(@agent.slug), class: "btn btn-outline-primary" do %>
+          <i class="bi bi-arrow-left"></i> Back to Runs
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+	  <!-- Summary Cards -->
+	  <%= render "summary_cards", task_run: @task_run, llm_responses: @llm_responses, function_executions: @function_executions %>
+
+  <!-- Execution Plan (if planning enabled) -->
+  <% if @task_run.metadata&.dig("plan") || @agent.task_configuration.dig(:planning, :enabled) %>
+    <%= render "execution_plan", task_run: @task_run %>
+  <% end %>
+
+  <!-- Variables -->
+  <% if @task_run.variables_used.present? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-braces"></i> Input Variables</h5>
+      </div>
+      <div class="card-body">
+        <pre class="mb-0"><code><%= JSON.pretty_generate(@task_run.variables_used) %></code></pre>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Result -->
+  <% if @task_run.output_summary.present? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Result</h5>
+      </div>
+      <div class="card-body">
+        <pre class="mb-0"><code><%= @task_run.output_summary %></code></pre>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Error -->
+  <% if @task_run.error_message.present? %>
+    <div class="card mb-4 border-danger">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Error</h5>
+      </div>
+      <div class="card-body">
+        <pre class="mb-0 text-danger code-block-scrollable"><code><%= @task_run.error_message %></code></pre>
+      </div>
+    </div>
+  <% end %>
+
+	  <!-- Timeline -->
+	  <div class="card" data-controller="task-timeline">
+	    <div class="card-header">
+	      <div class="d-flex justify-content-between align-items-center">
+	        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Execution Timeline</h5>
+	        <div class="btn-group btn-group-sm">
+	          <button type="button" class="btn btn-outline-secondary" data-action="click->task-timeline#expandAll">
+	            <i class="bi bi-arrows-expand"></i> Expand All
+	          </button>
+	          <button type="button" class="btn btn-outline-secondary" data-action="click->task-timeline#collapseAll">
+	            <i class="bi bi-arrows-collapse"></i> Collapse All
+	          </button>
+	        </div>
+	      </div>
+	    </div>
+	    <%= render "timeline", timeline: @timeline, task_run: @task_run %>
+	  </div>
+</div>

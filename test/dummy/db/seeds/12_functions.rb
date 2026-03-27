@@ -520,7 +520,7 @@ puts "  ✓ Created date/time formatter function"
 # ============================================================================
 news_api_function = PromptTracker::FunctionDefinition.create!(
   name: "fetch_news_articles",
-  description: "Fetch latest news articles from GNews API for a given topic",
+  description: "Fetch latest news articles from GNews API for a given topic. IMPORTANT: The 'topic' parameter must be a simple search phrase without commas or special characters. Use spaces to separate keywords (e.g., 'artificial intelligence' or 'cybersecurity news'). Do NOT use commas like 'AI, machine learning' - this will cause a syntax error.",
   category: "api",
   tags: [ "news", "api", "media" ],
   language: "ruby",
@@ -572,7 +572,7 @@ news_api_function = PromptTracker::FunctionDefinition.create!(
     "properties" => {
       "topic" => {
         "type" => "string",
-        "description" => "News topic or search query"
+        "description" => "News topic or search query. Use simple phrases with spaces only (e.g., 'artificial intelligence', 'climate change policy'). Do NOT use commas, quotes, or special operators."
       },
       "language" => {
         "type" => "string",

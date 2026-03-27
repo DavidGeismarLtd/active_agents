@@ -90,6 +90,9 @@ module PromptTracker
 
       # Execute an already-deployed Lambda function
       def execute_deployed(function_name)
+        Rails.logger.info "[LambdaAdapter] Executing deployed function: #{function_name}"
+        Rails.logger.info "[LambdaAdapter] Arguments: #{@arguments.inspect}"
+
         start_time = Time.current
 
         # Invoke Lambda with arguments
@@ -98,8 +101,11 @@ module PromptTracker
         execution_time_ms = ((Time.current - start_time) * 1000).to_i
 
         # Parse response
-        parse_lambda_response(response, execution_time_ms)
+        result = parse_lambda_response(response, execution_time_ms)
+        Rails.logger.info "[LambdaAdapter] Result - Success: #{result.success?}, Error: #{result.error.inspect}"
+        result
       rescue Aws::Lambda::Errors::ServiceException => e
+        Rails.logger.error "[LambdaAdapter] Lambda service error: #{e.message}"
         Result.new(
           success?: false,
           result: nil,
@@ -108,6 +114,8 @@ module PromptTracker
           logs: ""
         )
       rescue StandardError => e
+        Rails.logger.error "[LambdaAdapter] Execution error: #{e.message}"
+        Rails.logger.error "[LambdaAdapter] Backtrace: #{e.backtrace.first(5).join("\n")}"
         Result.new(
           success?: false,
           result: nil,
@@ -234,20 +242,26 @@ module PromptTracker
       end
 
       def invoke_lambda(function_name)
+        payload = { arguments: @arguments }
+        Rails.logger.info "[LambdaAdapter] Invoking Lambda with payload: #{payload.to_json}"
+
         @lambda_client.invoke(
           function_name: function_name,
           invocation_type: "RequestResponse", # Synchronous
           log_type: "Tail", # Include logs in response
-          payload: { arguments: @arguments }.to_json
+          payload: payload.to_json
         )
       end
 
       def parse_lambda_response(response, execution_time_ms)
         # Decode logs (base64 encoded)
         logs = response.log_result ? Base64.decode64(response.log_result) : ""
+        Rails.logger.info "[LambdaAdapter] Lambda logs:\n#{logs}"
 
         # Parse payload
         payload = JSON.parse(response.payload.read)
+        Rails.logger.info "[LambdaAdapter] Lambda response payload: #{payload.inspect}"
+        Rails.logger.info "[LambdaAdapter] Lambda status code: #{response.status_code}"
 
         if response.status_code == 200 && !payload["errorMessage"]
           Result.new(
@@ -258,10 +272,12 @@ module PromptTracker
             logs: logs
           )
         else
+          error_msg = payload["errorMessage"] || payload["errorType"] || "Unknown error"
+          Rails.logger.error "[LambdaAdapter] Lambda execution failed: #{error_msg}"
           Result.new(
             success?: false,
             result: nil,
-            error: payload["errorMessage"] || payload["errorType"] || "Unknown error",
+            error: error_msg,
             execution_time_ms: execution_time_ms,
             logs: logs
           )

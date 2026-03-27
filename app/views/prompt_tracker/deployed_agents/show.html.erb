@@ -54,53 +54,90 @@
 
   <!-- Statistics Cards -->
   <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted mb-2"><i class="bi bi-chat-dots"></i> Total Conversations</h6>
-          <h3 class="mb-0"><%= number_with_delimiter(@total_conversations) %></h3>
-          <small class="text-success"><%= @active_conversations %> active</small>
+    <% if @agent.agent_type_task? %>
+      <!-- Task Agent Statistics -->
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-play-circle"></i> Total Runs</h6>
+            <h3 class="mb-0"><%= number_with_delimiter(@total_runs) %></h3>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Total Requests</h6>
-          <h3 class="mb-0"><%= number_with_delimiter(@total_requests) %></h3>
-          <small class="text-success"><%= @successful_requests %> successful</small>
-          <small class="text-danger ms-2"><%= @failed_requests %> failed</small>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-check-circle"></i> Successful</h6>
+            <h3 class="mb-0 text-success"><%= number_with_delimiter(@successful_runs) %></h3>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted mb-2"><i class="bi bi-speedometer2"></i> Avg Response Time</h6>
-          <h3 class="mb-0">
-            <% if @avg_response_time %>
-              <%= @avg_response_time %>ms
-            <% else %>
-              <span class="text-muted">N/A</span>
-            <% end %>
-          </h3>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-x-circle"></i> Failed</h6>
+            <h3 class="mb-0 text-danger"><%= number_with_delimiter(@failed_runs) %></h3>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted mb-2"><i class="bi bi-clock-history"></i> Last Request</h6>
-          <h3 class="mb-0" style="font-size: 1.2rem;">
-            <% if @agent.last_request_at %>
-              <%= time_ago_in_words(@agent.last_request_at) %> ago
-            <% else %>
-              <span class="text-muted">Never</span>
-            <% end %>
-          </h3>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Running</h6>
+            <h3 class="mb-0 text-primary"><%= number_with_delimiter(@running_runs) %></h3>
+          </div>
         </div>
       </div>
-    </div>
+    <% else %>
+      <!-- Conversational Agent Statistics -->
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-chat-dots"></i> Total Conversations</h6>
+            <h3 class="mb-0"><%= number_with_delimiter(@total_conversations) %></h3>
+            <small class="text-success"><%= @active_conversations %> active</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-arrow-repeat"></i> Total Requests</h6>
+            <h3 class="mb-0"><%= number_with_delimiter(@total_requests) %></h3>
+            <small class="text-success"><%= @successful_requests %> successful</small>
+            <small class="text-danger ms-2"><%= @failed_requests %> failed</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-speedometer2"></i> Avg Response Time</h6>
+            <h3 class="mb-0">
+              <% if @avg_response_time %>
+                <%= @avg_response_time %>ms
+              <% else %>
+                <span class="text-muted">N/A</span>
+              <% end %>
+            </h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="text-muted mb-2"><i class="bi bi-clock-history"></i> Last Request</h6>
+            <h3 class="mb-0" style="font-size: 1.2rem;">
+              <% if @agent.last_request_at %>
+                <%= time_ago_in_words(@agent.last_request_at) %> ago
+              <% else %>
+                <span class="text-muted">Never</span>
+              <% end %>
+            </h3>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </div>
 
   <!-- Tabs -->
@@ -110,19 +147,32 @@
         <i class="bi bi-info-circle"></i> Overview
       </button>
     </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
-        <i class="bi bi-list-ul"></i> Logs
-      </button>
-    </li>
+    <% if @agent.agent_type_task? %>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="schedules-tab" data-bs-toggle="tab" data-bs-target="#schedules" type="button" role="tab">
+          <i class="bi bi-calendar-event"></i> Schedules
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="runs-tab" data-bs-toggle="tab" data-bs-target="#runs" type="button" role="tab">
+          <i class="bi bi-list-check"></i> Run History
+        </button>
+      </li>
+    <% else %>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+          <i class="bi bi-list-ul"></i> Logs
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="conversations-tab" data-bs-toggle="tab" data-bs-target="#conversations" type="button" role="tab">
+          <i class="bi bi-chat-dots"></i> Conversations
+        </button>
+      </li>
+    <% end %>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="functions-tab" data-bs-toggle="tab" data-bs-target="#functions" type="button" role="tab">
         <i class="bi bi-code-square"></i> Functions
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button class="nav-link" id="conversations-tab" data-bs-toggle="tab" data-bs-target="#conversations" type="button" role="tab">
-        <i class="bi bi-chat-dots"></i> Conversations
       </button>
     </li>
   </ul>
@@ -134,20 +184,95 @@
       <%= render "prompt_tracker/deployed_agents/tabs/overview", agent: @agent, prompt: @prompt, version: @version %>
     </div>
 
-    <!-- Logs Tab -->
-    <div class="tab-pane fade" id="logs" role="tabpanel">
-      <%= render "prompt_tracker/deployed_agents/tabs/logs", agent: @agent, recent_responses: @recent_responses %>
-    </div>
+    <% if @agent.agent_type_task? %>
+      <!-- Schedules Tab (Task Agents Only) -->
+      <div class="tab-pane fade" id="schedules" role="tabpanel">
+        <%= render "prompt_tracker/deployed_agents/tabs/schedules", agent: @agent, task_schedules: @task_schedules %>
+      </div>
 
-    <!-- Functions Tab -->
+      <!-- Run History Tab (Task Agents Only) -->
+      <div class="tab-pane fade" id="runs" role="tabpanel">
+        <%= render "prompt_tracker/deployed_agents/tabs/runs", agent: @agent, recent_task_runs: @recent_task_runs %>
+      </div>
+    <% else %>
+      <!-- Logs Tab (Conversational Agents Only) -->
+      <div class="tab-pane fade" id="logs" role="tabpanel">
+        <%= render "prompt_tracker/deployed_agents/tabs/logs", agent: @agent, recent_responses: @recent_responses %>
+      </div>
+
+      <!-- Conversations Tab (Conversational Agents Only) -->
+      <div class="tab-pane fade" id="conversations" role="tabpanel">
+        <%= render "prompt_tracker/deployed_agents/tabs/conversations", agent: @agent, recent_conversations: @recent_conversations %>
+      </div>
+    <% end %>
+
+    <!-- Functions Tab (Both Agent Types) -->
     <div class="tab-pane fade" id="functions" role="tabpanel">
       <%= render "prompt_tracker/deployed_agents/tabs/functions", agent: @agent %>
-    </div>
-
-    <!-- Conversations Tab -->
-    <div class="tab-pane fade" id="conversations" role="tabpanel">
-      <%= render "prompt_tracker/deployed_agents/tabs/conversations", agent: @agent, recent_conversations: @recent_conversations %>
     </div>
   </div>
 </div>
 
+<% if @agent.agent_type_task? %>
+  <!-- Run Now Modal (Task Agents Only) -->
+  <div data-controller="modal-fix">
+    <div class="modal fade" id="runNowModal" tabindex="-1" data-modal-fix-target="modal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <%= form_with url: run_now_deployed_agent_path(@agent.slug), method: :post, local: true do |f| %>
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-play-fill"></i> Run Task Now</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted">
+                Configure execution parameters for this run. Leave empty to use defaults.
+              </p>
+
+              <div class="mb-3">
+                <label for="max_iterations_override" class="form-label fw-bold">
+                  Max Iterations
+                  <span class="text-muted fw-normal">- Optional</span>
+                </label>
+                <%= f.number_field :max_iterations,
+                    id: "max_iterations_override",
+                    class: "form-control",
+                    min: 1,
+                    max: 50,
+                    placeholder: @agent.task_config.dig(:execution, :max_iterations) || 5 %>
+                <small class="text-muted">
+                  Default: <%= @agent.task_config.dig(:execution, :max_iterations) || 5 %> iterations.
+                  Maximum number of autonomous loops the agent can execute.
+                </small>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Default Variables</label>
+                <pre class="bg-light p-2 rounded"><code><%= JSON.pretty_generate(@agent.task_config[:variables] || {}) %></code></pre>
+              </div>
+
+              <div class="mb-3">
+                <label for="variables_override" class="form-label fw-bold">
+                  Variable Overrides (JSON)
+                  <span class="text-muted fw-normal">- Optional</span>
+                </label>
+                <%= f.text_area :variables,
+                    id: "variables_override",
+                    class: "form-control font-monospace",
+                    rows: 6,
+                    placeholder: '{\n  "source_url": "https://example.com",\n  "topic": "AI agents"\n}' %>
+                <small class="text-muted">
+                  Only specify variables you want to override. These will be merged with defaults.
+                </small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <%= f.submit "Run Task", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

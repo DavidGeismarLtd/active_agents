@@ -201,7 +201,30 @@ PromptTracker::Engine.routes.draw do
       post :pause
       post :resume
       post :regenerate_api_key
+      post :run_now # Manual trigger for task agents
     end
+
+    # Task schedules (nested under agents)
+    resources :task_schedules, only: [ :new, :create, :edit, :update, :destroy ], path: "schedules" do
+      member do
+        post :toggle # Enable/disable schedule
+      end
+    end
+
+    # Task runs (nested under agents)
+    resources :task_runs, only: [ :index, :show ], path: "runs" do
+      member do
+        post :cancel
+      end
+    end
+  end
+
+  # ========================================
+  # PUBLIC API - External API endpoints
+  # ========================================
+  namespace :public, path: "api" do
+    # Task agent triggering
+    post "task_agents/:slug/trigger", to: "task_agents#trigger", as: :trigger_task_agent
   end
 
   # ========================================

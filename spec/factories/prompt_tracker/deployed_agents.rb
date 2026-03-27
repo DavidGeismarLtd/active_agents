@@ -58,5 +58,40 @@ FactoryBot.define do
         }
       end
     end
+
+    # Task agent traits
+    trait :task_agent do
+      agent_type { "task" }
+      deployment_config { {} } # Task agents don't use deployment_config
+
+      task_config do
+        {
+          initial_prompt: "Fetch data from {{source_url}} and process it",
+          variables: {
+            source_url: "https://example.com/api/data"
+          },
+          execution: {
+            max_iterations: 5,
+            timeout_seconds: 3600,
+            retry_on_failure: false
+          },
+          completion_criteria: {
+            type: "auto"
+          }
+        }
+      end
+    end
+
+    trait :with_task_runs do
+      after(:create) do |agent|
+        create_list(:task_run, 3, deployed_agent: agent)
+      end
+    end
+
+    trait :with_schedule do
+      after(:create) do |agent|
+        create(:task_schedule, deployed_agent: agent)
+      end
+    end
   end
 end
