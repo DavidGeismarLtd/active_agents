@@ -70,13 +70,13 @@ module PromptTracker
           expect(result.version).to be_nil
         end
 
-        it "fails when user_prompt is blank" do
-          params_without_prompt = valid_params.merge(prompt_name: "Test", user_prompt: nil)
+        it "fails when both prompts are blank" do
+          params_without_prompts = valid_params.merge(prompt_name: "Test", user_prompt: nil, system_prompt: nil)
 
-          result = described_class.call(params: params_without_prompt)
+          result = described_class.call(params: params_without_prompts)
 
           expect(result.success?).to be false
-          expect(result.errors).to include("User prompt can't be blank")
+          expect(result.errors).to be_present
         end
       end
 

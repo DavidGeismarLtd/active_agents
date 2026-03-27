@@ -62,6 +62,22 @@ module PromptTracker
           parameters: hash_including(
             model: model,
             input: user_prompt,
+            instructions: system_prompt
+          )
+        ).and_return(api_response)
+
+        described_class.call(
+          model: model,
+          input: user_prompt,
+          instructions: system_prompt
+        )
+      end
+
+      it "includes temperature when provided" do
+        expect(mock_responses).to receive(:create).with(
+          parameters: hash_including(
+            model: model,
+            input: user_prompt,
             instructions: system_prompt,
             temperature: 0.7
           )
@@ -70,7 +86,8 @@ module PromptTracker
         described_class.call(
           model: model,
           input: user_prompt,
-          instructions: system_prompt
+          instructions: system_prompt,
+          temperature: 0.7
         )
       end
 

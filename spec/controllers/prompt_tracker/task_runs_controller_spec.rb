@@ -51,14 +51,25 @@ RSpec.describe PromptTracker::TaskRunsController, type: :controller do
     end
 
     it "builds timeline from LLM responses and function executions" do
-      llm_response = create(:llm_response, deployed_agent: task_agent, task_run: task_run)
-      function_execution = create(:function_execution, deployed_agent: task_agent, task_run: task_run)
+      llm_response = create(:llm_response,
+                            deployed_agent: task_agent,
+                            task_run: task_run,
+                            context: { "iteration" => 1 })
+      function_execution = create(:function_execution,
+                                  deployed_agent: task_agent,
+                                  task_run: task_run)
 
       get :show, params: { deployed_agent_slug: task_agent.slug, id: task_run.id }
       timeline = assigns(:timeline)
 
-      expect(timeline.length).to eq(2)
-      expect(timeline.map { |e| e[:type] }).to contain_exactly(:llm_response, :function_execution)
+      # Timeline is an array of iterations
+      expect(timeline).to be_an(Array)
+      expect(timeline.length).to eq(1)  # All events grouped into one iteration
+
+      # Each iteration has events
+      iteration = timeline.first
+      expect(iteration[:events].length).to eq(2)
+      expect(iteration[:events].map { |e| e[:type] }).to contain_exactly(:llm_response, :function_execution)
     end
   end
 end

@@ -178,11 +178,12 @@ module PromptTracker
         expect(json["action"]).to eq("created")
       end
 
-      it "returns errors for invalid template" do
+      it "returns errors when both prompts are empty" do
         post :save, params: {
           prompt_id: prompt.id,
           user_prompt: "",
-          notes: "Empty template"
+          system_prompt: "",
+          notes: "Empty prompts"
         }, format: :json
 
         expect(response).to have_http_status(:unprocessable_entity)
