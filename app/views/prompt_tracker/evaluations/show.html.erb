@@ -138,15 +138,20 @@
       <strong class="d-block mb-2">Prompt:</strong>
       <div class="bg-light p-3 rounded" style="font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
 <% if @version.system_prompt.present? %>
-<div class="mb-2">
+<div class="<%= @version.user_prompt.present? ? 'mb-2' : '' %>">
 <span class="badge bg-secondary">System</span>
 <%= @version.system_prompt %>
 </div>
 <% end %>
+<% if @version.user_prompt.present? %>
 <div>
 <span class="badge bg-primary">User</span>
 <%= @version.user_prompt %>
 </div>
+<% end %>
+<% if @version.system_prompt.blank? && @version.user_prompt.blank? %>
+<span class="text-muted">No prompts configured</span>
+<% end %>
 </div>
     </div>
 

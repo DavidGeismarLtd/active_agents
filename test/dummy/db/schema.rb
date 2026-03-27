@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_03_16_172324) do
+ActiveRecord::Schema[7.2].define(version: 2026_03_26_162052) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -340,7 +340,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_03_16_172324) do
 
   create_table "prompt_tracker_prompt_versions", force: :cascade do |t|
     t.bigint "prompt_id", null: false
-    t.text "user_prompt", null: false
+    t.text "user_prompt"
     t.text "system_prompt"
     t.integer "version_number", null: false
     t.string "status", default: "draft", null: false

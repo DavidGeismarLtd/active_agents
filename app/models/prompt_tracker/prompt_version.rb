@@ -14,7 +14,7 @@
 #  response_schema  :jsonb            JSON Schema for structured output
 #  status           :string           default("draft"), not null
 #  system_prompt    :text
-#  user_prompt      :text             not null
+#  user_prompt      :text
 #  updated_at       :datetime         not null
 #  variables_schema :jsonb
 #  version_number   :integer          not null
@@ -27,7 +27,7 @@ module PromptTracker
   #
   # Each version has:
   # - system_prompt: Optional instructions that set the AI's role and behavior
-  # - user_prompt: The main prompt template with variables (required)
+  # - user_prompt: Optional prompt template with variables
   #
   # @example Creating a new version
   #   version = prompt.prompt_versions.create!(
@@ -90,7 +90,6 @@ module PromptTracker
              inverse_of: :prompt_version
 
     # Validations
-    validates :user_prompt, presence: true
     validates :version_number, presence: true, numericality: { only_integer: true, greater_than: 0 }
     validates :status, presence: true, inclusion: { in: STATUSES }
 
@@ -138,7 +137,7 @@ module PromptTracker
     # Renders the user prompt with the provided variables using Liquid template engine.
     #
     # @param variables [Hash] the variables to substitute
-    # @return [String] the rendered user prompt
+    # @return [String, nil] the rendered user prompt, or nil if user_prompt is blank
     # @raise [ArgumentError] if required variables are missing
     # @raise [Liquid::SyntaxError] if Liquid template has syntax errors
     #
@@ -149,7 +148,13 @@ module PromptTracker
     # @example Render with Liquid filters
     #   version.render({ name: "john" })
     #   # => "Hello JOHN!" (if user_prompt uses {{ name | upcase }})
+    #
+    # @example Render when user_prompt is blank
+    #   version.render(name: "John")
+    #   # => nil
     def render(variables = {})
+      return nil if user_prompt.blank?
+
       variables = variables.with_indifferent_access
       validate_required_variables!(variables)
 

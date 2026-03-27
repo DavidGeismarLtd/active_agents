@@ -34,10 +34,9 @@ module PromptTracker
         expect(version).to be_valid
       end
 
-      it "requires user_prompt" do
+      it "allows user_prompt to be optional" do
         version = PromptVersion.new(valid_attributes.except(:user_prompt))
-        expect(version).not_to be_valid
-        expect(version.errors[:user_prompt]).to include("can't be blank")
+        expect(version).to be_valid
       end
 
       it "auto-sets version_number if not provided" do
@@ -675,6 +674,16 @@ module PromptTracker
       it "works with string keys" do
         rendered = version.render("name" => "John", "issue" => "billing")
         expect(rendered).to eq("Hello John, how can I help with billing?")
+      end
+
+      it "returns nil when user_prompt is blank" do
+        version.update_column(:user_prompt, nil)
+        expect(version.render(name: "John")).to be_nil
+      end
+
+      it "returns nil when user_prompt is empty string" do
+        version.update_column(:user_prompt, "")
+        expect(version.render(name: "John")).to be_nil
       end
     end
 

@@ -151,28 +151,38 @@
         <div class="col-md-6">
           <h6>v<%= @version.version_number %> <%= status_badge(@version.status) %></h6>
           <% if @version.system_prompt.present? %>
-            <div class="mb-3">
+            <div class="<%= @version.user_prompt.present? ? 'mb-3' : '' %>">
               <div class="badge bg-secondary mb-2">System Prompt</div>
               <pre class="border-start border-3 border-secondary ps-3"><code><%= @version.system_prompt %></code></pre>
             </div>
           <% end %>
-          <div>
-            <div class="badge bg-primary mb-2">User Prompt</div>
-            <pre class="border-start border-3 border-primary ps-3"><code><%= @version.user_prompt %></code></pre>
-          </div>
+          <% if @version.user_prompt.present? %>
+            <div>
+              <div class="badge bg-primary mb-2">User Prompt</div>
+              <pre class="border-start border-3 border-primary ps-3"><code><%= @version.user_prompt %></code></pre>
+            </div>
+          <% end %>
+          <% if @version.system_prompt.blank? && @version.user_prompt.blank? %>
+            <p class="text-muted">No prompts configured</p>
+          <% end %>
         </div>
         <div class="col-md-6">
           <h6>v<%= @compare_version.version_number %> <%= status_badge(@compare_version.status) %></h6>
           <% if @compare_version.system_prompt.present? %>
-            <div class="mb-3">
+            <div class="<%= @compare_version.user_prompt.present? ? 'mb-3' : '' %>">
               <div class="badge bg-secondary mb-2">System Prompt</div>
               <pre class="border-start border-3 border-secondary ps-3"><code><%= @compare_version.system_prompt %></code></pre>
             </div>
           <% end %>
-          <div>
-            <div class="badge bg-primary mb-2">User Prompt</div>
-            <pre class="border-start border-3 border-primary ps-3"><code><%= @compare_version.user_prompt %></code></pre>
-          </div>
+          <% if @compare_version.user_prompt.present? %>
+            <div>
+              <div class="badge bg-primary mb-2">User Prompt</div>
+              <pre class="border-start border-3 border-primary ps-3"><code><%= @compare_version.user_prompt %></code></pre>
+            </div>
+          <% end %>
+          <% if @compare_version.system_prompt.blank? && @compare_version.user_prompt.blank? %>
+            <p class="text-muted">No prompts configured</p>
+          <% end %>
         </div>
       </div>
     </div>
