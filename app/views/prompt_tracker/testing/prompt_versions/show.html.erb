@@ -125,6 +125,28 @@
   </div>
 </div>
 
+<!-- Variables Schema Card -->
+<% if @version.variables_schema.present? && @version.variables_schema.any? %>
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #F0F9FF; border-bottom: 2px solid #0EA5E9;">
+      <h6 class="mb-0" style="color: #0369A1;">
+        <i class="bi bi-input-cursor-text"></i> Variables
+      </h6>
+      <span class="badge bg-info"><%= @version.variables_schema.length %> variable<%= @version.variables_schema.length == 1 ? '' : 's' %></span>
+    </div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        <% @version.variables_schema.each do |var| %>
+          <code class="px-2 py-1 bg-light border rounded">{{ <%= var["name"] %> }}</code>
+        <% end %>
+      </div>
+      <div class="text-muted small mt-3">
+        <i class="bi bi-info-circle"></i> These variables are automatically extracted from the system and user prompts
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <!-- Prompts & Model Config -->
 <div class="row mb-4">
   <div class="col-md-<%= @version.model_config.present? && @version.model_config.any? ? '8' : '12' %>">

@@ -339,31 +339,46 @@ module PromptTracker
         old_config[key] != new_config[key]
       end
 
-      # Extract variables_schema from incoming user_prompt (same logic as model callback)
-      new_variables_schema = extract_variables_schema_from_prompt(params[:user_prompt])
+      # Extract variables_schema from both system_prompt and user_prompt (same logic as model callback)
+      new_variables_schema = extract_variables_schema_from_prompts(params[:system_prompt], params[:user_prompt])
 
       structural_keys_changed ||
         version.variables_schema != new_variables_schema ||
         version.response_schema != extract_response_schema_param
     end
 
-    # Extract variables_schema from user_prompt (mirrors PromptVersion#extract_variables_schema)
+    # Extract variables_schema from both system_prompt and user_prompt (mirrors PromptVersion#extract_variables_schema)
     #
+    # @param system_prompt [String] the system prompt template
     # @param user_prompt [String] the user prompt template
     # @return [Array<Hash>, nil] the extracted variables schema
-    def extract_variables_schema_from_prompt(user_prompt)
-      return nil if user_prompt.blank?
+    def extract_variables_schema_from_prompts(system_prompt, user_prompt)
+      all_variable_names = []
 
-      # Extract variable names using same patterns as PromptVersion model
-      variables = []
-      variables += user_prompt.scan(/\{\{\s*(\w+)\s*\}\}/).flatten
-      variables += user_prompt.scan(/\{\{\s*(\w+)\s*\|/).flatten
-      variables += user_prompt.scan(/\{\{\s*(\w+)\./).flatten
-      variable_names = variables.uniq
+      # Extract from system_prompt
+      if system_prompt.present?
+        variables = []
+        variables += system_prompt.scan(/\{\{\s*(\w+)\s*\}\}/).flatten
+        variables += system_prompt.scan(/\{\{\s*(\w+)\s*\|/).flatten
+        variables += system_prompt.scan(/\{\{\s*(\w+)\./).flatten
+        all_variable_names += variables
+      end
 
-      return nil if variable_names.empty?
+      # Extract from user_prompt
+      if user_prompt.present?
+        variables = []
+        variables += user_prompt.scan(/\{\{\s*(\w+)\s*\}\}/).flatten
+        variables += user_prompt.scan(/\{\{\s*(\w+)\s*\|/).flatten
+        variables += user_prompt.scan(/\{\{\s*(\w+)\./).flatten
+        all_variable_names += variables
+      end
 
-      variable_names.map do |var_name|
+      # Remove duplicates and sort
+      all_variable_names = all_variable_names.uniq.sort
+
+      return nil if all_variable_names.empty?
+
+      all_variable_names.map do |var_name|
         {
           "name" => var_name,
           "type" => "string",

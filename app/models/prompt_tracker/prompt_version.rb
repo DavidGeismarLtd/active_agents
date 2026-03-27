@@ -97,6 +97,7 @@ module PromptTracker
               uniqueness: { scope: :prompt_id, message: "already exists for this prompt" }
 
     validate :enforce_version_immutability, on: :update
+    validate :at_least_one_prompt_present
     validate :variables_schema_must_be_array
     validate :model_config_must_be_hash
     validate :model_config_tool_config_structure
@@ -532,6 +533,13 @@ module PromptTracker
       errors.add(:variables_schema, "must be an array")
     end
 
+    # Validates that at least one prompt (system_prompt or user_prompt) is present
+    def at_least_one_prompt_present
+      return if system_prompt.present? || user_prompt.present?
+
+      errors.add(:base, "At least one of system prompt or user prompt must be present")
+    end
+
     # Validates that model_config is a hash
     def model_config_must_be_hash
       return if model_config.nil? || model_config.is_a?(Hash)
@@ -638,22 +646,33 @@ module PromptTracker
       end
     end
 
-    # Determines if variables should be extracted from user_prompt
+    # Determines if variables should be extracted from prompts
     def should_extract_variables?
-      # Only extract if:
-      # 1. User prompt has changed (or is new)
-      user_prompt.present? && (user_prompt_changed? || new_record?)
+      # Extract if either system_prompt or user_prompt has changed (or is new)
+      (system_prompt.present? && (system_prompt_changed? || new_record?)) ||
+        (user_prompt.present? && (user_prompt_changed? || new_record?))
     end
 
-    # Extracts variables from user_prompt and populates variables_schema
+    # Extracts variables from both system_prompt and user_prompt and populates variables_schema
     def extract_variables_schema
-      return if user_prompt.blank?
+      # Collect variables from both prompts
+      all_variable_names = []
 
-      variable_names = extract_variable_names_from_template(user_prompt)
-      return if variable_names.empty?
+      if system_prompt.present?
+        all_variable_names += extract_variable_names_from_template(system_prompt)
+      end
+
+      if user_prompt.present?
+        all_variable_names += extract_variable_names_from_template(user_prompt)
+      end
+
+      # Remove duplicates and sort
+      all_variable_names = all_variable_names.uniq.sort
+
+      return if all_variable_names.empty?
 
       # Build schema with default type and required settings
-      self.variables_schema = variable_names.map do |var_name|
+      self.variables_schema = all_variable_names.map do |var_name|
         {
           "name" => var_name,
           "type" => "string",

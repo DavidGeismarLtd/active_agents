@@ -541,6 +541,61 @@ module PromptTracker
           expect(version.variables_schema.first["required"]).to eq(false)
         end
 
+        it "extracts variables from system_prompt" do
+          version = PromptVersion.create!(
+            valid_attributes.except(:variables_schema).merge(
+              system_prompt: "You are an AI assistant. Context: {{reporting_context}}",
+              user_prompt: ""
+            )
+          )
+
+          expect(version.variables_schema).to be_present
+          expect(version.variables_schema.length).to eq(1)
+          expect(version.variables_schema.first["name"]).to eq("reporting_context")
+          expect(version.variables_schema.first["type"]).to eq("string")
+          expect(version.variables_schema.first["required"]).to eq(false)
+        end
+
+        it "extracts variables from both system_prompt and user_prompt" do
+          version = PromptVersion.create!(
+            valid_attributes.except(:variables_schema).merge(
+              system_prompt: "You are a {{role}}. Context: {{context}}",
+              user_prompt: "Hello {{name}}, your issue is {{issue}}"
+            )
+          )
+
+          expect(version.variables_schema).to be_present
+          expect(version.variables_schema.length).to eq(4)
+          variable_names = version.variables_schema.map { |v| v["name"] }
+          expect(variable_names).to match_array(%w[context issue name role])
+        end
+
+        it "removes duplicates when variable appears in both prompts" do
+          version = PromptVersion.create!(
+            valid_attributes.except(:variables_schema).merge(
+              system_prompt: "System context: {{context}}",
+              user_prompt: "User context: {{context}}"
+            )
+          )
+
+          expect(version.variables_schema).to be_present
+          expect(version.variables_schema.length).to eq(1)
+          expect(version.variables_schema.first["name"]).to eq("context")
+        end
+
+        it "sorts variables alphabetically" do
+          version = PromptVersion.create!(
+            valid_attributes.except(:variables_schema).merge(
+              system_prompt: "{{zebra}} {{apple}}",
+              user_prompt: "{{mango}} {{banana}}"
+            )
+          )
+
+          expect(version.variables_schema).to be_present
+          variable_names = version.variables_schema.map { |v| v["name"] }
+          expect(variable_names).to eq(%w[apple banana mango zebra])
+        end
+
         it "does not extract variables when user_prompt has no variables" do
           version = PromptVersion.create!(
             valid_attributes.except(:variables_schema).merge(

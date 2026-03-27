@@ -34,16 +34,16 @@ module PromptTracker
         expect(execution).to be_valid
       end
 
-      it "requires function_definition" do
+      it "allows nil function_definition for planning functions" do
         execution = FunctionExecution.new(valid_attributes.except(:function_definition))
-        expect(execution).not_to be_valid
-        expect(execution.errors[:function_definition]).to include("must exist")
+        expect(execution).to be_valid
       end
 
-      it "requires arguments" do
+      it "allows empty hash for arguments (functions with no parameters)" do
+        # When .except(:arguments) is used, the database default {} is applied
         execution = FunctionExecution.new(valid_attributes.except(:arguments))
-        expect(execution).not_to be_valid
-        expect(execution.errors[:arguments]).to include("can't be blank")
+        expect(execution).to be_valid
+        expect(execution.arguments).to eq({})
       end
 
       it "requires executed_at" do

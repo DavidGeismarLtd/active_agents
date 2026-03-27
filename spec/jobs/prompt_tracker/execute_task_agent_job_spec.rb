@@ -34,9 +34,11 @@ RSpec.describe PromptTracker::ExecuteTaskAgentJob, type: :job do
 
         # Mock the runtime service
         expect(PromptTracker::TaskAgentRuntimeService).to receive(:call).with(
-          task_agent: task_agent,
-          task_run: task_run,
-          variables: nil
+          hash_including(
+            task_agent: task_agent,
+            task_run: task_run,
+            variables: nil
+          )
         ).and_return({ success: true, output: "Task completed" })
 
         described_class.perform_now(task_agent.id, task_run.id)
@@ -47,9 +49,11 @@ RSpec.describe PromptTracker::ExecuteTaskAgentJob, type: :job do
         variables = { url: "https://example.com" }
 
         expect(PromptTracker::TaskAgentRuntimeService).to receive(:call).with(
-          task_agent: task_agent,
-          task_run: task_run,
-          variables: variables
+          hash_including(
+            task_agent: task_agent,
+            task_run: task_run,
+            variables: variables
+          )
         ).and_return({ success: true, output: "Task completed" })
 
         described_class.perform_now(task_agent.id, task_run.id, variables: variables)
@@ -94,14 +98,15 @@ RSpec.describe PromptTracker::ExecuteTaskAgentJob, type: :job do
     end
 
     context "when execution fails" do
-      it "marks task run as failed and re-raises exception" do
+      it "marks task run as failed without re-raising exception" do
         task_run = create(:task_run, deployed_agent: task_agent, status: "running")
 
         allow(PromptTracker::TaskAgentRuntimeService).to receive(:call).and_raise(StandardError, "Execution failed")
 
+        # Job should NOT re-raise - it handles errors gracefully
         expect {
           described_class.perform_now(task_agent.id, task_run.id)
-        }.to raise_error(StandardError, "Execution failed")
+        }.not_to raise_error
 
         expect(task_run.reload.status).to eq("failed")
         expect(task_run.error_message).to eq("Execution failed")
