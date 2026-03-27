@@ -51,6 +51,28 @@
 		</div>
 </div>
 
+<%# Field for first user message when user_prompt is blank (only for single mode) %>
+<% if testable.user_prompt.blank? %>
+	<div class="mb-4 p-3 bg-light rounded border"
+	     data-run-test-modal-target="firstUserMessageSection"
+	     style="<%= execution_mode == "single" ? "" : "display: none;" %>">
+		<h6 class="mb-3"><i class="bi bi-chat-text"></i> First User Message</h6>
+
+		<div class="mb-3">
+			<%= label_tag "custom_variables[first_user_message]", "First User Message", class: "form-label" %>
+			<span class="text-danger">*</span>
+			<%= text_area_tag "custom_variables[first_user_message]", nil,
+			    class: "form-control",
+			    rows: 4,
+			    data: { required: "true", "single-mode-field": "true" },
+			    placeholder: "Enter the first message that the user would send to the assistant..." %>
+			<small class="form-text text-muted">
+				Since this version has no user prompt template, you need to provide the first user message directly.
+			</small>
+		</div>
+	</div>
+<% end %>
+
 <%# Conversation-specific settings (only relevant for APIs that support conversations) %>
 	<div class="mb-4 p-3 bg-light rounded border"
 	     data-run-test-modal-target="conversationSection"

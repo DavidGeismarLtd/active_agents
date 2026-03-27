@@ -90,12 +90,16 @@ module PromptTracker
       #
       # @return [Hash] single-turn execution params
       def build_single_turn_params
+        vars = variables
+        # If user_prompt is blank, use first_user_message from custom variables
+        first_message = render_prompt.presence || vars[:first_user_message]
+
         {
           system_prompt: testable.system_prompt,
           max_turns: 1,
           interlocutor_prompt: nil,
-          first_user_message: render_prompt,
-          mock_function_outputs: variables[:mock_function_outputs]
+          first_user_message: first_message,
+          mock_function_outputs: vars[:mock_function_outputs]
         }
       end
 
@@ -111,11 +115,15 @@ module PromptTracker
           raise ArgumentError, "interlocutor_simulation_prompt is required for conversational tests"
         end
 
+        # In conversational mode, first_user_message can be nil
+        # The SimulatedConversationRunner will use the interlocutor to generate it
+        first_message = render_prompt
+
         {
           system_prompt: render_system_prompt,
           max_turns: max_turns.to_i,
           interlocutor_prompt: interlocutor_prompt,
-          first_user_message: render_prompt,
+          first_user_message: first_message,
           mock_function_outputs: vars[:mock_function_outputs]
         }
       end

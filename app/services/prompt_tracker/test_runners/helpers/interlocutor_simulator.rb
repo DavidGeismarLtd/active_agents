@@ -27,6 +27,21 @@ module PromptTracker
           @use_real_llm = use_real_llm
         end
 
+        # Generate the initial user message to start a conversation
+        #
+        # Used when the version has no user_prompt template but needs to start
+        # a conversation based on the interlocutor simulation prompt.
+        #
+        # @param interlocutor_prompt [String] the simulation prompt describing the user's role
+        # @return [String] generated initial message
+        def generate_initial_message(interlocutor_prompt:)
+          return "Hello!" unless @use_real_llm
+
+          prompt = build_initial_message_prompt(interlocutor_prompt)
+          response = call_simulation_llm(prompt)
+          response[:text].strip
+        end
+
         # Generate the next user message in a conversation
         #
         # @param interlocutor_prompt [String] the simulation prompt describing the user's role
@@ -55,6 +70,21 @@ module PromptTracker
             content = msg[:content] || msg["content"]
             "#{role.to_s.capitalize}: #{content}"
           end.join("\n\n")
+        end
+
+        # Build the prompt for generating the initial message
+        #
+        # @param interlocutor_prompt [String] the user role description
+        # @return [String] the complete simulation prompt for initial message
+        def build_initial_message_prompt(interlocutor_prompt)
+          <<~PROMPT
+            You are simulating a user starting a conversation with an assistant.
+
+            Context: #{interlocutor_prompt}
+
+            Generate ONLY the user's first message to start the conversation. Be natural and contextual based on the user profile described above.
+            Do not include any explanations, just the message itself.
+          PROMPT
         end
 
         # Build the prompt for the simulation LLM

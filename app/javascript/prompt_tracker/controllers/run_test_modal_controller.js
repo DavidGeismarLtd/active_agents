@@ -10,7 +10,8 @@ export default class extends Controller {
 		"submitButton",
 		"form",
 		"executionModeRadio",
-		"conversationSection"
+		"conversationSection",
+		"firstUserMessageSection"
 	]
 
   connect() {
@@ -129,6 +130,20 @@ export default class extends Controller {
 		})
 	}
 
+	toggleSingleModeFieldsRequired(enabled) {
+		if (!this.hasCustomSectionTarget) return
+
+		const selector = 'input[data-single-mode-field="true"][data-required="true"], textarea[data-single-mode-field="true"][data-required="true"]'
+		const singleInputs = this.customSectionTarget.querySelectorAll(selector)
+		singleInputs.forEach(input => {
+			if (enabled) {
+				input.setAttribute('required', 'required')
+			} else {
+				input.removeAttribute('required')
+			}
+		})
+	}
+
 	toggleExecutionMode() {
 		// Only relevant when custom section is present/visible
 		if (!this.hasCustomSectionTarget) return
@@ -138,14 +153,23 @@ export default class extends Controller {
 			: "single"
 
 		const isConversational = selectedExecutionMode === "conversation"
+		const isSingle = selectedExecutionMode === "single"
 
 		// Show/hide conversation settings section if present
 		if (this.hasConversationSectionTarget) {
 			this.conversationSectionTarget.style.display = isConversational ? "block" : "none"
 		}
 
+		// Show/hide first user message section if present (for versions with blank user_prompt)
+		if (this.hasFirstUserMessageSectionTarget) {
+			this.firstUserMessageSectionTarget.style.display = isSingle ? "block" : "none"
+		}
+
 		// Manage requiredness of conversation-specific fields
 		this.toggleConversationFieldsRequired(isConversational)
+
+		// Manage requiredness of single-mode-specific fields
+		this.toggleSingleModeFieldsRequired(isSingle)
 
 		// Re-run validation when execution mode changes
 		this.validateForm()

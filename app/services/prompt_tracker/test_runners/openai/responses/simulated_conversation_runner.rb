@@ -77,8 +77,17 @@ module PromptTracker
           (1..max_turns).each do |turn|
             # Generate user message
             user_message = if turn == 1
-              # First turn: use the rendered user_prompt template
-              params[:first_user_message]
+              # For first turn: use provided first_user_message, or if blank and we have
+              # an interlocutor prompt, generate it using the interlocutor simulator
+              if params[:first_user_message].present?
+                params[:first_user_message]
+              elsif params[:interlocutor_prompt].present?
+                interlocutor_simulator.generate_initial_message(
+                  interlocutor_prompt: params[:interlocutor_prompt]
+                )
+              else
+                nil
+              end
             else
               # Subsequent turns: generate using interlocutor simulation
               interlocutor_simulator.generate_next_message(

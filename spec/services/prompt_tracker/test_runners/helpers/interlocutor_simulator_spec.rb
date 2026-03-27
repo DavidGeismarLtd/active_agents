@@ -6,6 +6,66 @@ module PromptTracker
   module TestRunners
     module Helpers
       RSpec.describe InterlocutorSimulator, type: :service do
+        describe "#generate_initial_message" do
+          let(:interlocutor_prompt) { "You are a patient with a headache seeking medical advice" }
+
+          context "when use_real_llm is false" do
+            let(:simulator) { described_class.new(use_real_llm: false) }
+
+            it "returns a simple greeting" do
+              message = simulator.generate_initial_message(
+                interlocutor_prompt: interlocutor_prompt
+              )
+
+              expect(message).to eq("Hello!")
+            end
+          end
+
+          context "when use_real_llm is true" do
+            let(:simulator) { described_class.new(use_real_llm: true) }
+
+            before do
+              allow(LlmClientService).to receive(:call).and_return(
+                { text: "Hi doctor, I've been having severe headaches for the past few days." }
+              )
+            end
+
+            it "uses configuration from interlocutor_simulation context" do
+              simulator.generate_initial_message(
+                interlocutor_prompt: interlocutor_prompt
+              )
+
+              expect(LlmClientService).to have_received(:call).with(
+                hash_including(
+                  provider: :openai,
+                  api: :chat_completions,
+                  model: "gpt-4o-mini",
+                  temperature: 0.7
+                )
+              )
+            end
+
+            it "includes interlocutor prompt in the simulation prompt" do
+              simulator.generate_initial_message(
+                interlocutor_prompt: interlocutor_prompt
+              )
+
+              expect(LlmClientService).to have_received(:call) do |args|
+                expect(args[:prompt]).to include(interlocutor_prompt)
+                expect(args[:prompt]).to include("first message")
+              end
+            end
+
+            it "returns the generated message" do
+              message = simulator.generate_initial_message(
+                interlocutor_prompt: interlocutor_prompt
+              )
+
+              expect(message).to eq("Hi doctor, I've been having severe headaches for the past few days.")
+            end
+          end
+        end
+
         describe "#generate_next_message" do
           let(:interlocutor_prompt) { "You are a patient with a headache" }
           let(:conversation_history) do
