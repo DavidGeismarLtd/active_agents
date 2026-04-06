@@ -16,8 +16,8 @@ module PromptTracker
         # @param message [String] raw user message
         # @param context [Hash] page / UI context (e.g., :page_type, :agent_version_id)
         # @return [Symbol] one of:
-        #   :test_runner_wizard, :test_creator_wizard, :dataset_wizard,
-        #   :agent_creation_wizard, :deployment_wizard, or :default
+        #   :docs_wizard, :test_runner_wizard, :test_creator_wizard, :dataset_wizard,
+        #   :agent_creation_wizard, :deployment_wizard, or :no_match
         def self.assistant_for(message:, context: {})
           new(message: message, context: context).assistant
         end
@@ -28,9 +28,9 @@ module PromptTracker
         end
 
         def assistant
-          # Only call the LLM router when there is an actual user message.
-          # This avoids unnecessary LLM calls for empty payloads.
-          return :default if message.strip.empty?
+            # Only call the LLM router when there is an actual user message.
+            # This avoids unnecessary LLM calls for empty payloads.
+            return :no_match if message.strip.empty?
 
           Rails.logger.debug(
             "[AssistantChatbot::Router] routing message=#{message.inspect} " \
@@ -45,7 +45,7 @@ module PromptTracker
       attr_reader :message, :context
 
         def classify_with_llm
-          system_prompt = <<~PROMPT.strip
+            system_prompt = <<~PROMPT.strip
 	          You are a router for the PromptTracker assistant.
 
 	          Read the current page context, the recent conversation (if any),
@@ -60,8 +60,9 @@ module PromptTracker
 	          switch to a different workflow (like running tests or deploying an
 	          agent).
 
-	          Return exactly ONE word from this list:
-	          - "default"
+		          Return exactly ONE word from this list:
+		          - "docs_wizard"
+		          - "no_match"
 	          - "test_runner_wizard"
 	          - "test_creator_wizard"
 	          - "dataset_wizard"
@@ -69,6 +70,11 @@ module PromptTracker
 	          - "deployment_wizard"
 
 	          Use these guidelines:
+		          - Use "docs_wizard" when the user is asking a general "how do I..." question
+		            about PromptTracker (tracking calls, playground, testing, evaluators, UI usage)
+		            and they are NOT asking to execute a workflow right now.
+		          - Use "no_match" when the user message is unrelated to PromptTracker or you are
+		            not confident which assistant applies.
 	          - Use "test_runner_wizard" when the user clearly wants to run
 	            or execute existing tests for an agent or agent version
 	            (e.g. "run all tests", "execute the tests", "run regression
@@ -95,7 +101,7 @@ module PromptTracker
 	            a new agent and deploy it"), prefer "agent_creation_wizard"
 	            so that the agent is designed first; deployment can happen in
 	            a separate step.
-	          - Use "default" for all other cases or when you are unsure.
+		          - Use "no_match" for all other cases or when you are unsure.
 
 	          Do not add any explanation.
           PROMPT
@@ -140,20 +146,24 @@ module PromptTracker
 
           Rails.logger.debug("[AssistantChatbot::Router] normalized.text=#{normalized.text.inspect} label=#{label.inspect}")
 
-          assistant = case label
-          when "test_runner_wizard"
+            assistant = case label
+            when "docs_wizard"
+              :docs_wizard
+            when "no_match"
+              :no_match
+            when "test_runner_wizard"
           :test_runner_wizard
-          when "test_creator_wizard"
+            when "test_creator_wizard"
           :test_creator_wizard
-          when "dataset_wizard"
+            when "dataset_wizard"
           :dataset_wizard
-          when "agent_creation_wizard"
+            when "agent_creation_wizard"
             :agent_creation_wizard
-          when "deployment_wizard"
+            when "deployment_wizard"
           :deployment_wizard
-          else
-          :default
-          end
+            else
+              :no_match
+            end
 
           Rails.logger.info("[AssistantChatbot::Router] routing decision label=#{label.inspect} assistant=#{assistant.inspect}")
           assistant

@@ -23,22 +23,55 @@ RSpec.describe PromptTracker::AssistantChatbotService do
 
   describe ".call" do
     context "when router cannot route to a wizard" do
-      it "returns an apology instead of using a generic assistant" do
-        allow(PromptTracker::AssistantChatbot::Router)
-          .to receive(:assistant_for)
-          .and_return(:default)
+        it "returns an apology and does not call the LLM" do
+          allow(PromptTracker::AssistantChatbot::Router)
+            .to receive(:assistant_for)
+            .and_return(:no_match)
 
-        result = described_class.call(
-          message: "What's the weather?",
-          session_id: session_id,
-          context: { page_type: :agents_list }
-        )
+          expect(PromptTracker::LlmClientService).not_to receive(:call)
 
-        expect(result.success?).to be true
-        expect(result.pending_action).to be_nil
-        expect(result.response).to include("help you create agents, create datasets, create tests, run tests, and deploy agents")
-      end
+          result = described_class.call(
+            message: "What's the weather?",
+            session_id: session_id,
+            context: { page_type: :agents_list }
+          )
+
+          expect(result.success?).to be true
+          expect(result.pending_action).to be_nil
+          expect(result.response).to include("I couldn't match your request")
+        end
     end
+
+      context "when router selects the docs wizard" do
+        it "calls the LLM with docs context and no tools" do
+          allow(PromptTracker::AssistantChatbot::Router)
+            .to receive(:assistant_for)
+            .and_return(:docs_wizard)
+
+          expect(PromptTracker::LlmClientService).to receive(:call).with(
+            hash_including(
+              tools: [],
+              system_prompt: include("PromptTracker Documentation Assistant"),
+              prompt: include("/prompt_tracker/docs/testing_guide")
+            )
+          ).and_return(
+            instance_double(
+              "NormalizedLlmResponse",
+              text: "See /prompt_tracker/docs/testing_guide.",
+              tool_calls: []
+            )
+          )
+
+          result = described_class.call(
+            message: "How do I run tests?",
+            session_id: session_id,
+            context: { page_type: :agents_list }
+          )
+
+          expect(result.success?).to be true
+          expect(result.response).to include("/prompt_tracker/docs/testing_guide")
+        end
+      end
 
     context "with a simple text response" do
       it "returns a successful result" do

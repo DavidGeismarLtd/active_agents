@@ -39,7 +39,7 @@ module PromptTracker
         @assistant_mode = nil
     end
 
-    def call
+      def call
       Rails.logger.info "[AssistantChatbot] ═══ NEW REQUEST ═══"
       Rails.logger.info "[AssistantChatbot] Session ID: #{@session_id}"
       Rails.logger.info "[AssistantChatbot] User message: #{@message.inspect}"
@@ -50,42 +50,39 @@ module PromptTracker
         Rails.logger.info "[AssistantChatbot] Loaded #{conversation_history.length} messages from history"
         Rails.logger.debug "[AssistantChatbot] History preview: #{conversation_history.first(3).inspect}..." if conversation_history.any?
 
-          # 2. Determine assistant mode using router + state
-          @assistant_mode = determine_assistant_mode(conversation_history)
-        Rails.logger.info "[AssistantChatbot] Assistant mode: #{assistant_mode.inspect}"
+            # 2. Determine assistant mode using router + state
+            @assistant_mode = determine_assistant_mode(conversation_history)
+          Rails.logger.info "[AssistantChatbot] Assistant mode: #{assistant_mode.inspect}"
 
-          # 3. If we could not route to a specialized assistant, return
-          #    a focused apology instead of falling back to a generic
-          #    Q&A mode. The assistant is intentionally scoped to
-          #    specific workflows.
-          if assistant_mode == :default
-            Rails.logger.info "[AssistantChatbot] No specialized assistant matched – returning apology"
+        if assistant_mode == :no_match
+          Rails.logger.info "[AssistantChatbot] Router returned :no_match - returning apology (no LLM call)"
 
-            save_to_conversation(role: "user", content: @message)
+          save_to_conversation(role: "user", content: @message)
 
-            apology = <<~MSG.strip
-	            I’m designed to help you create agents, create datasets, create tests, run tests, and deploy agents.
-	            I couldn’t match your request to any of these workflows, so I don’t know how to answer it.
-            MSG
+          apology = <<~MSG.strip
+	          I'm designed to help you with PromptTracker workflows (agents, datasets, tests, deployments) and to answer questions from the in-app docs.
+	          I couldn't match your request to any of these, so I don't know how to answer it.
+          MSG
 
-            save_to_conversation(role: "assistant", content: apology)
+          save_to_conversation(role: "assistant", content: apology)
 
-            return Result.new(
-              success?: true,
-              response: apology,
-              links: [],
-              suggestions: generate_suggestions,
-              pending_action: nil
-            )
-          end
+          return Result.new(
+            success?: true,
+            response: apology,
+            links: [],
+            suggestions: generate_suggestions,
+            pending_action: nil
+          )
+        end
 
-          # 4. Build system prompt with context / wizard
+          # 3. Build system prompt with context / wizard
           system_prompt = build_system_prompt
         Rails.logger.debug "[AssistantChatbot] System prompt length: #{system_prompt.length} chars"
 
-      # 5. Call LLM with conversation history + current message
+      # 4. Call LLM with conversation history + current message
       Rails.logger.info "[AssistantChatbot] Calling LLM..."
-        llm_response = call_llm(system_prompt, conversation_history, @message)
+          llm_message = build_llm_message(@message)
+          llm_response = call_llm(system_prompt, conversation_history, llm_message)
       Rails.logger.info "[AssistantChatbot] LLM response type: #{llm_response.keys.inspect}"
 
       # 5. Check if LLM wants to execute a function
@@ -312,44 +309,47 @@ module PromptTracker
 
       mode = AssistantChatbot::Router.assistant_for(message: @message.to_s, context: router_context)
 
-      chosen_mode =
-        if mode == :default && state[:active_assistant]
-          Rails.logger.info "[AssistantChatbot] Router returned :default but active assistant #{state[:active_assistant].inspect} present \\u2013 continuing existing wizard"
-          state[:active_assistant]
-        else
-          mode
+        chosen_mode =
+          if mode == :no_match && state[:active_assistant]
+            Rails.logger.info "[AssistantChatbot] Router returned :no_match but active assistant #{state[:active_assistant].inspect} present \\u2013 continuing existing wizard"
+            state[:active_assistant]
+          else
+            mode
+          end
+
+        if chosen_mode && !%i[docs_wizard no_match].include?(chosen_mode)
+          state[:active_assistant] = chosen_mode
+          save_assistant_state(state)
         end
 
-      if chosen_mode && chosen_mode != :default
-        state[:active_assistant] = chosen_mode
-        save_assistant_state(state)
-      end
-
-      chosen_mode || :default
+        chosen_mode || :no_match
     end
 
-    def build_system_prompt
-      case assistant_mode
-      when :test_runner_wizard
+      def build_system_prompt
+        case assistant_mode
+        when :docs_wizard
+            Rails.logger.debug("[AssistantChatbot] Using DocsAssistantWizardAssistant system prompt")
+            docs_assistant_wizard_assistant.system_prompt
+        when :no_match
+          "You are the PromptTracker Assistant."
+        when :test_runner_wizard
         Rails.logger.debug("[AssistantChatbot] Using TestRunnerWizardAssistant system prompt")
         test_runner_wizard_assistant.system_prompt
-      when :test_creator_wizard
+        when :test_creator_wizard
         Rails.logger.debug("[AssistantChatbot] Using TestCreatorWizardAssistant system prompt")
         test_creator_wizard_assistant.system_prompt
-      when :dataset_wizard
+        when :dataset_wizard
         Rails.logger.debug("[AssistantChatbot] Using DatasetWizardAssistant system prompt")
         dataset_wizard_assistant.system_prompt
-      when :deployment_wizard
+        when :deployment_wizard
         Rails.logger.debug("[AssistantChatbot] Using DeploymentWizardAssistant system prompt")
         deployment_wizard_assistant.system_prompt
-      when :agent_creation_wizard
+        when :agent_creation_wizard
         Rails.logger.debug("[AssistantChatbot] Using AgentCreationWizardAssistant system prompt")
         agent_creation_wizard_assistant.system_prompt
-      else
-        # Generic system prompt is no longer used in normal flows. When no
-        # specialized wizard applies, the service returns an apology.
-        "You are the PromptTracker Assistant."
-      end
+        else
+          "You are the PromptTracker Assistant."
+        end
     end
 
     def call_llm(system_prompt, history, message)
@@ -487,8 +487,10 @@ module PromptTracker
           "Do you want me to proceed?"
       end
 
-        def current_wizard_assistant
+            def current_wizard_assistant
           case assistant_mode
+          when :docs_wizard
+              docs_assistant_wizard_assistant
           when :test_runner_wizard
             test_runner_wizard_assistant
           when :test_creator_wizard
@@ -502,9 +504,22 @@ module PromptTracker
           end
         end
 
-          def assistant_mode
-            @assistant_mode || :default
+            def build_llm_message(message)
+              return message.to_s if assistant_mode != :docs_wizard
+
+            docs_context = AssistantChatbot::DocsKnowledgeBase.context_for(message.to_s)
+
+            <<~MSG.strip
+	            #{docs_context}
+
+	            User question:
+	            #{message}
+            MSG
           end
+
+            def assistant_mode
+              @assistant_mode || :no_match
+            end
 
           def test_runner_wizard_mode?
             assistant_mode == :test_runner_wizard
@@ -529,6 +544,10 @@ module PromptTracker
           def test_runner_wizard_assistant
             @test_runner_wizard_assistant ||= AssistantChatbot::Assistants::TestRunnerWizardAssistant.new(context: @context)
           end
+
+            def docs_assistant_wizard_assistant
+              @docs_assistant_wizard_assistant ||= AssistantChatbot::Assistants::DocsAssistantWizardAssistant.new(context: @context)
+            end
 
           def test_creator_wizard_assistant
             @test_creator_wizard_assistant ||= AssistantChatbot::Assistants::TestCreatorWizardAssistant.new(context: @context)

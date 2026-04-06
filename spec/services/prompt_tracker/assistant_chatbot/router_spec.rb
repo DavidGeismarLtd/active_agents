@@ -15,7 +15,7 @@ RSpec.describe PromptTracker::AssistantChatbot::Router do
     let(:llm_default_response) do
       double(
         "NormalizedLlmResponse",
-        text: "default",
+          text: "no_match",
         tool_calls: []
       )
     end
@@ -58,13 +58,13 @@ RSpec.describe PromptTracker::AssistantChatbot::Router do
       expect(assistant).to eq(:test_creator_wizard)
     end
 
-    it "routes generic messages on prompt version page to the default assistant" do
+      it "routes generic messages on prompt version page to no_match" do
       assistant = route_for("Help me improve this prompt", agent_version_context)
 
-      expect(assistant).to eq(:default)
+        expect(assistant).to eq(:no_match)
     end
 
-      it "returns the LLM router label outside agent version pages" do
+        it "returns the LLM router label outside agent version pages" do
         context = { page_type: :agents_list }
 
         expect(PromptTracker::LlmClients::RubyLlmService)
@@ -73,8 +73,24 @@ RSpec.describe PromptTracker::AssistantChatbot::Router do
 
         assistant = route_for("Run all tests", context)
 
-        expect(assistant).to eq(:default)
+          expect(assistant).to eq(:no_match)
       end
+
+        it "routes docs questions to the docs wizard" do
+          docs_response = double(
+            "NormalizedLlmResponse",
+            text: "docs_wizard",
+            tool_calls: []
+          )
+
+          allow(PromptTracker::LlmClients::RubyLlmService)
+            .to receive(:call)
+            .and_return(docs_response)
+
+          assistant = route_for("How do I run tests?", { page_type: :agents_list })
+
+          expect(assistant).to eq(:docs_wizard)
+        end
 
       it "routes agent creation requests on prompts list page to the agent creation wizard" do
         agent_creation_response = double(

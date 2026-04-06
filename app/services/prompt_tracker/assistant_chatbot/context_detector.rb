@@ -105,7 +105,6 @@ module PromptTracker
       def general_suggestions
         [
             "Create a new agent",
-          "Show me my recent work",
           "Help me get started"
         ]
       end
