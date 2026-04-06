@@ -64,8 +64,8 @@ RSpec.describe PromptTracker::AssistantChatbot::Router do
       expect(assistant).to eq(:default)
     end
 
-      it "routes test-related messages outside prompt version pages to the default assistant" do
-        context = { page_type: :prompts_list }
+      it "returns the LLM router label outside agent version pages" do
+        context = { page_type: :agents_list }
 
         expect(PromptTracker::LlmClients::RubyLlmService)
           .to receive(:call)
@@ -76,20 +76,20 @@ RSpec.describe PromptTracker::AssistantChatbot::Router do
         expect(assistant).to eq(:default)
       end
 
-      it "routes prompt creation requests on prompts list page to the prompt creation wizard" do
-        prompt_creation_response = double(
+      it "routes agent creation requests on prompts list page to the agent creation wizard" do
+        agent_creation_response = double(
           "NormalizedLlmResponse",
-          text: "prompt_creation_wizard",
+          text: "agent_creation_wizard",
           tool_calls: []
         )
 
         allow(PromptTracker::LlmClients::RubyLlmService)
           .to receive(:call)
-          .and_return(prompt_creation_response)
+          .and_return(agent_creation_response)
 
-        assistant = route_for("Create a new prompt called Support Bot", { page_type: :prompts_list })
+        assistant = route_for("Create a new agent called Support Bot", { page_type: :agents_list })
 
-        expect(assistant).to eq(:prompt_creation_wizard)
+        expect(assistant).to eq(:agent_creation_wizard)
       end
   end
 end

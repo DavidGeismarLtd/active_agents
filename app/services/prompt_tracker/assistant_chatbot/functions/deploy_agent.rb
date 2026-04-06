@@ -7,7 +7,7 @@ module PromptTracker
       #
       # Arguments (JSON plan collected by the deployment wizard):
       # - agent_version_id: (required) ID of the prompt version to deploy
-      # - name: (optional) Agent name, defaults to "<prompt name> Agent"
+      # - name: (optional) Agent name, defaults to "<agent name> Agent"
       # - agent_type: (required) "conversational" or "task"
       # - deployment_config: (optional) Hash for conversational agents
       # - task_config: (optional) Hash for task agents
@@ -80,7 +80,7 @@ module PromptTracker
         end
 
         def default_name_for(version)
-          "#{version.prompt.name} Agent"
+            "#{version.agent.name} Agent"
         end
 
         def normalized_deployment_config

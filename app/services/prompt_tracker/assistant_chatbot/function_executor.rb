@@ -65,6 +65,7 @@ module PromptTracker
           "generate_tests" => Functions::GenerateTests,
           "run_tests" => Functions::RunTests,
             "deploy_agent" => Functions::DeployAgent,
+            "list_recently_released_models" => Functions::ListRecentlyReleasedModels,
           "get_agent_version_info" => Functions::GetAgentVersionInfo,
           "get_tests_summary" => Functions::GetTestsSummary,
           "search_prompts" => Functions::SearchAgents,

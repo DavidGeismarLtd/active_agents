@@ -3,10 +3,10 @@
 module PromptTracker
   module AssistantChatbot
     module Functions
-      # Creates a new Prompt and initial AgentVersion.
+      # Creates a new Agent and initial AgentVersion.
       #
       # Arguments (raw values collected by the wizard):
-      # - name: (required) Raw prompt name from the user
+      # - name: (required) Raw agent name from the user
       # - description: (optional) Short, rough description from the user
       # - system_prompt_concept: (required) Brief concept of what the AI should do
       # - user_prompt: (optional) User prompt template. If omitted, the
@@ -53,7 +53,7 @@ module PromptTracker
 
               user_prompt = arg(:user_prompt).presence
 
-            prompt = Agent.new(
+              agent = Agent.new(
               name: enhanced_name,
               description: enhanced_description,
               created_by: "assistant_chatbot"
@@ -68,17 +68,17 @@ module PromptTracker
             }
             version_attributes[:variables_schema] = build_variables_schema(variables) if variables.any?
 
-            version = prompt.agent_versions.build(version_attributes)
+              version = agent.agent_versions.build(version_attributes)
 
-            if prompt.save
+              if agent.save
               success(
-                build_success_message(prompt, version),
-                links: build_links(prompt, version),
-                entities: { agent_id: prompt.id, version_id: version.id }
+                  build_success_message(agent, version),
+                  links: build_links(agent, version),
+                  entities: { agent_id: agent.id, version_id: version.id }
               )
-            else
-              failure(format_errors(prompt, version))
-            end
+              else
+                failure(format_errors(agent, version))
+              end
         end
 
         def validate_arguments!
@@ -119,11 +119,11 @@ module PromptTracker
           config
         end
 
-        def build_success_message(prompt, version)
+          def build_success_message(agent, version)
           <<~MSG.strip
-            ✅ Created prompt "#{prompt.name}" successfully!
+	            ✅ Created agent "#{agent.name}" successfully!
 
-            📝 Prompt ID: #{prompt.id}
+	            📝 Agent ID: #{agent.id}
             🆔 Version ID: #{version.id}
             🤖 Model: #{version.model_config['model']}
             🌡️ Temperature: #{version.model_config['temperature']}
@@ -133,24 +133,24 @@ module PromptTracker
           MSG
         end
 
-        def build_links(prompt, version)
-          base_path = "/prompt_tracker/testing/prompts"
+          def build_links(agent, version)
+            base_path = "/prompt_tracker/testing/agents"
 
           [
-              # Link to version detail page (primary action)
-              link("View version details", "#{base_path}/#{prompt.id}/versions/#{version.id}", icon: "eye"),
-            link("Open in playground", "#{base_path}/#{prompt.id}/playground", icon: "play-circle"),
-            link("View all versions", "#{base_path}/#{prompt.id}#versions", icon: "list-ul"),
-            link("Testing section", "#{base_path}/#{prompt.id}/versions/#{version.id}#tests", icon: "check-circle")
+                # Link to version detail page (primary action)
+                link("View version details", "#{base_path}/#{agent.id}/versions/#{version.id}", icon: "eye"),
+              link("Open in playground", "#{base_path}/#{agent.id}/playground", icon: "play-circle"),
+              link("View all versions", "#{base_path}/#{agent.id}#versions", icon: "list-ul"),
+              link("Testing section", "#{base_path}/#{agent.id}/versions/#{version.id}#tests", icon: "check-circle")
           ]
         end
 
-        def format_errors(prompt, version)
+          def format_errors(agent, version)
           errors = []
-          errors += prompt.errors.full_messages if prompt.errors.any?
+            errors += agent.errors.full_messages if agent.errors.any?
           errors += version.errors.full_messages if version.errors.any?
 
-          "Failed to create prompt: #{errors.join(', ')}"
+            "Failed to create agent: #{errors.join(', ')}"
         end
       end
     end

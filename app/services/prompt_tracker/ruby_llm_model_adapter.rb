@@ -40,20 +40,29 @@ module PromptTracker
     }.freeze
 
     class << self
+        # Get all chat-capable models for a provider WITHOUT display-name deduplication.
+        #
+        # This is useful for workflows that need to reason about dated model IDs
+        # (e.g. "most recently released" lists).
+        #
+        # @param provider [Symbol, String] PromptTracker provider key (e.g., :openai, :anthropic)
+        # @return [Array<Hash>] Array of normalized model hashes
+        def raw_models_for(provider)
+          ruby_llm_provider = PROVIDER_MAPPING[provider.to_sym]
+          return [] unless ruby_llm_provider
+
+          chat_models(ruby_llm_provider)
+            .reject { |m| convenience_alias?(m, provider) }
+            .map { |m| normalize_model(m) }
+            .uniq { |model| model[:id] }
+        end
+
       # Get all chat-capable models for a provider.
       #
       # @param provider [Symbol, String] PromptTracker provider key (e.g., :openai, :anthropic)
       # @return [Array<Hash>] Array of normalized model hashes
       def models_for(provider)
-        ruby_llm_provider = PROVIDER_MAPPING[provider.to_sym]
-        return [] unless ruby_llm_provider
-
-          models = chat_models(ruby_llm_provider)
-            .reject { |m| convenience_alias?(m, provider) }
-            .map { |m| normalize_model(m) }
-            .uniq { |model| model[:id] }
-
-          deduplicate_by_display_name(models)
+          deduplicate_by_display_name(raw_models_for(provider))
       end
 
       # Find a specific model by ID across all providers.

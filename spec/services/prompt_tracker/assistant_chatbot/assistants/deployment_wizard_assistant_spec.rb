@@ -30,5 +30,14 @@ RSpec.describe PromptTracker::AssistantChatbot::Assistants::DeploymentWizardAssi
       expect(prompt).to include("\"agent_type\"")
       expect(prompt).to include("deploy_agent")
     end
+
+      it "does not ask advanced conversational deployment questions" do
+        assistant = described_class.new(context: { agent_version_id: 1 })
+
+        prompt = assistant.system_prompt
+
+        expect(prompt).not_to include("Ask how long conversations should be kept alive")
+        expect(prompt).to include("Do NOT ask advanced config questions")
+      end
   end
 end

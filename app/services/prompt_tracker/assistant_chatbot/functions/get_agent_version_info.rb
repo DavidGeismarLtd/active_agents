@@ -8,7 +8,7 @@ module PromptTracker
       # This is a query function (does not require confirmation).
       #
       # Arguments:
-      # - agent_version_id: (required) ID of the prompt version
+      # - agent_version_id: (required) ID of the agent version
       #
       # Returns:
       # - Model configuration (provider, API, model, temperature)
@@ -62,10 +62,10 @@ module PromptTracker
           failed_runs = recent_runs.count { |r| r.passed == false }
 
           <<~MSG.strip
-            📊 **Prompt Version Information**
+	            📊 **Agent Version Information**
 
             **Basic Details:**
-            • Prompt: #{version.prompt.name}
+	            • Agent: #{version.agent.name}
             • Version: #{version.name}
             • Status: #{version.status&.titleize || 'Active'}
 
@@ -86,14 +86,14 @@ module PromptTracker
           MSG
         end
 
-        def build_links(version)
-          base_path = "/prompt_tracker/testing/prompts/#{version.agent_id}/versions/#{version.id}"
+            def build_links(version)
+              base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
 
           [
-            link("View prompt version", base_path, icon: "eye"),
+              link("View agent version", base_path, icon: "eye"),
             link("Open in playground", "#{base_path}/playground", icon: "play-circle"),
             link("View tests", "#{base_path}#tests", icon: "list-check"),
-            link("Version history", "/prompt_tracker/testing/prompts/#{version.agent_id}#versions", icon: "clock-history")
+              link("Version history", "/prompt_tracker/testing/agents/#{version.agent_id}#versions", icon: "clock-history")
           ]
         end
       end

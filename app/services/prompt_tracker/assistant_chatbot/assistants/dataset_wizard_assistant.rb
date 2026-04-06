@@ -19,6 +19,13 @@ module PromptTracker
           @context = context || {}
         end
 
+          def allowed_tool_names
+            %w[
+              get_agent_version_info
+              available_datasets_for_agent_version
+            ]
+          end
+
         def system_prompt
           context_info = if context[:agent_version_id]
             "Current context: Viewing AgentVersion ##{context[:agent_version_id]}"

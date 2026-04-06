@@ -33,7 +33,7 @@ RSpec.describe PromptTracker::AssistantChatbot::Functions::AvailableTestsForAgen
 
         # Link points to tests tab for this prompt version
         expect(result.links.first[:url]).to eq(
-          "/prompt_tracker/testing/prompts/#{agent_version.agent_id}/versions/#{agent_version.id}#tests"
+          "/prompt_tracker/testing/agents/#{agent_version.agent_id}/versions/#{agent_version.id}#tests"
         )
       end
     end
@@ -47,7 +47,7 @@ RSpec.describe PromptTracker::AssistantChatbot::Functions::AvailableTestsForAgen
         expect(result.success?).to be true
         expect(result.message).to include("no enabled tests")
         expect(result.links.first[:url]).to eq(
-          "/prompt_tracker/testing/prompts/#{agent_version.agent_id}/versions/#{agent_version.id}#tests"
+          "/prompt_tracker/testing/agents/#{agent_version.agent_id}/versions/#{agent_version.id}#tests"
         )
       end
     end

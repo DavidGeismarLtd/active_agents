@@ -49,7 +49,7 @@ RSpec.describe PromptTracker::AssistantChatbot::Functions::AvailableDatasetsForA
 
         # Link points to datasets tab for this prompt version
         expect(result.links.first[:url]).to eq(
-          "/prompt_tracker/testing/prompts/#{agent_version.agent_id}/versions/#{agent_version.id}#datasets"
+          "/prompt_tracker/testing/agents/#{agent_version.agent_id}/versions/#{agent_version.id}#datasets"
         )
       end
     end
@@ -63,7 +63,7 @@ RSpec.describe PromptTracker::AssistantChatbot::Functions::AvailableDatasetsForA
         expect(result.success?).to be true
         expect(result.message).to include("does not have any datasets yet")
         expect(result.links.first[:url]).to eq(
-          "/prompt_tracker/testing/prompts/#{agent_version.agent_id}/versions/#{agent_version.id}#datasets"
+          "/prompt_tracker/testing/agents/#{agent_version.agent_id}/versions/#{agent_version.id}#datasets"
         )
       end
     end

@@ -71,20 +71,12 @@ module PromptTracker
           MSG
         end
 
-        def build_links(version, tests)
-          base_path = "/prompt_tracker/testing/prompts/#{version.agent_id}/versions/#{version.id}"
+          def build_links(version, tests)
+            base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
 
-          links = [
-            link("View all tests", "#{base_path}#tests", icon: "list-check"),
-            link("Run all tests", "#{base_path}#tests", icon: "play-circle")
-          ]
-
-          # Add links to individual tests (first 3)
-          tests.first(3).each do |test|
-            links << link("Test: #{test.name}", "#{base_path}#test-#{test.id}", icon: "check-circle")
-          end
-
-          links
+            [
+              link("View all tests", "#{base_path}#tests", icon: "list-check")
+            ]
         end
       end
     end

@@ -23,10 +23,10 @@ module PromptTracker
         case @context[:page_type]
         when :agent_version_detail
           agent_version_suggestions
-        when :prompt_detail
-          prompt_suggestions
-        when :prompts_list
-          prompts_list_suggestions
+        when :agent_detail
+            agent_detail_suggestions
+        when :agents_list
+            agents_list_suggestions
         when :playground
           playground_suggestions
         when :monitoring
@@ -41,16 +41,28 @@ module PromptTracker
       private
 
       def agent_version_suggestions
-        [
-          "Write tests for this prompt",
-          "Run all tests",
-            "What model is this prompt using?",
-            "Show me a summary of the tests",
-            "Create a dataset for this prompt version"
-        ]
+          suggestions = [
+            "Create a dataset for this agent version",
+            "Create tests for this agent version"
+          ]
+
+          if enabled_tests_exist_for_agent_version?
+            suggestions << "Run tests for this agent version"
+          end
+
+          suggestions << "Deploy this agent version"
+
+          suggestions
       end
 
-      def prompt_suggestions
+        def enabled_tests_exist_for_agent_version?
+          agent_version_id = @context[:agent_version_id]
+          return false if agent_version_id.blank?
+
+          PromptTracker::Test.enabled.exists?(testable_type: "PromptTracker::AgentVersion", testable_id: agent_version_id)
+        end
+
+        def agent_detail_suggestions
         [
           "Show me the latest version",
           "Create a new version",
@@ -58,17 +70,17 @@ module PromptTracker
         ]
       end
 
-      def prompts_list_suggestions
+        def agents_list_suggestions
         [
-          "Create a new prompt",
-          "Show me prompts with failing tests",
-          "Find prompts using gpt-4"
+            "Create a new agent",
+            "Show me agents with failing tests",
+            "Find agents using gpt-4"
         ]
       end
 
       def playground_suggestions
         [
-          "Save this as a new prompt",
+            "Save this as a new agent",
           "Generate tests for this configuration",
           "What's the token usage?"
         ]
@@ -77,7 +89,7 @@ module PromptTracker
       def monitoring_suggestions
         [
           "Show me recent errors",
-          "Which prompts are being used most?",
+            "Which agents are being used most?",
           "Analyze test results"
         ]
       end
@@ -92,7 +104,7 @@ module PromptTracker
 
       def general_suggestions
         [
-          "Create a new prompt",
+            "Create a new agent",
           "Show me my recent work",
           "Help me get started"
         ]

@@ -19,6 +19,15 @@ module PromptTracker
           @context = context || {}
         end
 
+          def allowed_tool_names
+            %w[
+              get_agent_version_info
+              get_tests_summary
+              available_tests_for_agent_version
+              available_datasets_for_agent_version
+            ]
+          end
+
         def system_prompt
           context_info = if context[:agent_version_id]
             "Current context: Viewing AgentVersion ##{context[:agent_version_id]}"
@@ -51,12 +60,10 @@ module PromptTracker
 
             For conversational agents:
             - Ask whether the public web chat UI should be enabled.
-            - Ask how long conversations should be kept alive
-              (conversation_ttl in seconds; default to 3600 when the user is unsure).
-            - Optionally ask for:
-              * A requests_per_minute limit for rate limiting (or leave null for default).
-              * Any allowed CORS origins for browser clients (a list of origins, or use
-                ["*"] for any origin).
+	            - Do NOT ask advanced config questions. Use defaults unless the user explicitly asks.
+	              * conversation_ttl: use the default (omit / null)
+	              * rate_limit.requests_per_minute: use the default (omit / null)
+	              * cors.allowed_origins: use the default (omit / null)
 
             For task agents:
             - Ask for an initial_prompt that clearly describes the task the agent should perform.

@@ -176,7 +176,12 @@ export default class extends Controller {
     event.preventDefault()
     const suggestion = event.currentTarget.dataset.suggestion
     this.inputTarget.value = suggestion
-    this.inputTarget.focus()
+	    this.inputTarget.focus()
+
+	    const form = this.sendButtonTarget?.closest('form')
+	    if (form && typeof form.requestSubmit === 'function') {
+	      form.requestSubmit()
+	    }
   }
 
   // Private methods

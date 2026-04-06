@@ -14,7 +14,7 @@ module PromptTracker
       def index
         # Only show tracked calls (not test runs)
         @recent_responses = LlmResponse.tracked_calls
-                                       .includes(:agent_version, :prompt, :human_evaluations, evaluations: [])
+                                       .includes(:human_evaluations, evaluations: [], agent_version: :agent)
                                        .order(created_at: :desc)
 
         # Apply filters

@@ -43,11 +43,13 @@ module PromptTracker
       action_id = params[:action_id]
       function_name = params[:function_name]
       arguments = params[:arguments]
+        context = extract_context
 
       result = AssistantChatbotService.execute_function(
         session_id: session.id,
         function_name: function_name,
-        arguments: arguments
+          arguments: arguments,
+          context: context
       )
 
       if result.success?
@@ -98,15 +100,15 @@ module PromptTracker
         agent_id = params[:agent_id]
         agent_version_id = params[:version_id]
 
-        # When chatting from a prompt version page, there are no agent_id/version_id
-        # params on the /assistant endpoints, so we parse them from the referrer URL.
+        # When calling /assistant endpoints, we typically don't have agent/version ids
+        # in params, so we parse them from the referrer URL.
         if agent_id.blank? || agent_version_id.blank?
-          if (match = url.match(%r{/prompts/(\d+)/versions/(\d+)}))
+              if (match = url.match(%r{/testing/agents/(\d+)/versions/(\d+)}))
             agent_id ||= match[1]
             agent_version_id ||= match[2]
-          elsif (match = url.match(%r{/prompts/(\d+)}))
+              elsif (match = url.match(%r{/testing/agents/(\d+)}))
             agent_id ||= match[1]
-          end
+              end
         end
 
         context = {
@@ -129,12 +131,14 @@ module PromptTracker
       url = request.referrer || request.url
 
       case url
-      when %r{/prompts/\d+/versions/\d+}
+      when %r{/testing/agents/\d+/versions/\d+}
         :agent_version_detail
-      when %r{/prompts/\d+}
-        :prompt_detail
-      when %r{/prompts}
-        :prompts_list
+      when %r{/testing/agents/\d+}
+          :agent_detail
+      when %r{/testing/agents}
+          :agents_list
+      when %r{/testing}
+          :agents_list
       when %r{/playground}
         :playground
       when %r{/monitoring}

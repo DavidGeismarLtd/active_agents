@@ -21,6 +21,15 @@ module PromptTracker
           @context = context || {}
         end
 
+          def allowed_tool_names
+            %w[
+              get_agent_version_info
+              get_tests_summary
+              available_tests_for_agent_version
+              available_datasets_for_agent_version
+            ]
+          end
+
         # Build a focused system prompt for the test runner wizard.
         #
         # The prompt intentionally avoids mentioning prompt
@@ -57,12 +66,14 @@ module PromptTracker
                - Only if they choose a subset or ask what tests exist should you call the available_tests_for_agent_version tool.
 
             2) Choose data source (dataset vs custom variables)
-               - Call the available_datasets_for_agent_version tool to see existing datasets (if any).
-               - Then ask whether to run tests using one of these datasets or with a single set of custom variables.
-               - Example question: "Do you want to run using a dataset (reply with a dataset ID) or run once with custom variables (reply 'custom')?"
+	               - BEFORE you ask the user anything about datasets, you MUST call the available_datasets_for_agent_version tool.
+	               - If there are datasets, show the user the list (IDs + names) and ask ONE question:
+	                 "Do you want to run using a dataset from this list, or run once with custom variables? (reply: a dataset ID or 'custom')"
+	               - If there are NO datasets, tell the user there are no datasets and ask whether to run once with custom variables.
 
             3A) If the user chooses a dataset
-               - Confirm which dataset ID to use.
+	               - Do NOT ask the user to type a dataset ID unless you have already shown them the dataset list from the tool.
+	               - Ask them to pick a dataset ID from the list.
                - Once you know the tests to run and dataset_id, summarize what will happen.
 
             3B) If the user chooses custom variables (no dataset)

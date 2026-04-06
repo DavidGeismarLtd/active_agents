@@ -91,16 +91,16 @@ module PromptTracker
           MSG
         end
 
-        def build_links(prompts)
+          def build_links(prompts)
           links = []
 
-          prompts.first(5).each do |prompt|
-            latest_version = prompt.agent_versions.order(created_at: :desc).first
+            prompts.first(5).each do |prompt|
+              latest_version = prompt.agent_versions.order(created_at: :desc).first
             if latest_version
-              base_path = "/prompt_tracker/testing/prompts/#{prompt.id}/versions/#{latest_version.id}"
+                base_path = "/prompt_tracker/testing/agents/#{prompt.id}/versions/#{latest_version.id}"
               links << link(prompt.name, base_path, icon: "file-text")
             else
-              links << link(prompt.name, "/prompt_tracker/testing/prompts/#{prompt.id}", icon: "file-text")
+                links << link(prompt.name, "/prompt_tracker/testing/agents/#{prompt.id}", icon: "file-text")
             end
           end
 

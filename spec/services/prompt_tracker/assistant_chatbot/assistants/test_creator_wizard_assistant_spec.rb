@@ -21,15 +21,12 @@ RSpec.describe PromptTracker::AssistantChatbot::Assistants::TestCreatorWizardAss
       expect(prompt).to include("AgentVersion is not explicitly specified")
     end
 
-    it "describes the JSON plan format for generate_tests" do
+    it "mentions the generate_tests tool" do
       assistant = described_class.new(context: { agent_version_id: 1 })
 
       prompt = assistant.system_prompt
 
-      expect(prompt).to include("The JSON object MUST have this shape")
-      expect(prompt).to include("\"agent_version_id\"")
-      expect(prompt).to include("\"count\"")
-      expect(prompt).to include("\"instructions\"")
+      expect(prompt).to include("generate_tests")
     end
 
     it "does not mention run_tests or running tests" do
@@ -39,6 +36,22 @@ RSpec.describe PromptTracker::AssistantChatbot::Assistants::TestCreatorWizardAss
 
       expect(prompt).not_to include("run_tests")
       expect(prompt).not_to include("run tests")
+    end
+
+    it "does not instruct calling get_agent_version_info" do
+      assistant = described_class.new(context: { agent_version_id: 1 })
+
+      prompt = assistant.system_prompt
+
+      expect(prompt).not_to include("get_agent_version_info")
+    end
+  end
+
+  describe "#allowed_tool_names" do
+    it "only allows generate_tests" do
+      assistant = described_class.new(context: {})
+
+      expect(assistant.allowed_tool_names).to eq([ "generate_tests" ])
     end
   end
 end

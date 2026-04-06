@@ -10,7 +10,7 @@ module PromptTracker
       # custom variables.
       #
       # Arguments:
-      # - agent_version_id: (required) ID of the prompt version
+      # - agent_version_id: (required) ID of the agent version
       #
       # The result message is a human-readable summary that includes
       # dataset IDs, names, types, and row counts so the model can ask
@@ -25,9 +25,9 @@ module PromptTracker
           if datasets.empty?
             return success(
               <<~MSG.strip,
-              ℹ️ This prompt version does not have any datasets yet.
+	              ℹ️ This agent version does not have any datasets yet.
 
-              You can run tests once with custom variables, or ask me to create a dataset for this prompt version.
+	              You can run tests once with custom variables, or ask me to create a dataset for this agent version.
               MSG
               links: build_links(version)
             )
@@ -63,8 +63,8 @@ module PromptTracker
           version
         end
 
-        def build_links(version)
-          base_path = "/prompt_tracker/testing/prompts/#{version.agent_id}/versions/#{version.id}"
+          def build_links(version)
+            base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
 
           [
             link("Open datasets tab", "#{base_path}#datasets", icon: "table")

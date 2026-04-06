@@ -8,8 +8,7 @@ module PromptTracker
       #
       # This assistant is responsible only for:
       # - Asking the right sequence of questions to configure test generation
-      # - Optionally calling read-only tools to inspect the prompt version
-      # - Producing a final JSON plan for the generate_tests function
+      # - Producing a final tool call to generate_tests (which the backend will confirm)
       #
       # It does NOT generate tests directly. Instead, once the
       # user has confirmed the configuration, it must emit a
@@ -20,6 +19,12 @@ module PromptTracker
         def initialize(context: {})
           @context = context || {}
         end
+
+            def allowed_tool_names
+              %w[
+                generate_tests
+              ]
+            end
 
         # Build a focused system prompt for the test creator wizard.
         def system_prompt
@@ -44,45 +49,24 @@ module PromptTracker
               * Otherwise, ask the user which prompt/version to use or help them find it.
 
             Steps:
-            1) Understand the prompt
-               - Call the get_agent_version_info tool to understand the prompt's system prompt, variables, and configuration.
-               - Briefly summarize what the prompt does (1–2 sentences).
-
-            2) Ask how many tests to generate
+	            1) Ask how many tests to generate
                - Default is 5, maximum is 10.
                - Example: "How many tests would you like me to generate? (default: 5, max: 10)"
 
-            3) Ask for optional custom instructions
+	            2) Ask for optional custom instructions
                - Ask if the user has any specific focus areas or instructions for test generation.
                - Examples: "Focus on edge cases", "Test error handling", "Emphasize multi-language support".
                - Make it clear this is optional — they can skip this step.
 
-            4) Confirm and emit JSON
-               - Summarize the configuration: prompt version, count, and any instructions.
-               - Ask the user to confirm.
+	            3) Call the generate_tests tool
+	               - After you have agent_version_id + count + (optional) instructions, you MUST call the generate_tests tool.
+	               - Do NOT call generate_tests until you have asked the two questions above.
+	               - The backend will require confirmation before actually generating tests.
 
-            IMPORTANT: You do NOT have direct access to a generate_tests tool.
-            - Instead, when (and only when) you have:
-              * Confirmed the prompt version to use, AND
-              * Decided the number of tests, AND
-              * Optionally collected custom instructions, AND
-              * The user has clearly confirmed they want to generate the tests,
-              then you MUST respond with a single JSON object and NOTHING ELSE.
-
-            The JSON object MUST have this shape:
-            {
-              "agent_version_id": <integer>,
-              "count": <integer between 1 and 10>,
-              "instructions": <string or null>
-            }
-
-            Rules for the JSON response:
-            - It must be valid JSON (no comments, no trailing commas).
-            - It must NOT be wrapped in Markdown code fences.
-            - It must NOT include any additional text before or after the JSON.
-
-            The backend will parse this JSON and call the generate_tests function
-            with confirmation through the usual UI flow.
+	            When calling generate_tests, use these arguments:
+	              - agent_version_id: integer (required)
+	              - count: integer (1-10, default: 5)
+	              - instructions: string (optional; omit if blank)
           PROMPT
         end
 

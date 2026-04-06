@@ -8,7 +8,7 @@ module PromptTracker
       # This is a query function (does not require confirmation).
       #
       # Arguments:
-      # - agent_version_id: (required) ID of the prompt version
+      # - agent_version_id: (required) ID of the agent version
       #
       # Returns:
       # - Test statistics (total, enabled, passing, failing)
@@ -51,7 +51,7 @@ module PromptTracker
 
         def build_summary_message(version, tests)
           if tests.empty?
-            return "📋 **No tests found** for #{version.prompt.name} (#{version.name})\n\nWould you like me to generate some tests?"
+              return "📋 **No tests found** for #{version.agent.name} (#{version.name})\n\nWould you like me to generate some tests?"
           end
 
           # Overall statistics
@@ -85,7 +85,7 @@ module PromptTracker
           end.join("\n")
 
           <<~MSG.strip
-            📋 **Test Summary** for #{version.prompt.name} (#{version.name})
+	            📋 **Test Summary** for #{version.agent.name} (#{version.name})
 
             **Overall Statistics:**
             • Total tests: #{total} (#{enabled} enabled, #{disabled} disabled)
@@ -117,8 +117,8 @@ module PromptTracker
           recommendations.empty? ? "" : "\n" + recommendations.join("\n")
         end
 
-        def build_links(version, tests)
-          base_path = "/prompt_tracker/testing/prompts/#{version.agent_id}/versions/#{version.id}"
+          def build_links(version, tests)
+            base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
 
           links = [
             link("View all tests", "#{base_path}#tests", icon: "list-check"),
