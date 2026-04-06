@@ -119,22 +119,43 @@ module PromptTracker
           messages
         end
 
-        # Build a RubyLLM::Chat instance via LlmClients::RubyLlmService
+        # Build a RubyLLM::Chat instance via LlmClients::RubyLlmService.
         #
-        # Delegates to LlmClients::RubyLlmService.build_chat for consistent chat configuration
-        # across single-turn and multi-turn conversations.
+        # When an external RAG backend (Pinecone, etc.) is configured via
+        # `tool_config.file_search.vector_db_config`, retrieved chunks are
+        # prepended to the system prompt before the chat is created.
         #
         # @param params [Hash] execution parameters
         # @return [RubyLLM::Chat] configured chat instance
         def build_ruby_llm_chat(params)
+          system = inject_rag_context(params[:system_prompt], params[:first_user_message])
+
           LlmClients::RubyLlmService.build_chat(
             model: model,
-            system: params[:system_prompt],
+            system: system,
             tools: tools,
             tool_config: tool_config,
             mock_function_outputs: @mock_function_outputs,
             temperature: temperature
           )
+        end
+
+        # Retrieve RAG context and prepend it to the system prompt.
+        # Returns the original system prompt unchanged when RAG is not configured
+        # or when no relevant chunks are found.
+        #
+        # @param system_prompt [String, nil]
+        # @param user_message [String, nil]
+        # @return [String, nil]
+        def inject_rag_context(system_prompt, user_message)
+          rag_context = RagContextInjector.retrieve(
+            tool_config:  tool_config,
+            user_message: user_message.to_s
+          )
+
+          return system_prompt unless rag_context.present?
+
+          [ rag_context, system_prompt ].compact.join("\n\n")
         end
 
         # Call the LLM

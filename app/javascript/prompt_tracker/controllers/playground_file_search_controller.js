@@ -22,6 +22,8 @@ export default class extends Controller {
     "vectorStoreCount",
     "vectorStoreAddButton",
     "vectorStoreError",
+    // RAG backend selector (shown when external vector DBs are configured)
+    "vectorDbProviderSelect",
     // Create vector store modal targets
     "createVectorStoreModal",
     "vectorStoreName",
@@ -53,18 +55,41 @@ export default class extends Controller {
   }
 
   /**
+   * Get the currently selected RAG backend provider ("openai" or an external DB name).
+   * Falls back to "openai" when the provider selector is not rendered.
+   * @returns {string} provider name
+   */
+  getSelectedProvider() {
+    return this.hasVectorDbProviderSelectTarget
+      ? this.vectorDbProviderSelectTarget.value
+      : "openai"
+  }
+
+  /**
+   * Called when the RAG backend selector changes.
+   * Clears the selected stores and reloads the store list for the new provider.
+   */
+  onProviderChange() {
+    this.vectorStoresLoaded = false
+    this.selectedVectorStoresTarget.innerHTML = ""
+    this.updateVectorStoreCount()
+    this.dispatchConfigChange()
+  }
+
+  /**
    * Load available vector stores from the API
    * @param {Event} event - Optional click event
    */
   async loadVectorStores(event) {
     if (event) event.preventDefault()
 
-    const select = this.vectorStoreSelectTarget
+    const provider = this.getSelectedProvider()
+    const select   = this.vectorStoreSelectTarget
     select.disabled = true
     select.innerHTML = '<option value="">Loading...</option>'
 
     try {
-      const response = await fetch("/prompt_tracker/api/vector_stores")
+      const response = await fetch(`/prompt_tracker/api/vector_stores?provider=${provider}`)
       if (!response.ok) throw new Error("Failed to load vector stores")
 
       const data = await response.json()
@@ -178,11 +203,17 @@ export default class extends Controller {
     const modalEl = this.createVectorStoreModalTarget
     console.log("[playground-file-search] Modal element found:", modalEl)
 
-    // Move modal to end of body to fix z-index issues with backdrop
+    // Move modal to end of body to fix z-index issues with backdrop.
+    // Re-bind the create button click since data-action won't work outside the controller scope.
     if (!modalEl.hasAttribute("data-moved-to-body")) {
       document.body.appendChild(modalEl)
       modalEl.setAttribute("data-moved-to-body", "true")
       console.log("[playground-file-search] Modal moved to body")
+
+      const createBtn = modalEl.querySelector('[data-playground-file-search-target="createVectorStoreButton"]')
+      if (createBtn) {
+        createBtn.addEventListener("click", () => this.createVectorStore())
+      }
     }
 
     // Reset form
@@ -198,11 +229,29 @@ export default class extends Controller {
   }
 
   /**
+   * Find a target element, checking both Stimulus targets and the modal (which may be outside controller scope).
+   * @param {string} targetAttr - The target attribute name (e.g., "vectorStoreName")
+   * @returns {HTMLElement|null}
+   * @private
+   */
+  findCreateModalTarget(targetAttr) {
+    const stimulusName = `has${targetAttr.charAt(0).toUpperCase()}${targetAttr.slice(1)}Target`
+    if (this[stimulusName]) return this[`${targetAttr}Target`]
+
+    // Fallback: query from the modal that may have been moved to body
+    const modalEl = document.getElementById("createVectorStoreModal")
+    if (!modalEl) return null
+    return modalEl.querySelector(`[data-playground-file-search-target="${targetAttr}"]`)
+  }
+
+  /**
    * Create a new vector store with uploaded files
    */
   async createVectorStore() {
-    const name = this.vectorStoreNameTarget?.value?.trim()
-    const files = this.vectorStoreFilesTarget?.files
+    const nameEl  = this.findCreateModalTarget("vectorStoreName")
+    const filesEl = this.findCreateModalTarget("vectorStoreFiles")
+    const name    = nameEl?.value?.trim()
+    const files   = filesEl?.files
 
     // Validate
     if (!name) {
@@ -222,20 +271,27 @@ export default class extends Controller {
     }
 
     // Show progress
-    this.createVectorStoreButtonTarget.disabled = true
-    this.createVectorStoreStatusTarget.classList.remove("d-none")
-    this.createVectorStoreErrorTarget.classList.add("d-none")
-    this.createVectorStoreStatusTextTarget.textContent = "Uploading files..."
+    const btnEl    = this.findCreateModalTarget("createVectorStoreButton")
+    const statusEl = this.findCreateModalTarget("createVectorStoreStatus")
+    const statusTextEl = this.findCreateModalTarget("createVectorStoreStatusText")
+    const errorEl  = this.findCreateModalTarget("createVectorStoreError")
+
+    if (btnEl) btnEl.disabled = true
+    if (statusEl) statusEl.classList.remove("d-none")
+    if (errorEl) errorEl.classList.add("d-none")
+    if (statusTextEl) statusTextEl.textContent = "Uploading files..."
 
     try {
-      // Create FormData with files
+      // Create FormData with files and provider
+      const provider = this.getSelectedProvider()
       const formData = new FormData()
       formData.append("name", name)
+      formData.append("provider", provider)
       for (let i = 0; i < files.length; i++) {
         formData.append("files[]", files[i])
       }
 
-      this.createVectorStoreStatusTextTarget.textContent = "Creating vector store..."
+      if (statusTextEl) statusTextEl.textContent = "Creating vector store..."
 
       const response = await fetch("/prompt_tracker/api/vector_stores", {
         method: "POST",
@@ -251,7 +307,7 @@ export default class extends Controller {
       }
 
       const data = await response.json()
-      this.createVectorStoreStatusTextTarget.textContent = "Vector store created!"
+      if (statusTextEl) statusTextEl.textContent = "Vector store created!"
 
       // Add the new vector store to the selected list
       const badge = document.createElement("span")
@@ -270,8 +326,9 @@ export default class extends Controller {
       this.selectedVectorStoresTarget.appendChild(badge)
 
       // Close modal after short delay
+      const modalEl = document.getElementById("createVectorStoreModal")
       setTimeout(() => {
-        Modal.getInstance(this.createVectorStoreModalTarget)?.hide()
+        Modal.getInstance(modalEl)?.hide()
       }, 500)
 
       this.updateVectorStoreCount()
@@ -286,7 +343,7 @@ export default class extends Controller {
       console.error("Error creating vector store:", error)
       this.showCreateError(error.message)
     } finally {
-      this.createVectorStoreButtonTarget.disabled = false
+      if (btnEl) btnEl.disabled = false
     }
   }
 
@@ -295,12 +352,16 @@ export default class extends Controller {
    * @param {string} message - Error message to display
    */
   showCreateError(message) {
-    if (this.hasCreateVectorStoreErrorTarget) {
-      this.createVectorStoreErrorTextTarget.textContent = message
-      this.createVectorStoreErrorTarget.classList.remove("d-none")
+    const errorEl     = this.findCreateModalTarget("createVectorStoreError")
+    const errorTextEl = this.findCreateModalTarget("createVectorStoreErrorText")
+    const statusEl    = this.findCreateModalTarget("createVectorStoreStatus")
+
+    if (errorEl && errorTextEl) {
+      errorTextEl.textContent = message
+      errorEl.classList.remove("d-none")
     }
-    if (this.hasCreateVectorStoreStatusTarget) {
-      this.createVectorStoreStatusTarget.classList.add("d-none")
+    if (statusEl) {
+      statusEl.classList.add("d-none")
     }
   }
 
@@ -421,8 +482,9 @@ export default class extends Controller {
     this.showFilesLoading(modalEl)
 
     try {
-      // Fetch files from API
-      const response = await fetch(`/prompt_tracker/api/vector_stores/${vectorStoreId}/files`, {
+      // Fetch files from API (pass provider so Pinecone stores don't hit OpenAI)
+      const provider = this.getSelectedProvider()
+      const response = await fetch(`/prompt_tracker/api/vector_stores/${vectorStoreId}/files?provider=${provider}`, {
         headers: {
           "Accept": "application/json",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content
@@ -580,10 +642,13 @@ export default class extends Controller {
   }
 
   /**
-   * Get current vector store configuration
+   * Get current vector store configuration.
+   * Includes vector_db_config when an external RAG backend is selected,
+   * so the server-side LLM pipeline knows to use RagContextInjector.
    * @returns {Object} Vector store configuration
    */
   getVectorStoreConfig() {
+    const provider = this.getSelectedProvider()
     const vectorStores = Array.from(
       this.selectedVectorStoresTarget.querySelectorAll("[data-vector-store-id]")
     ).map(badge => ({
@@ -591,10 +656,20 @@ export default class extends Controller {
       name: badge.dataset.vectorStoreName
     }))
 
-    return {
+    const config = {
       vector_store_ids: vectorStores.map(vs => vs.id),
       vector_stores: vectorStores
     }
+
+    // For external RAG backends, store provider so inference uses RagContextInjector
+    if (provider !== "openai") {
+      config.vector_db_config = {
+        provider,
+        vector_store_ids: vectorStores.map(vs => vs.id)
+      }
+    }
+
+    return config
   }
 
   /**

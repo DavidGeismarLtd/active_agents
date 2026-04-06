@@ -17,6 +17,24 @@
   </h6>
 
   <div class="mb-3">
+    <%# RAG Backend selector — only shown when external vector DBs are configured %>
+    <% enabled_vdbs = PromptTracker.configuration.enabled_vector_databases %>
+    <% if enabled_vdbs.any? %>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold">RAG Backend</label>
+        <select class="form-select form-select-sm"
+                data-playground-file-search-target="vectorDbProviderSelect"
+                data-action="change->playground-file-search#onProviderChange">
+          <% if PromptTracker.configuration.provider_configured?(:openai) %>
+            <option value="openai">OpenAI File Search</option>
+          <% end %>
+          <% enabled_vdbs.each do |vdb| %>
+            <option value="<%= vdb %>"><%= vdb.to_s.titleize %> (RAG)</option>
+          <% end %>
+        </select>
+      </div>
+    <% end %>
+
     <%= render 'prompt_tracker/testing/playground/tools/file_search/add_or_create_vector_store' %>
     <%= render 'prompt_tracker/testing/playground/tools/file_search/selected_vector_stores',
                file_search_config: file_search_config %>

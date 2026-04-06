@@ -79,6 +79,21 @@ PromptTracker.configure do |config|
   }
 
   # ===========================================================================
+  # 3b. VECTOR DATABASES (External RAG)
+  # ===========================================================================
+  # When configured, any LLM provider (Anthropic, Google, etc.) can use RAG.
+  # If empty, only OpenAI's native file search is available.
+  config.vector_databases = {
+    pinecone: {
+      api_key:            ENV["PINECONE_API_KEY"],
+      index_name:         ENV.fetch("PINECONE_INDEX_NAME", "prompt-tracker"),
+      region:             ENV.fetch("PINECONE_REGION", "us-east-1"),
+      embedding_provider: :openai,
+      embedding_model:    "text-embedding-3-small"
+    }
+  }
+
+  # ===========================================================================
   # 4. FUNCTION EXECUTION PROVIDERS
   # ===========================================================================
   # Similar to LLM providers, but for code execution backends.

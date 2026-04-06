@@ -2,21 +2,32 @@
 
 module PromptTracker
   module Api
-    # API controller for vector stores
-    # Provides endpoints for listing and creating OpenAI vector stores
+    # API controller for vector stores.
+    #
+    # All endpoints accept an optional `provider` param (default: "openai").
+    # When provider is "openai" the existing OpenAI-managed flow is used unchanged.
+    # When provider is an external vector DB (e.g. "pinecone") the request is
+    # routed to the corresponding VectorStoreOperations class.
     class VectorStoresController < ApplicationController
-      # GET /prompt_tracker/api/vector_stores
-      # Returns list of available vector stores from OpenAI
+      # GET /prompt_tracker/api/vector_stores?provider=openai
+      # GET /prompt_tracker/api/vector_stores?provider=pinecone
       def index
-        vector_stores = fetch_vector_stores
-        render json: { vector_stores: vector_stores }
+        provider     = params.fetch(:provider, "openai").to_sym
+        vector_stores = if provider == :openai
+          fetch_openai_vector_stores
+        else
+          VectorStoreService.list_vector_stores(provider: provider)
+        end
+
+        render json: { vector_stores: vector_stores, provider: provider }
       end
 
       # POST /prompt_tracker/api/vector_stores
-      # Creates a new vector store with uploaded files
+      # Body params: name, files[], provider (default: "openai")
       def create
-        name = params[:name]
-        files = params[:files]
+        name     = params[:name]
+        files    = params[:files]
+        provider = params.fetch(:provider, "openai").to_sym
 
         if name.blank?
           render json: { error: "Name is required" }, status: :unprocessable_entity
@@ -28,64 +39,72 @@ module PromptTracker
           return
         end
 
-        result = create_vector_store_with_files(name, files)
+        result = if provider == :openai
+          create_openai_vector_store(name, files)
+        else
+          create_external_vector_store(provider, name, files)
+        end
+
         render json: result, status: :created
       end
 
-      # GET /prompt_tracker/api/vector_stores/:id/files
-      # Returns list of files in a specific vector store
+      # GET /prompt_tracker/api/vector_stores/:id/files?provider=openai
       def files
         vector_store_id = params[:id]
+        provider        = params.fetch(:provider, "openai").to_sym
 
         if vector_store_id.blank?
           render json: { error: "Vector store ID is required" }, status: :unprocessable_entity
           return
         end
 
-        files = fetch_vector_store_files(vector_store_id)
+        files = VectorStoreService.list_vector_store_files(
+          provider:        provider,
+          vector_store_id: vector_store_id
+        )
 
         render json: { files: files }
+      rescue StandardError => e
+        Rails.logger.error("[VectorStoresController] Failed to fetch files: #{e.message}")
+        render json: { files: [] }
       end
 
       private
 
+      # -----------------------------------------------------------------------
+      # OpenAI path (unchanged from original)
+      # -----------------------------------------------------------------------
+
       def openai_client
         api_key = PromptTracker.configuration.api_key_for(:openai)
-
         raise "OpenAI API key not configured" unless api_key.present?
 
         OpenAI::Client.new(access_token: api_key)
       end
 
-      def fetch_vector_stores
-        client = openai_client
+      def fetch_openai_vector_stores
+        client   = openai_client
         response = client.vector_stores.list
 
         (response["data"] || []).map do |store|
           {
-            id: store["id"],
-            name: store["name"] || store["id"],
+            id:          store["id"],
+            name:        store["name"] || store["id"],
             file_counts: store["file_counts"],
-            created_at: store["created_at"]
+            created_at:  store["created_at"]
           }
         end
       rescue StandardError => e
-        Rails.logger.error("Failed to fetch vector stores: #{e.message}")
+        Rails.logger.error("[VectorStoresController] Failed to fetch OpenAI vector stores: #{e.message}")
         []
       end
 
-      def create_vector_store_with_files(name, uploaded_files)
-        client = openai_client
+      def create_openai_vector_store(name, uploaded_files)
+        client   = openai_client
+        file_ids = upload_files_to_openai(client, uploaded_files)
 
-        # Step 1: Upload files to OpenAI
-        file_ids = upload_files(client, uploaded_files)
+        vector_store = client.vector_stores.create(parameters: { name: name })
 
-        # Step 2: Create vector store
-        vector_store = client.vector_stores.create(
-          parameters: { name: name }
-        )
-
-        # Step 3: Add files to vector store
         file_ids.each do |file_id|
           client.vector_store_files.create(
             vector_store_id: vector_store["id"],
@@ -94,32 +113,41 @@ module PromptTracker
         end
 
         {
-          id: vector_store["id"],
-          name: vector_store["name"],
+          id:         vector_store["id"],
+          name:       vector_store["name"],
+          provider:   "openai",
           file_count: file_ids.size
         }
       end
 
-      def upload_files(client, uploaded_files)
+      def upload_files_to_openai(client, uploaded_files)
         Array(uploaded_files).map do |file|
           response = client.files.upload(
-            parameters: {
-              file: file.tempfile,
-              purpose: "assistants"
-            }
+            parameters: { file: file.tempfile, purpose: "assistants" }
           )
           response["id"]
         end
       end
 
-      def fetch_vector_store_files(vector_store_id)
-        VectorStoreService.list_vector_store_files(
-          provider: :openai,
-          vector_store_id: vector_store_id
-        )
-      rescue StandardError => e
-        Rails.logger.error("Failed to fetch vector store files: #{e.message}")
-        []
+      # -----------------------------------------------------------------------
+      # External vector DB path (Pinecone, future Qdrant, etc.)
+      # -----------------------------------------------------------------------
+
+      def create_external_vector_store(provider, name, uploaded_files)
+        ops = VectorStoreService.operations_class_for(provider)
+        ops.create_vector_store(name: name)
+
+        cfg          = PromptTracker.configuration.vector_databases[provider]
+        emb_provider = cfg[:embedding_provider] || :openai
+        emb_model    = cfg[:embedding_model]    || "text-embedding-3-small"
+
+        Array(uploaded_files).each do |file|
+          chunks  = DocumentChunker.chunk(file)
+          vectors = chunks.map { |c| EmbeddingService.embed(c[:text], provider: emb_provider, model: emb_model) }
+          ops.upsert_chunks(namespace: name, chunks: chunks, vectors: vectors, filename: file.original_filename)
+        end
+
+        { id: name, name: name, provider: provider.to_s }
       end
     end
   end

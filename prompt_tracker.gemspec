@@ -28,4 +28,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "aws-sdk-lambda", "~> 1.0"
   spec.add_dependency "rubyzip", "~> 2.3"
   spec.add_dependency "bcrypt", "~> 3.1"
+  spec.add_dependency "pdf-reader", "~> 2.0"  # PDF text extraction for document chunking
 end

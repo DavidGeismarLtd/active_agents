@@ -177,6 +177,23 @@ module PromptTracker
     #   }
     attr_accessor :default_deployment_config
 
+    # Vector database configurations for external RAG providers.
+    # When configured, any LLM provider can use RAG via an external vector DB.
+    # If empty/nil, only OpenAI's native file search is available.
+    #
+    # @return [Hash] hash of provider symbol => config hash
+    # @example
+    #   {
+    #     pinecone: {
+    #       api_key:            ENV["PINECONE_API_KEY"],
+    #       index_name:         ENV.fetch("PINECONE_INDEX_NAME", "prompt-tracker"),
+    #       region:             ENV.fetch("PINECONE_REGION", "us-east-1"),
+    #       embedding_provider: :openai,
+    #       embedding_model:    "text-embedding-3-small"
+    #     }
+    #   }
+    attr_accessor :vector_databases
+
     # Assistant chatbot configuration.
     # @return [Hash] chatbot config hash
     # @example
@@ -216,6 +233,7 @@ module PromptTracker
       @configuration_provider = nil
       @url_options_provider = nil
       @base_record_class = "::ActiveRecord::Base"
+      @vector_databases = {}
       @function_providers = {}
       @agent_base_url = "http://localhost:3000"
       @default_deployment_config = {
@@ -530,6 +548,23 @@ module PromptTracker
     end
 
     # =========================================================================
+    # Vector Database Methods
+    # =========================================================================
+
+    # Check if a specific vector database provider has an API key configured.
+    # @param provider [Symbol, String] the vector DB provider (e.g., :pinecone, :qdrant)
+    # @return [Boolean] true if the provider has an API key
+    def vector_database_configured?(provider)
+      vector_databases&.dig(provider.to_sym, :api_key).present?
+    end
+
+    # Get all vector database providers that have API keys configured.
+    # @return [Array<Symbol>] list of configured provider symbols
+    def enabled_vector_databases
+      (vector_databases || {}).select { |_, cfg| cfg[:api_key].present? }.keys
+    end
+
+    # =========================================================================
     # Provider/API Utility Methods
     # =========================================================================
 
@@ -589,6 +624,12 @@ module PromptTracker
         next unless tool_metadata
 
         tools << build_tool_hash(tool_symbol, tool_metadata)
+      end
+
+      # 1b. Inject file_search for any provider when an external vector DB is configured
+      if enabled_vector_databases.any? && !builtin_tool_symbols.include?(:file_search)
+        tool_metadata = builtin_tools[:file_search]
+        tools << build_tool_hash(:file_search, tool_metadata) if tool_metadata
       end
 
       # 2. Add functions tool if model supports function_calling
