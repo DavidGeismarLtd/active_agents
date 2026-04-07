@@ -25,8 +25,8 @@ RSpec.describe PromptTracker::TaskSchedulesController, type: :controller do
       {
         deployed_agent_slug: task_agent.slug,
         task_schedule: {
-          schedule_type: "cron",
-          cron_expression: "0 9 * * *",
+            interval_preset: "every_24_hours",
+            run_at_time: "09:00",
           timezone: "UTC",
           enabled: true
         }

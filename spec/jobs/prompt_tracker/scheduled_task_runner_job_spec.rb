@@ -69,34 +69,14 @@ RSpec.describe PromptTracker::ScheduledTaskRunnerJob, type: :job do
 
         allow(PromptTracker::ExecuteTaskAgentJob).to receive(:perform_later)
 
-        travel_to Time.current do
+          travel_to Time.current do
           described_class.perform_now
 
           schedule.reload
           expect(schedule.last_run_at).to be_within(1.second).of(Time.current)
-          # Next run should be 1 hour from the last_run_at (which is now)
-          expect(schedule.next_run_at).to be_within(1.second).of(1.hour.from_now)
+            # Next run should be 1 hour from the schedule's previous next_run_at (which was 5 minutes ago)
+            expect(schedule.next_run_at).to be_within(1.second).of(55.minutes.from_now)
         end
-      end
-
-      it "calculates next_run_at using TaskScheduleCalculator" do
-        schedule = create(:task_schedule,
-                         deployed_agent: task_agent,
-                         enabled: true,
-                         next_run_at: 5.minutes.ago,
-                         schedule_type: "cron",
-                         cron_expression: "0 9 * * *",
-                         timezone: "UTC")
-
-        allow(PromptTracker::ExecuteTaskAgentJob).to receive(:perform_later)
-
-        described_class.perform_now
-
-        schedule.reload
-        # Next run should be tomorrow at 9am
-        expect(schedule.next_run_at.hour).to eq(9)
-        expect(schedule.next_run_at.min).to eq(0)
-        expect(schedule.next_run_at).to be > Time.current
       end
     end
 
@@ -152,28 +132,27 @@ RSpec.describe PromptTracker::ScheduledTaskRunnerJob, type: :job do
       end
     end
 
-    context "when next_run_at calculation fails" do
-      it "sets next_run_at to 1 hour from now as fallback" do
-        schedule = create(:task_schedule,
-                         deployed_agent: task_agent,
-                         enabled: true,
-                         next_run_at: 5.minutes.ago,
-                         schedule_type: "cron",
-                         cron_expression: "0 9 * * *",
-                         timezone: "UTC")
+      context "when next_run_at calculation fails" do
+        it "sets next_run_at to 1 hour from now as fallback" do
+          schedule = create(:task_schedule,
+                           deployed_agent: task_agent,
+                           enabled: true,
+                           next_run_at: 5.minutes.ago,
+                           interval_value: 1,
+                           interval_unit: "hours")
 
-        # Manually set invalid cron expression to bypass validation
-        schedule.update_column(:cron_expression, "invalid")
+          allow(PromptTracker::ExecuteTaskAgentJob).to receive(:perform_later)
+          allow_any_instance_of(PromptTracker::TaskScheduleCalculator)
+            .to receive(:next_run_time)
+            .and_raise(StandardError, "calc failed")
 
-        allow(PromptTracker::ExecuteTaskAgentJob).to receive(:perform_later)
+          travel_to Time.current do
+            described_class.perform_now
 
-        travel_to Time.current do
-          described_class.perform_now
-
-          schedule.reload
-          expect(schedule.next_run_at).to be_within(1.second).of(1.hour.from_now)
+            schedule.reload
+            expect(schedule.next_run_at).to be_within(1.second).of(1.hour.from_now)
+          end
         end
       end
-    end
   end
 end

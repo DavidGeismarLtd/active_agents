@@ -28,7 +28,6 @@ module PromptTracker
   class TaskSchedule < ApplicationRecord
     # Schedule type enum
     enum schedule_type: {
-      cron: "cron",
       interval: "interval"
     }, _prefix: true
 
@@ -37,8 +36,19 @@ module PromptTracker
       minutes: "minutes",
       hours: "hours",
       days: "days",
-      weeks: "weeks"
+      weeks: "weeks",
+      months: "months"
     }, _prefix: true, _default: nil
+
+    INTERVAL_PRESETS = {
+      "every_1_hour" => { value: 1, unit: "hours" },
+      "every_6_hours" => { value: 6, unit: "hours" },
+      "every_24_hours" => { value: 24, unit: "hours" },
+      "every_7_days" => { value: 7, unit: "days" },
+      "every_1_month" => { value: 1, unit: "months" }
+    }.freeze
+
+    attr_accessor :interval_preset
 
     # Associations
     belongs_to :deployed_agent,
@@ -48,11 +58,7 @@ module PromptTracker
     # Validations
     validates :schedule_type, presence: true
     validates :timezone, presence: true
-
-    # Cron-specific validations
-    validates :cron_expression,
-              presence: true,
-              if: :schedule_type_cron?
+    validates :run_at_time, presence: true
 
     # Interval-specific validations
     validates :interval_value,
@@ -63,19 +69,22 @@ module PromptTracker
               presence: true,
               if: :schedule_type_interval?
 
+    validate :run_at_time_format
+
     # Scopes
     scope :enabled, -> { where(enabled: true) }
     scope :disabled, -> { where(enabled: false) }
     scope :due, -> { enabled.where("next_run_at <= ?", Time.current) }
 
     # Callbacks
-    before_create :calculate_next_run
+    before_validation :set_interval_defaults
+    before_validation :apply_interval_preset
+    before_create :set_initial_next_run
 
     # Enable the schedule
     def enable!
       update!(enabled: true)
-      calculate_next_run
-      save!
+      update!(next_run_at: initial_next_run_at)
     end
 
     # Disable the schedule
@@ -95,42 +104,63 @@ module PromptTracker
         last_run_at: Time.current,
         run_count: run_count + 1
       )
-      calculate_next_run
-      save!
+      self.next_run_at = nil
+      update!(next_run_at: TaskScheduleCalculator.new(self).next_run_time)
     end
 
-    # Calculate the next run time based on schedule type
-    def calculate_next_run
-      return if next_run_at.present? # Don't override if already set
-
-      self.next_run_at = case schedule_type
-      when "cron"
-                           calculate_next_run_from_cron
-      when "interval"
-                           calculate_next_run_from_interval
-      end
+    def interval_preset
+      @interval_preset || self.class.interval_preset_for(interval_value: interval_value, interval_unit: interval_unit)
     end
 
     private
 
-    # Calculate next run time from cron expression
-    # @return [Time]
-    def calculate_next_run_from_cron
-      return nil unless cron_expression.present?
-
-      # For Phase 1, we'll use a simple implementation
-      # In Phase 3, we'll integrate the fugit gem for proper cron parsing
-      # For now, just schedule 1 hour from now as a placeholder
-      Time.current + 1.hour
+    def set_interval_defaults
+      self.schedule_type ||= "interval"
     end
 
-    # Calculate next run time from interval
-    # @return [Time]
-    def calculate_next_run_from_interval
-      return nil unless interval_value.present? && interval_unit.present?
+    def apply_interval_preset
+      return if interval_preset.blank?
 
-      base_time = last_run_at || Time.current
-      base_time + interval_value.send(interval_unit)
+      preset = INTERVAL_PRESETS[interval_preset]
+      return if preset.nil?
+
+      self.interval_value = preset[:value]
+      self.interval_unit = preset[:unit]
+    end
+
+    def set_initial_next_run
+      self.next_run_at ||= initial_next_run_at
+    end
+
+    def initial_next_run_at
+      tz = ActiveSupport::TimeZone[timezone]
+      raise ArgumentError, "Unknown timezone: #{timezone}" if tz.nil?
+
+      hour, minute = run_at_time.split(":").map(&:to_i)
+      now_local = Time.current.in_time_zone(tz)
+      candidate = now_local.change(hour: hour, min: minute, sec: 0)
+      candidate += 1.day if candidate <= now_local
+
+      candidate.utc
+    end
+
+    def run_at_time_format
+      return if run_at_time.blank?
+
+      unless run_at_time.match?(/\A[0-2][0-9]:[0-5][0-9]\z/)
+        errors.add(:run_at_time, "must be in HH:MM format")
+        return
+      end
+
+      hour, minute = run_at_time.split(":").map(&:to_i)
+      if hour > 23 || minute > 59
+        errors.add(:run_at_time, "must be a valid time")
+      end
+    end
+
+    def self.interval_preset_for(interval_value:, interval_unit:)
+      match = INTERVAL_PRESETS.find { |_k, v| v[:value] == interval_value && v[:unit] == interval_unit }
+      match&.first
     end
   end
 end
