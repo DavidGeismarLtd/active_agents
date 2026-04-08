@@ -53,7 +53,7 @@ group :test do
   gem "vcr", "~> 6.2"
   gem "rails-controller-testing", "~> 1.0" # For assigns and assert_template in controller tests
   gem "capybara", "~> 3.39"
-  gem "selenium-webdriver", "~> 4.15"
+  gem "selenium-webdriver", "~> 4.39"
 end
 
 # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
