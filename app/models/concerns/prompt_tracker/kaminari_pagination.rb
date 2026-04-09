@@ -22,7 +22,9 @@ module PromptTracker
       def pt_paginate(scope, page: nil, per_page: 25)
         page = (page || 1).to_i
         per_page = per_page.to_i
-        total = scope.count(:all)
+        # count(:all) returns a Hash when the scope has a GROUP BY clause
+        total_count = scope.count(:all)
+        total = total_count.is_a?(Hash) ? total_count.length : total_count
         records = scope.limit(per_page).offset((page - 1) * per_page).to_a
 
         Kaminari.paginate_array(records, total_count: total).page(page).per(per_page)
