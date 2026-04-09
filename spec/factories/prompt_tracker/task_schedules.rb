@@ -6,17 +6,11 @@ FactoryBot.define do
     schedule_type { "interval" }
     enabled { true }
     timezone { "UTC" }
+    run_at_time { "09:00" }
 
     # Interval-based schedule (default)
     interval_value { 6 }
     interval_unit { "hours" }
-
-    trait :cron_based do
-      schedule_type { "cron" }
-      cron_expression { "0 9 * * *" } # Daily at 9am
-      interval_value { nil }
-      interval_unit { nil }
-    end
 
     trait :hourly do
       schedule_type { "interval" }

@@ -105,15 +105,8 @@ RSpec.describe "Task Agent System - Phase 1", type: :model do
       expect(schedule.schedule_type).to eq("interval")
       expect(schedule.interval_value).to eq(6)
       expect(schedule.interval_unit).to eq("hours")
+        expect(schedule.run_at_time).to eq("09:00")
       expect(schedule.enabled?).to be true
-      expect(schedule.next_run_at).to be_present
-    end
-
-    it "creates a cron-based schedule" do
-      schedule = create(:task_schedule, :cron_based, deployed_agent: agent)
-
-      expect(schedule.schedule_type).to eq("cron")
-      expect(schedule.cron_expression).to eq("0 9 * * *")
       expect(schedule.next_run_at).to be_present
     end
 

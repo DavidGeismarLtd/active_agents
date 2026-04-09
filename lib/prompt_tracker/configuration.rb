@@ -106,12 +106,19 @@ module PromptTracker
     #   }
     attr_accessor :builtin_tools
 
+
     # Dynamic configuration provider for multi-tenant applications.
     # When set, this proc/lambda is called at runtime to get context-specific
     # configuration (API keys, contexts, etc.) instead of using static values.
     #
-    # The provider should return a Hash with optional :providers and :contexts keys.
-    # These will override the static @providers and @contexts values.
+    # The provider should return a Hash with optional keys like:
+    # - :providers (overrides @providers)
+    # - :contexts (overrides @contexts)
+    # - :features (overrides @features)
+    # - :function_providers (overrides @function_providers)
+    # - :assistant_chatbot (overrides @assistant_chatbot)
+    #
+    # Any missing keys fall back to the static configuration values.
     #
     # @return [Proc, nil] callable that returns dynamic configuration hash
     # @example
@@ -122,7 +129,10 @@ module PromptTracker
     #         openai: { api_key: org.openai_api_key },
     #         anthropic: { api_key: org.anthropic_api_key }
     #       },
-    #       contexts: org.prompt_tracker_contexts
+    #       contexts: org.prompt_tracker_contexts,
+    #       features: org.prompt_tracker_features,
+    #       function_providers: org.prompt_tracker_function_providers,
+    #       assistant_chatbot: org.prompt_tracker_assistant_chatbot
     #     }
     #   }
     attr_accessor :configuration_provider
@@ -143,20 +153,21 @@ module PromptTracker
     #   }
     attr_accessor :url_options_provider
 
-    # Function execution provider configuration.
-    # Similar to LLM providers, but for code execution backends.
-    # @return [Hash] hash of provider symbol => provider config hash
-    # @example
-    #   {
-    #     aws_lambda: {
-    #       region: ENV["AWS_REGION"],
-    #       access_key_id: ENV["AWS_ACCESS_KEY_ID"],
-    #       secret_access_key: ENV["AWS_SECRET_ACCESS_KEY"],
-    #       execution_role_arn: ENV["LAMBDA_EXECUTION_ROLE_ARN"],
-    #       function_prefix: "prompt-tracker"
-    #     }
-    #   }
-    attr_accessor :function_providers
+      # Function execution provider configuration.
+      # Similar to LLM providers, but for code execution backends.
+      # @return [Hash] hash of provider symbol => provider config hash
+      # @example
+      #   {
+      #     aws_lambda: {
+      #       region: ENV["AWS_REGION"],
+      #       access_key_id: ENV["AWS_ACCESS_KEY_ID"],
+      #       secret_access_key: ENV["AWS_SECRET_ACCESS_KEY"],
+      #       execution_role_arn: ENV["LAMBDA_EXECUTION_ROLE_ARN"],
+      #       function_prefix: "prompt-tracker"
+      #     }
+      #   }
+      # NOTE: the getter is overridden below to support dynamic configuration.
+      attr_accessor :function_providers
 
     # Base URL for deployed agents (used to generate public URLs).
     # @return [String] base URL (e.g., "https://api.example.com")
@@ -177,33 +188,34 @@ module PromptTracker
     #   }
     attr_accessor :default_deployment_config
 
-    # Assistant chatbot configuration.
-    # @return [Hash] chatbot config hash
-    # @example
-    #   {
-    #     enabled: true,
-    #     model: {
-    #       provider: :openai,
-    #       api: :chat_completions,
-    #       model: "gpt-4o",
-    #       temperature: 0.7
-    #     },
-    #     ui: {
-    #       name: "PromptTracker Assistant",
-    #       position: :bottom_right,
-    #       theme: :light
-    #     },
-    #     conversation: {
-    #       max_messages: 50,
-    #       ttl: 24.hours
-    #     },
-    #     capabilities: {
-    #       create_prompts: true,
-    #       generate_tests: true,
-    #       run_tests: true
-    #     }
-    #   }
-    attr_accessor :assistant_chatbot
+      # Assistant chatbot configuration.
+      # @return [Hash] chatbot config hash
+      # @example
+      #   {
+      #     enabled: true,
+      #     model: {
+      #       provider: :openai,
+      #       api: :chat_completions,
+      #       model: "gpt-4o",
+      #       temperature: 0.7
+      #     },
+      #     ui: {
+      #       name: "PromptTracker Assistant",
+      #       position: :bottom_right,
+      #       theme: :light
+      #     },
+      #     conversation: {
+      #       max_messages: 50,
+      #       ttl: 24.hours
+      #     },
+      #     capabilities: {
+      #       create_prompts: true,
+      #       generate_tests: true,
+      #       run_tests: true
+      #     }
+      #   }
+      # NOTE: the getter is overridden below to support dynamic configuration.
+      attr_accessor :assistant_chatbot
 
     # Initialize with default values.
     def initialize
@@ -301,6 +313,39 @@ module PromptTracker
 
       dynamic_config = @configuration_provider.call
       dynamic_config[:features] || @features
+    end
+
+
+    # Get the effective function execution providers configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @function_providers.
+    # @return [Hash] hash of provider symbol => provider config hash
+    def effective_function_providers
+      return @function_providers unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:function_providers] || @function_providers
+    end
+
+    # Get the effective assistant chatbot configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @assistant_chatbot.
+    # @return [Hash] chatbot configuration hash
+    def effective_assistant_chatbot
+      return @assistant_chatbot unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:assistant_chatbot] || @assistant_chatbot
+    end
+
+    # Override the assistant_chatbot accessor to support dynamic configuration.
+    # @return [Hash]
+    def assistant_chatbot
+      effective_assistant_chatbot
+    end
+
+    # Override the function_providers accessor to support dynamic configuration.
+    # @return [Hash]
+    def function_providers
+      effective_function_providers
     end
 
     # =========================================================================
@@ -454,31 +499,31 @@ module PromptTracker
     # Check if the assistant chatbot is enabled.
     # @return [Boolean] true if the chatbot is enabled
     def assistant_chatbot_enabled?
-      @assistant_chatbot[:enabled] == true
+        assistant_chatbot[:enabled] == true
     end
 
     # Get the assistant chatbot model configuration.
     # @return [Hash] hash with :provider, :api, :model, :temperature
     def assistant_chatbot_model
-      @assistant_chatbot[:model] || {}
+        assistant_chatbot[:model] || {}
     end
 
     # Get the assistant chatbot UI configuration.
     # @return [Hash] hash with :name, :position, :theme
     def assistant_chatbot_ui
-      @assistant_chatbot[:ui] || {}
+        assistant_chatbot[:ui] || {}
     end
 
     # Get the assistant chatbot conversation settings.
     # @return [Hash] hash with :max_messages, :ttl, :storage
     def assistant_chatbot_conversation
-      @assistant_chatbot[:conversation] || {}
+        assistant_chatbot[:conversation] || {}
     end
 
     # Get the assistant chatbot capabilities.
     # @return [Hash] hash of capability symbol => boolean
     def assistant_chatbot_capabilities
-      @assistant_chatbot[:capabilities] || {}
+        assistant_chatbot[:capabilities] || {}
     end
 
     # Check if a specific chatbot capability is enabled.
@@ -491,7 +536,7 @@ module PromptTracker
     # Get the assistant chatbot security settings.
     # @return [Hash] hash with :rate_limit, :require_auth, :audit_enabled
     def assistant_chatbot_security
-      @assistant_chatbot[:security] || {}
+        assistant_chatbot[:security] || {}
     end
 
     # =========================================================================
@@ -502,7 +547,7 @@ module PromptTracker
     # @param provider [Symbol] the provider name (e.g., :aws_lambda)
     # @return [Boolean] true if the provider has required configuration
     def function_provider_configured?(provider)
-      config = @function_providers[provider.to_sym]
+        config = function_providers[provider.to_sym]
       return false if config.nil?
 
       # Provider-specific validation
@@ -519,14 +564,14 @@ module PromptTracker
     # Get the default function provider.
     # @return [Symbol, nil] the first configured provider or nil
     def default_function_provider
-      @function_providers.keys.find { |provider| function_provider_configured?(provider) }
+        function_providers.keys.find { |provider| function_provider_configured?(provider) }
     end
 
     # Get configuration for a function provider.
     # @param provider [Symbol] the provider name
     # @return [Hash, nil] the provider configuration or nil
     def function_provider_config(provider)
-      @function_providers[provider.to_sym]
+        function_providers[provider.to_sym]
     end
 
     # =========================================================================

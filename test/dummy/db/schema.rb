@@ -432,10 +432,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
 
   create_table "prompt_tracker_task_schedules", force: :cascade do |t|
     t.bigint "deployed_agent_id", null: false
-    t.string "schedule_type", null: false
+      t.string "schedule_type", default: "interval", null: false
     t.string "cron_expression"
     t.integer "interval_value"
     t.string "interval_unit"
+      t.string "run_at_time", default: "09:00", null: false
     t.string "timezone", default: "UTC", null: false
     t.boolean "enabled", default: true, null: false
     t.datetime "last_run_at"

@@ -8,12 +8,18 @@ module PromptTracker
 
     # GET /agents/:slug/schedules/new
     def new
-      @schedule = @agent.task_schedules.build
+      @schedule = @agent.task_schedules.build(
+        schedule_type: "interval",
+        interval_preset: "every_24_hours",
+        run_at_time: "09:00",
+        timezone: "UTC",
+        enabled: true
+      )
     end
 
     # POST /agents/:slug/schedules
     def create
-      @schedule = @agent.task_schedules.build(schedule_params)
+      @schedule = @agent.task_schedules.build(schedule_params.merge(schedule_type: "interval"))
 
       if @schedule.save
         redirect_to deployed_agent_path(@agent.slug), notice: "Schedule created successfully."
@@ -28,7 +34,7 @@ module PromptTracker
 
     # PATCH /agents/:slug/schedules/:id
     def update
-      if @schedule.update(schedule_params)
+      if @schedule.update(schedule_params.merge(schedule_type: "interval"))
         redirect_to deployed_agent_path(@agent.slug), notice: "Schedule updated successfully."
       else
         render :edit, status: :unprocessable_entity
@@ -66,10 +72,8 @@ module PromptTracker
 
     def schedule_params
       params.require(:task_schedule).permit(
-        :schedule_type,
-        :cron_expression,
-        :interval_value,
-        :interval_unit,
+        :interval_preset,
+        :run_at_time,
         :timezone,
         :enabled
       )
