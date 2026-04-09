@@ -134,7 +134,7 @@ module PromptTracker
         end
 
           def build_links(agent, version)
-            base_path = "/prompt_tracker/testing/agents"
+            base_path = "#{engine_base_path}/testing/agents"
 
           [
                 # Link to version detail page (primary action)

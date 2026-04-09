@@ -12,27 +12,41 @@ module PromptTracker
       DOCS = {
         tracking: {
           file: "tracking.html.erb",
-          route: "/prompt_tracker/docs/tracking"
+          route_suffix: "docs/tracking"
         },
         playground_guide: {
           file: "playground_guide.html.erb",
-          route: "/prompt_tracker/docs/playground_guide"
+          route_suffix: "docs/playground_guide"
         },
         testing_guide: {
           file: "testing_guide.html.erb",
-          route: "/prompt_tracker/docs/testing_guide"
+          route_suffix: "docs/testing_guide"
         }
       }.freeze
 
       Document = Struct.new(:key, :route, :text, keyword_init: true)
 
+      # Get the engine's mounted base path dynamically.
+      # @return [String] base path without trailing slash
+      def self.engine_base_path
+        url_options = PromptTracker.configuration.url_options_provider&.call || {}
+        PromptTracker::Engine.routes.url_helpers.root_path(url_options).chomp("/")
+      end
+
+      # Build a full route from a doc's route_suffix.
+      # @param route_suffix [String] e.g. "docs/tracking"
+      # @return [String] e.g. "/prompt_tracker/docs/tracking"
+      def self.doc_route(route_suffix)
+        "#{engine_base_path}/#{route_suffix}"
+      end
+
       def self.context_for(query, max_docs: 2, excerpt_chars: 900)
           query_preview = query.to_s[0, 200]
           Rails.logger.info("[DocsKnowledgeBase] search start query_preview=#{query_preview.inspect} max_docs=#{max_docs} excerpt_chars=#{excerpt_chars}")
           Rails.logger.info("[DocsKnowledgeBase] docs_dir=#{DOCS_DIR}")
-          Rails.logger.info("[DocsKnowledgeBase] docs=#{DOCS.map { |k, v| "#{k}:#{v[:route]}" }.join(", ")}")
+          Rails.logger.info("[DocsKnowledgeBase] docs=#{DOCS.map { |k, v| "#{k}:#{doc_route(v[:route_suffix])}" }.join(", ")}")
 
-        docs_list = DOCS.map { |key, meta| "- #{meta[:route]} (#{key})" }.join("\n")
+        docs_list = DOCS.map { |key, meta| "- #{doc_route(meta[:route_suffix])} (#{key})" }.join("\n")
 
         query_terms = tokenize(query)
           Rails.logger.info("[DocsKnowledgeBase] query_terms_count=#{query_terms.length} query_terms_sample=#{query_terms.first(25).inspect}")
@@ -76,7 +90,7 @@ module PromptTracker
           path = DOCS_DIR.join(meta[:file])
             Rails.logger.info("[DocsKnowledgeBase] reading #{path}")
           raw = File.read(path)
-          Document.new(key: key, route: meta[:route], text: strip_view_markup(raw))
+          Document.new(key: key, route: doc_route(meta[:route_suffix]), text: strip_view_markup(raw))
         end
       end
 
@@ -111,7 +125,7 @@ module PromptTracker
         TXT
       end
 
-      private_class_method :strip_view_markup, :tokenize, :score, :format_excerpt
+      private_class_method :engine_base_path, :doc_route, :strip_view_markup, :tokenize, :score, :format_excerpt
     end
   end
 end

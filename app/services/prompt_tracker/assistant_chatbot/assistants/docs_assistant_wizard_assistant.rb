@@ -26,7 +26,7 @@ module PromptTracker
             Rules:
             - Do NOT invent features or UI that is not mentioned in the excerpts.
             - If the excerpts don't contain the answer, say so and suggest which docs page to read.
-            - When helpful, reference the relevant docs route (e.g. /prompt_tracker/docs/testing_guide).
+            - When helpful, reference the relevant docs route (e.g. #{engine_base_path}/docs/testing_guide).
             - Do NOT output JSON tool calls. You have NO tools.
           PROMPT
         end
@@ -34,6 +34,13 @@ module PromptTracker
         private
 
         attr_reader :context
+
+        # Get the engine's mounted base path dynamically.
+        # @return [String] base path without trailing slash
+        def engine_base_path
+          url_options = PromptTracker.configuration.url_options_provider&.call || {}
+          PromptTracker::Engine.routes.url_helpers.root_path(url_options).chomp("/")
+        end
       end
     end
   end

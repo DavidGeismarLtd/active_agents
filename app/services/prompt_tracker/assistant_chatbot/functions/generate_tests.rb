@@ -72,7 +72,7 @@ module PromptTracker
         end
 
           def build_links(version, tests)
-            base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
+            base_path = "#{engine_base_path}/testing/agents/#{version.agent_id}/versions/#{version.id}"
 
             [
               link("View all tests", "#{base_path}#tests", icon: "list-check")

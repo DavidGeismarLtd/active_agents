@@ -124,7 +124,7 @@ module PromptTracker
         end
 
         def build_links(version, dataset)
-          base_path = "/prompt_tracker/testing/agents/#{version.agent_id}/versions/#{version.id}"
+          base_path = "#{engine_base_path}/testing/agents/#{version.agent_id}/versions/#{version.id}"
           datasets_path = "#{base_path}/datasets"
 
           [

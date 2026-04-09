@@ -81,6 +81,14 @@ module PromptTracker
           { text: text, url: url, icon: icon }
         end
 
+        # Get the engine's mounted base path (e.g., "/prompt_tracker" or "/orgs/my-org/app").
+        # Uses url_options_provider to resolve org-scoped mount paths.
+        # @return [String] base path without trailing slash
+        def engine_base_path
+          url_options = PromptTracker.configuration.url_options_provider&.call || {}
+          PromptTracker::Engine.routes.url_helpers.root_path(url_options).chomp("/")
+        end
+
         # Get argument value with symbol or string key
         def arg(key)
           @arguments[key.to_sym] || @arguments[key.to_s]

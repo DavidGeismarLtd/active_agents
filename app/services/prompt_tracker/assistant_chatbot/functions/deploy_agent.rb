@@ -145,7 +145,7 @@ module PromptTracker
 
         def build_links(agent)
           [
-            link("View agent", "/prompt_tracker/agents/#{agent.slug}", icon: "robot")
+            link("View agent", "#{engine_base_path}/agents/#{agent.slug}", icon: "robot")
           ]
         end
 
