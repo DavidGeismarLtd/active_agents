@@ -72,9 +72,11 @@ export default class extends Controller {
     if (this.hasCustomSectionTarget) {
       this.customSectionTarget.style.display = "none"
     }
-    // Enable dataset select validation, disable custom fields validation
+    // Enable dataset select validation, disable ALL custom fields validation
     this.toggleDatasetSelectRequired(true)
     this.toggleCustomFieldsRequired(false)
+    this.toggleConversationFieldsRequired(false)
+    this.toggleSingleModeFieldsRequired(false)
   }
 
   showCustomMode() {
@@ -147,6 +149,10 @@ export default class extends Controller {
 	toggleExecutionMode() {
 		// Only relevant when custom section is present/visible
 		if (!this.hasCustomSectionTarget) return
+
+		// Skip if in dataset mode - custom fields are hidden and should not have required
+		const selectedRunMode = this.modeRadioTargets.find(radio => radio.checked)?.value
+		if (selectedRunMode === "dataset") return
 
 		const selectedExecutionMode = this.hasExecutionModeRadioTarget
 			? this.executionModeRadioTargets.find(radio => radio.checked)?.value
