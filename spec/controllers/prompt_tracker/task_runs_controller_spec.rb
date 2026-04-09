@@ -50,26 +50,41 @@ RSpec.describe PromptTracker::TaskRunsController, type: :controller do
       expect(assigns(:task_run)).to eq(task_run)
     end
 
-    it "builds timeline from LLM responses and function executions" do
-      llm_response = create(:llm_response,
-                            deployed_agent: task_agent,
-                            task_run: task_run,
-                            context: { "iteration" => 1 })
-      function_execution = create(:function_execution,
-                                  deployed_agent: task_agent,
-                                  task_run: task_run)
+      it "builds timeline grouped by iteration and orders LLM responses before function executions" do
+        llm_response = create(
+          :llm_response,
+          deployed_agent: task_agent,
+          task_run: task_run,
+          context: { "iteration" => 1 }
+        )
+        function_execution = create(
+          :function_execution,
+          deployed_agent: task_agent,
+          task_run: task_run
+        )
 
-      get :show, params: { deployed_agent_slug: task_agent.slug, id: task_run.id }
-      timeline = assigns(:timeline)
+        # Simulate function execution being recorded before the LLM response
+        function_execution.update_columns(created_at: 1.minute.ago, executed_at: 1.minute.ago)
+        llm_response.update_columns(created_at: Time.current)
 
-      # Timeline is an array of iterations
-      expect(timeline).to be_an(Array)
-      expect(timeline.length).to eq(1)  # All events grouped into one iteration
+        # Timeline is an array of iterations
+        expect(timeline).to be_an(Array)
+        expect(timeline.length).to eq(1)  # All events grouped into one iteration
 
-      # Each iteration has events
-      iteration = timeline.first
-      expect(iteration[:events].length).to eq(2)
-      expect(iteration[:events].map { |e| e[:type] }).to contain_exactly(:llm_response, :function_execution)
-    end
+        # Each iteration has events
+        iteration = timeline.first
+        expect(iteration[:events].length).to eq(2)
+        expect(iteration[:events].map { |e| e[:type] }).to contain_exactly(:llm_response, :function_execution)
+      end
+        get :show, params: { deployed_agent_slug: task_agent.slug, id: task_run.id }
+        timeline = assigns(:timeline)
+
+        expect(timeline.length).to eq(1)
+        iteration = timeline.first
+        expect(iteration[:iteration]).to eq(1)
+        expect(iteration[:llm_calls_count]).to eq(1)
+        expect(iteration[:function_calls_count]).to eq(1)
+        expect(iteration[:events].map { |e| e[:type] }).to eq([ :llm_response, :function_execution ])
+      end
   end
 end

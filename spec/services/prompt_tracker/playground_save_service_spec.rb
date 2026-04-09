@@ -307,6 +307,101 @@ module PromptTracker
           expect(version.response_schema).to be_nil
         end
       end
+
+      context "with mcp_servers" do
+        let!(:prompt) { Prompt.create!(name: "MCP Prompt", slug: "mcp_prompt") }
+        let(:mcp_servers) { [ "filesystem", "github" ] }
+        let(:params_with_mcp) do
+          valid_params.merge(prompt_name: "Test", mcp_servers: mcp_servers)
+        end
+
+        it "saves mcp_servers when creating new prompt" do
+          result = described_class.call(params: params_with_mcp)
+
+          expect(result.success?).to be true
+          expect(result.version.mcp_servers).to match_array(mcp_servers)
+        end
+
+        it "saves mcp_servers when creating new version" do
+          result = described_class.call(
+            params: valid_params.merge(mcp_servers: mcp_servers),
+            prompt: prompt
+          )
+
+          expect(result.version.mcp_servers).to match_array(mcp_servers)
+        end
+
+        it "updates mcp_servers when updating existing version" do
+          version = prompt.prompt_versions.create!(
+            user_prompt: "Test",
+            version_number: 1,
+            status: "draft",
+            mcp_servers: [ "filesystem" ]
+          )
+          params_update_mcp = valid_params.merge(
+            save_action: "update",
+            mcp_servers: [ "filesystem", "github" ]
+          )
+
+          result = described_class.call(
+            params: params_update_mcp,
+            prompt: prompt,
+            prompt_version: version
+          )
+
+          expect(result.success?).to be true
+          version.reload
+          expect(version.mcp_servers).to match_array([ "filesystem", "github" ])
+        end
+
+        it "clears mcp_servers when empty array is passed" do
+          version = prompt.prompt_versions.create!(
+            user_prompt: "Test",
+            version_number: 1,
+            status: "draft",
+            mcp_servers: mcp_servers
+          )
+          params_clear_mcp = valid_params.merge(save_action: "update", mcp_servers: [])
+
+          result = described_class.call(
+            params: params_clear_mcp,
+            prompt: prompt,
+            prompt_version: version
+          )
+
+          expect(result.success?).to be true
+          version.reload
+          expect(version.mcp_servers).to eq([])
+        end
+
+        it "creates new version when mcp_servers change and tests exist" do
+          version = prompt.prompt_versions.create!(
+            user_prompt: "Hello {{name}}",
+            version_number: 1,
+            status: "draft",
+            mcp_servers: [ "filesystem" ],
+            model_config: { "provider" => "openai", "model" => "gpt-4o" }
+          )
+          version.tests.create!(name: "Test case")
+
+          params_change_mcp = valid_params.merge(
+            save_action: "update",
+            mcp_servers: [ "github" ]
+          )
+
+          result = described_class.call(
+            params: params_change_mcp,
+            prompt: prompt,
+            prompt_version: version
+          )
+
+          expect(result.success?).to be true
+          expect(result.action).to eq(:created)
+          expect(result.version.id).not_to eq(version.id)
+          expect(result.version_created_reason).to eq(:structural_change_with_tests)
+          expect(result.version.mcp_servers).to match_array([ "github" ])
+        end
+      end
     end
 
     describe "Result object" do

@@ -45,6 +45,16 @@ module PromptTracker
         expect(execution).to be_valid
         expect(execution.arguments).to eq({})
       end
+      it "allows function_definition to be nil for virtual functions" do
+        execution = FunctionExecution.new(valid_attributes.except(:function_definition))
+        expect(execution).to be_valid
+      end
+
+      it "allows arguments to default to an empty hash" do
+        execution = FunctionExecution.new(valid_attributes.except(:arguments))
+        expect(execution).to be_valid
+        expect(execution.arguments).to eq({})
+      end
 
       it "requires executed_at" do
         execution = FunctionExecution.new(valid_attributes.except(:executed_at))
@@ -166,83 +176,105 @@ module PromptTracker
       end
     end
 
-      describe "#display_name" do
-        let(:base_planning_attrs) do
-          {
-            function_definition: nil,
-            arguments: {},
-            success: true,
-            execution_time_ms: 10,
-            executed_at: Time.current
-          }
-        end
+        describe "#display_name" do
+          let(:base_planning_attrs) do
+            {
+              function_definition: nil,
+              arguments: {},
+              success: true,
+              execution_time_ms: 10,
+              executed_at: Time.current
+            }
+          end
 
-        it "returns create_plan for create_plan-style results" do
-          execution = FunctionExecution.new(
-            base_planning_attrs.merge(
-              result: {
-                "success" => true,
-                "plan" => { "goal" => "Do something", "steps" => [] }
-              }
+          it "returns create_plan for create_plan-style results" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                result: {
+                  "success" => true,
+                  "plan" => { "goal" => "Do something", "steps" => [] }
+                }
+              )
             )
-          )
 
-          expect(execution.display_name).to eq("create_plan")
-        end
+            expect(execution.display_name).to eq("create_plan")
+          end
 
-        it "returns get_plan for get_plan-style results with progress fields" do
-          execution = FunctionExecution.new(
-            base_planning_attrs.merge(
-              result: {
-                "success" => true,
-                "plan" => { "goal" => "Do something", "steps" => [] },
-                "progress_percentage" => 0,
-                "completed_steps" => 0,
-                "total_steps" => 2
-              }
+          it "returns get_plan for get_plan-style results with progress fields" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                result: {
+                  "success" => true,
+                  "plan" => { "goal" => "Do something", "steps" => [] },
+                  "progress_percentage" => 0,
+                  "completed_steps" => 0,
+                  "total_steps" => 2
+                }
+              )
             )
-          )
 
-          expect(execution.display_name).to eq("get_plan")
-        end
+            expect(execution.display_name).to eq("get_plan")
+          end
 
-        it "returns update_step when result has a step and arguments include step_id" do
-          execution = FunctionExecution.new(
-            base_planning_attrs.merge(
-              arguments: { "step_id" => "step_1", "status" => "in_progress" },
-              result: {
-                "success" => true,
-                "step" => { "id" => "step_1" }
-              }
+          it "returns update_step when result has a step and arguments include step_id" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                arguments: { "step_id" => "step_1", "status" => "in_progress" },
+                result: {
+                  "success" => true,
+                  "step" => { "id" => "step_1" }
+                }
+              )
             )
-          )
 
-          expect(execution.display_name).to eq("update_step")
-        end
+            expect(execution.display_name).to eq("update_step")
+          end
 
-        it "returns add_step when result has a step and arguments include description only" do
-          execution = FunctionExecution.new(
-            base_planning_attrs.merge(
-              arguments: { "description" => "New step" },
-              result: {
-                "success" => true,
-                "step" => { "id" => "step_new" }
-              }
+          it "returns add_step when result has a step and arguments include description only" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                arguments: { "description" => "New step" },
+                result: {
+                  "success" => true,
+                  "step" => { "id" => "step_new" }
+                }
+              )
             )
-          )
 
-          expect(execution.display_name).to eq("add_step")
-        end
+            expect(execution.display_name).to eq("add_step")
+          end
 
-        it "returns mark_task_complete when summary is present" do
-          execution = FunctionExecution.new(
-            base_planning_attrs.merge(
-              result: { "success" => true, "summary" => "All done" }
+          it "returns mark_task_complete when summary is present" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                result: { "success" => true, "summary" => "All done" }
+              )
             )
-          )
 
-          expect(execution.display_name).to eq("mark_task_complete")
+            expect(execution.display_name).to eq("mark_task_complete")
+          end
+
+          it "returns function_definition name when present" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(function_definition: function_definition)
+            )
+
+            expect(execution.display_name).to eq("test_function")
+          end
+
+          it "returns function_name for MCP/virtual functions when function_definition is nil" do
+            execution = FunctionExecution.new(
+              base_planning_attrs.merge(
+                function_name: "filesystem__read_file",
+                result: {
+                  "content" => [ { "type" => "text", "text" => "File contents" } ],
+                  "isError" => false
+                }
+              )
+            )
+
+            expect(execution.display_name).to eq("filesystem__read_file")
+          end
         end
-      end
   end
 end

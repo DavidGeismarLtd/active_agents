@@ -170,60 +170,60 @@ RSpec.describe PromptTracker::TaskAgentRuntimeService, type: :service do
       end
     end
 
-    context "with timeout" do
-      it "stops execution when timeout is reached" do
-        # Set very short timeout and save
-        config = task_agent.task_config
-        config[:execution][:timeout_seconds] = 0.1
-        task_agent.update!(task_config: config)
-        executor_ref = nil
+      context "with timeout" do
+        it "stops execution when timeout is reached" do
+          # Set very short timeout and save
+          config = task_agent.task_config
+          config[:execution][:timeout_seconds] = 0.1
+          task_agent.update!(task_config: config)
+          executor_ref = nil
 
-        # Mock function execution
-        allow_any_instance_of(described_class).to receive(:execute_function).and_return({
-          success?: true,
-          result: {},
-          error: nil
-        })
+          # Mock function execution
+          allow_any_instance_of(described_class).to receive(:execute_function).and_return({
+            success?: true,
+            result: {},
+            error: nil
+          })
 
-        # Mock LLM service
-        allow(PromptTracker::LlmClients::RubyLlmService).to receive(:new) do |**args|
-          # Store the executor reference
-          executor_ref = args[:function_executor]
+          # Mock LLM service
+          allow(PromptTracker::LlmClients::RubyLlmService).to receive(:new) do |**args|
+            # Store the executor reference
+            executor_ref = args[:function_executor]
 
-          mock_service = instance_double(PromptTracker::LlmClients::RubyLlmService)
+            mock_service = instance_double(PromptTracker::LlmClients::RubyLlmService)
 
-          # Mock the call method to simulate function calls with delay
-          allow(mock_service).to receive(:call) do
-            sleep 0.2 # Exceed timeout
-            # Simulate RubyLLM calling the executor
-            executor_ref&.call("fetch_data", {})
+            # Mock the call method to simulate function calls with delay
+            allow(mock_service).to receive(:call) do
+              sleep 0.2 # Exceed timeout
+              # Simulate RubyLLM calling the executor
+              executor_ref&.call("fetch_data", {})
 
-            PromptTracker::NormalizedLlmResponse.new(
-              text: "Working...",
-              model: "gpt-4",
-              usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
-              tool_calls: [],
-              file_search_results: [],
-              web_search_results: [],
-              code_interpreter_results: [],
-              api_metadata: {},
-              raw_response: nil
-            )
+              PromptTracker::NormalizedLlmResponse.new(
+                text: "Working...",
+                model: "gpt-4",
+                usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+                tool_calls: [],
+                file_search_results: [],
+                web_search_results: [],
+                code_interpreter_results: [],
+                api_metadata: {},
+                raw_response: nil
+              )
+            end
+
+            mock_service
           end
 
-          mock_service
+          result = described_class.call(
+            task_agent: task_agent,
+            task_run: task_run,
+            variables: variables
+          )
+
+          expect(result[:success]).to be true
+          expect(result[:output]).to include("Task incomplete: Timeout reached")
         end
-
-        result = described_class.call(
-          task_agent: task_agent,
-          task_run: task_run,
-          variables: variables
-        )
-
-        expect(result[:success]).to be true
-        expect(result[:output]).to include("Task incomplete: Timeout reached")
       end
-    end
 
       context "when task run is cancelled during execution" do
         it "does not overwrite cancelled status with completed and still records output" do
@@ -250,5 +250,36 @@ RSpec.describe PromptTracker::TaskAgentRuntimeService, type: :service do
           expect(result[:output]).to eq("Task cancelled by user")
         end
       end
-  end
+    end
+
+  describe "#build_timeline_for_broadcast" do
+    let(:service) { described_class.new(task_agent: task_agent, task_run: task_run) }
+
+    it "orders LLM responses before function executions within each iteration" do
+      llm_response = create(
+        :llm_response,
+        deployed_agent: task_agent,
+        task_run: task_run,
+        context: { "iteration" => 1 }
+      )
+      function_execution = create(
+        :function_execution,
+        deployed_agent: task_agent,
+        task_run: task_run
+      )
+
+      # Simulate function execution being recorded before the LLM response
+      function_execution.update_columns(created_at: 1.minute.ago, executed_at: 1.minute.ago)
+      llm_response.update_columns(created_at: Time.current)
+
+      iterations = service.send(:build_timeline_for_broadcast, [ llm_response ], [ function_execution ])
+
+      expect(iterations.length).to eq(1)
+      iteration = iterations.first
+      expect(iteration[:iteration]).to eq(1)
+      expect(iteration[:llm_calls_count]).to eq(1)
+      expect(iteration[:function_calls_count]).to eq(1)
+      expect(iteration[:events].map { |e| e[:type] }).to eq([ :llm_response, :function_execution ])
+    end
+end
 end

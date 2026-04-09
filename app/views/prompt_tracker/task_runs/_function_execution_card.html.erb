@@ -7,11 +7,13 @@
     <div class="d-flex justify-content-between align-items-center">
       <div>
         <h6 class="mb-0">
-          <% if execution.function_definition.present? %>
-            <i class="bi bi-code-square"></i> Function: <%= execution.function_definition.name %>
-          <% else %>
-            <i class="bi bi-lightbulb text-primary"></i> Planning: <%= execution.display_name %>
-          <% end %>
+	          <% if execution.function_definition.present? %>
+	            <i class="bi bi-code-square"></i> Function: <%= execution.function_definition.name %>
+	          <% elsif execution.function_name.present? %>
+	            <i class="bi bi-code-square"></i> MCP Tool: <%= execution.function_name %>
+	          <% else %>
+	            <i class="bi bi-lightbulb text-primary"></i> Planning: <%= execution.display_name %>
+	          <% end %>
           <% if execution.success %>
             <span class="badge bg-success">Success</span>
           <% else %>
@@ -73,10 +75,16 @@
                 <td><%= execution.function_definition.id %></td>
               </tr>
             <% else %>
-              <tr>
-                <th>Function Type</th>
-                <td><span class="badge bg-primary">Planning Function</span></td>
-              </tr>
+	              <tr>
+	                <th>Function Type</th>
+	                <td>
+	                  <% if execution.function_name.present? %>
+	                    <span class="badge bg-primary">MCP Tool</span>
+	                  <% else %>
+	                    <span class="badge bg-primary">Planning Function</span>
+	                  <% end %>
+	                </td>
+	              </tr>
             <% end %>
             <tr>
               <th>Execution Time</th>
