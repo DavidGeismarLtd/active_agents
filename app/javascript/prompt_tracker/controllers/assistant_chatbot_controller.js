@@ -12,7 +12,8 @@ export default class extends Controller {
 
   static values = {
     sessionId: String,
-    context: Object
+    context: Object,
+    baseUrl: String
   }
 
   connect() {
@@ -57,7 +58,7 @@ export default class extends Controller {
     this.setLoading(true)
 
     try {
-      const response = await this.callAPI('/prompt_tracker/assistant/chat', {
+      const response = await this.callAPI(`${this.baseUrlValue}assistant/chat`, {
         message: message,
         session_id: this.sessionIdValue,
         context: this.contextValue
@@ -109,7 +110,7 @@ export default class extends Controller {
     this.addMessage('assistant', this.formatExecutingActionMessage(this.pendingAction))
 
     try {
-      const response = await this.callAPI('/prompt_tracker/assistant/execute_action', {
+      const response = await this.callAPI(`${this.baseUrlValue}assistant/execute_action`, {
         session_id: this.sessionIdValue,
         function_name: this.pendingAction.function_name,
         arguments: this.pendingAction.arguments
@@ -156,7 +157,7 @@ export default class extends Controller {
     }
 
     try {
-      await this.callAPI('/prompt_tracker/assistant/reset', {
+      await this.callAPI(`${this.baseUrlValue}assistant/reset`, {
         session_id: this.sessionIdValue
       })
 
@@ -398,7 +399,7 @@ export default class extends Controller {
 
   async loadSuggestions() {
     try {
-      const response = await this.callAPI('/prompt_tracker/assistant/suggestions', {
+      const response = await this.callAPI(`${this.baseUrlValue}assistant/suggestions`, {
         context: this.contextValue
       })
 
