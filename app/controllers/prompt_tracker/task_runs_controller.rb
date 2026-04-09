@@ -97,22 +97,35 @@ module PromptTracker
         }
       end
 
-      # Sort by timestamp
-      events.sort_by! { |e| e[:timestamp] }
+        # Sort by timestamp
+        events.sort_by! { |e| e[:timestamp] }
 
       # Group events by iteration
       grouped = events.group_by { |e| e[:iteration] }
 
       # Build hierarchical structure
       iterations = grouped.map do |iteration_num, iteration_events|
+          # Within each iteration, ensure LLM responses appear before function executions
+          sorted_iteration_events = iteration_events.sort_by do |event|
+            type_order = case event[:type]
+            when :llm_response then 0
+            when :function_execution then 1
+            else 2
+            end
+
+            [ type_order, event[:timestamp] ]
+          end
+
+          timestamps = iteration_events.map { |event| event[:timestamp] }
+
         {
           iteration: iteration_num,
-          events: iteration_events,
-          started_at: iteration_events.first[:timestamp],
-          completed_at: iteration_events.last[:timestamp],
-          duration_ms: ((iteration_events.last[:timestamp] - iteration_events.first[:timestamp]) * 1000).round(0),
-          llm_calls_count: iteration_events.count { |e| e[:type] == :llm_response },
-          function_calls_count: iteration_events.count { |e| e[:type] == :function_execution }
+            events: sorted_iteration_events,
+            started_at: timestamps.min,
+            completed_at: timestamps.max,
+            duration_ms: ((timestamps.max - timestamps.min) * 1000).round(0),
+            llm_calls_count: iteration_events.count { |e| e[:type] == :llm_response },
+            function_calls_count: iteration_events.count { |e| e[:type] == :function_execution }
         }
       end
 

@@ -266,8 +266,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
     t.bigint "deployed_agent_id"
     t.bigint "agent_conversation_id"
     t.bigint "task_run_id"
+<<<<<<< HEAD
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+=======
+    t.string "function_name"
+>>>>>>> 96fb0af (Complete MCP integration with Slack support)
     t.index [ "agent_conversation_id" ], name: "idx_on_agent_conversation_id_74963468f2"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_function_executions_on_deployed_agent_id"
     t.index [ "executed_at" ], name: "index_prompt_tracker_function_executions_on_executed_at"

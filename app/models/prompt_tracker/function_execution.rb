@@ -103,11 +103,13 @@ module PromptTracker
 
     # Get the function name for display
     # For regular functions, use the function_definition name
+    # For MCP/virtual functions, use the stored function_name
     # For planning functions (no function_definition), infer from result/arguments
     #
     # @return [String] function name
     def display_name
       return function_definition.name if function_definition.present?
+      return function_name if function_name.present?
 
       # For planning functions, try to infer from result shape
       if result.is_a?(Hash)

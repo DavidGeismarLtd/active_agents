@@ -102,6 +102,7 @@ module PromptTracker
     validate :model_config_must_be_hash
     validate :model_config_tool_config_structure
     validate :response_schema_must_be_valid_json_schema
+    validate :mcp_servers_must_be_array
 
     # Callbacks
     before_validation :set_next_version_number, on: :create, if: -> { version_number.nil? }
@@ -484,6 +485,28 @@ module PromptTracker
       ApiTypes.from_config(provider, api)
     end
 
+    # Returns the list of MCP server names configured for this version.
+    #
+    # @return [Array<String>] array of MCP server names
+    #
+    # @example
+    #   version.mcp_server_names # => ["filesystem", "github"]
+    #
+    def mcp_server_names
+      mcp_servers || []
+    end
+
+    # Checks if this version has any MCP servers configured.
+    #
+    # @return [Boolean] true if MCP servers are configured
+    #
+    # @example
+    #   version.has_mcp_servers? # => true
+    #
+    def has_mcp_servers?
+      mcp_server_names.any?
+    end
+
     private
 
     # Sets the next version number based on existing versions
@@ -588,6 +611,13 @@ module PromptTracker
       unless functions_config.is_a?(Array)
         errors.add(:model_config, "tool_config.functions must be an array")
       end
+    end
+
+    # Validates that mcp_servers is an array
+    def mcp_servers_must_be_array
+      return if mcp_servers.nil? || mcp_servers.is_a?(Array)
+
+      errors.add(:mcp_servers, "must be an array")
     end
 
     # Validates that response_schema is a valid JSON Schema structure.

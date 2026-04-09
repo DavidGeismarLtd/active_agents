@@ -26,6 +26,10 @@ module PromptTracker
       it "sets features to empty hash" do
         expect(config.features).to eq({})
       end
+
+      it "sets mcp_servers to empty hash" do
+        expect(config.mcp_servers).to eq({})
+      end
     end
 
     describe "#basic_auth_enabled?" do
@@ -651,6 +655,189 @@ module PromptTracker
         expect(result).to have_key(:openai_api_key)
         expect(result).not_to have_key(:anthropic_api_key)
         expect(result).not_to have_key(:gemini_api_key)
+      end
+    end
+
+    describe "MCP Server Configuration" do
+      describe "#mcp_servers=" do
+        it "sets mcp_servers configuration" do
+          config.mcp_servers = {
+            "filesystem" => {
+              transport: "stdio",
+              command: "npx",
+              args: [ "-y", "@modelcontextprotocol/server-filesystem" ]
+            }
+          }
+
+          expect(config.mcp_servers).to eq({
+            "filesystem" => {
+              transport: "stdio",
+              command: "npx",
+              args: [ "-y", "@modelcontextprotocol/server-filesystem" ]
+            }
+          })
+        end
+      end
+
+      describe "#effective_mcp_servers" do
+        it "returns static mcp_servers when no configuration_provider is set" do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio", command: "npx" }
+          }
+
+          expect(config.effective_mcp_servers).to eq({
+            "filesystem" => { transport: "stdio", command: "npx" }
+          })
+        end
+
+        it "returns dynamic mcp_servers from configuration_provider when set" do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio", command: "npx" }
+          }
+
+          config.configuration_provider = -> {
+            {
+              mcp_servers: {
+                "weather" => { transport: "http", url: "https://weather.example.com" }
+              }
+            }
+          }
+
+          expect(config.effective_mcp_servers).to eq({
+            "weather" => { transport: "http", url: "https://weather.example.com" }
+          })
+        end
+
+        it "returns static mcp_servers when configuration_provider returns nil" do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio", command: "npx" }
+          }
+
+          config.configuration_provider = -> { {} }
+
+          expect(config.effective_mcp_servers).to eq({
+            "filesystem" => { transport: "stdio", command: "npx" }
+          })
+        end
+      end
+
+      describe "#mcp_server_configured?" do
+        before do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio", command: "npx" }
+          }
+        end
+
+        it "returns true when server is configured" do
+          expect(config.mcp_server_configured?("filesystem")).to be true
+        end
+
+        it "returns false when server is not configured" do
+          expect(config.mcp_server_configured?("weather")).to be false
+        end
+
+        it "accepts symbol as server name" do
+          expect(config.mcp_server_configured?(:filesystem)).to be true
+        end
+      end
+
+      describe "#mcp_server_config" do
+        before do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio", command: "npx" }
+          }
+        end
+
+        it "returns server configuration when server exists" do
+          expect(config.mcp_server_config("filesystem")).to eq({
+            transport: "stdio",
+            command: "npx"
+          })
+        end
+
+        it "returns nil when server does not exist" do
+          expect(config.mcp_server_config("weather")).to be_nil
+        end
+
+        it "accepts symbol as server name" do
+          expect(config.mcp_server_config(:filesystem)).to eq({
+            transport: "stdio",
+            command: "npx"
+          })
+        end
+      end
+
+      describe "#mcp_server_names" do
+        it "returns empty array when no servers configured" do
+          expect(config.mcp_server_names).to eq([])
+        end
+
+        it "returns list of configured server names" do
+          config.mcp_servers = {
+            "filesystem" => { transport: "stdio" },
+            "weather" => { transport: "http" }
+          }
+
+          expect(config.mcp_server_names).to match_array([ "filesystem", "weather" ])
+        end
+      end
+
+      describe "#validate_mcp_server_config" do
+        it "returns empty array for valid stdio configuration" do
+          server_config = {
+            transport: "stdio",
+            command: "npx",
+            args: [ "-y", "@modelcontextprotocol/server-filesystem" ]
+          }
+
+          errors = config.validate_mcp_server_config("filesystem", server_config)
+          expect(errors).to be_empty
+        end
+
+        it "returns empty array for valid http configuration" do
+          server_config = {
+            transport: "http",
+            url: "https://mcp.example.com/api"
+          }
+
+          errors = config.validate_mcp_server_config("weather", server_config)
+          expect(errors).to be_empty
+        end
+
+        it "returns error for invalid transport type" do
+          server_config = { transport: "websocket" }
+
+          errors = config.validate_mcp_server_config("test", server_config)
+          expect(errors).to include("Invalid transport type: websocket. Must be 'stdio' or 'http'")
+        end
+
+        it "returns error for stdio without command" do
+          server_config = { transport: "stdio", args: [] }
+
+          errors = config.validate_mcp_server_config("test", server_config)
+          expect(errors).to include("Missing 'command' for stdio transport")
+        end
+
+        it "returns error for http without url" do
+          server_config = { transport: "http" }
+
+          errors = config.validate_mcp_server_config("test", server_config)
+          expect(errors).to include("Missing 'url' for http transport")
+        end
+
+        it "returns error for http with invalid url format" do
+          server_config = { transport: "http", url: "not-a-url" }
+
+          errors = config.validate_mcp_server_config("test", server_config)
+          expect(errors).to include("Invalid URL format: not-a-url")
+        end
+
+        it "returns multiple errors when multiple issues exist" do
+          server_config = { transport: "invalid" }
+
+          errors = config.validate_mcp_server_config("test", server_config)
+          expect(errors.length).to be > 0
+        end
       end
     end
   end

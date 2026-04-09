@@ -94,6 +94,11 @@ module PromptTracker
         old_config[key] != new_config[key]
       end
 
+      # Check MCP servers (structural change)
+      old_mcp_servers = (prompt_version.mcp_servers || []).sort
+      new_mcp_servers = (params[:mcp_servers] || []).sort
+      mcp_servers_changed = old_mcp_servers != new_mcp_servers
+
       structural_keys_changed ||
         agent_version.variables_schema != params[:variables_schema] ||
         agent_version.response_schema != params[:response_schema]
@@ -153,7 +158,8 @@ module PromptTracker
         system_prompt: params[:system_prompt],
         notes: params[:notes],
         model_config: params[:model_config] || {},
-        response_schema: params[:response_schema]
+        response_schema: params[:response_schema],
+        mcp_servers: params[:mcp_servers]
       }
       # Only include variables_schema if explicitly provided
       attrs[:variables_schema] = params[:variables_schema] if params.key?(:variables_schema)

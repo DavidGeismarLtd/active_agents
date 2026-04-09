@@ -98,7 +98,41 @@ PromptTracker.configure do |config|
   }
 
   # ===========================================================================
-  # 5. FEATURE FLAGS
+  # 5. MCP SERVERS
+  # ===========================================================================
+  # Model Context Protocol (MCP) servers provide external tools and resources
+  # to AI agents. Configure servers here to make them available to agents.
+  config.mcp_servers = {
+    filesystem: {
+      transport: "stdio",
+      command: "npx",
+      # Note: @modelcontextprotocol/server-filesystem expects allowed directories
+      # as command-line arguments, NOT environment variables
+      args: [ "-y", "@modelcontextprotocol/server-filesystem", "/tmp", Rails.root.to_s ],
+      env: {}
+    },
+    slack: {
+      transport: "stdio",
+      command: "npx",
+      args: [ "-y", "@modelcontextprotocol/server-slack" ],
+      env: {
+        "SLACK_BOT_TOKEN" => ENV["SLACK_BOT_TOKEN"],
+        "SLACK_TEAM_ID" => ENV["SLACK_TEAM_ID"]
+      }
+    }
+    # Add more MCP servers here as needed:
+    # github: {
+    #   transport: "stdio",
+    #   command: "npx",
+    #   args: ["-y", "@modelcontextprotocol/server-github"],
+    #   env: {
+    #     "GITHUB_PERSONAL_ACCESS_TOKEN" => ENV["GITHUB_TOKEN"]
+    #   }
+    # }
+  }
+
+  # ===========================================================================
+  # 6. FEATURE FLAGS
   # ===========================================================================
   config.features = {
     monitoring: true,            # Enable the Monitoring section (tracked calls, auto-evaluations)

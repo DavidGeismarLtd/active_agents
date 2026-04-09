@@ -59,6 +59,9 @@ module PromptTracker
       @current_iteration_function_calls = []
       @planning_enabled = task_agent.task_configuration.dig(:planning, :enabled) || false
       @logger = logger || Rails.logger
+
+      # Initialize MCP client manager if MCP servers are configured
+      @mcp_manager = initialize_mcp_manager
     end
 
     def execute
@@ -127,9 +130,56 @@ module PromptTracker
       end
 
       { success: false, error: e.message }
+    ensure
+      # Cleanup MCP connections
+      cleanup_mcp_manager
     end
 
     private
+
+    # Initialize MCP client manager if MCP servers are configured
+    #
+    # @return [McpClientManager, nil] MCP manager instance or nil if no servers configured
+    def initialize_mcp_manager
+      server_names = task_agent.prompt_version.mcp_server_names
+      return nil if server_names.empty?
+
+      @logger.info "[TaskAgentRuntimeService] Initializing MCP manager with servers: #{server_names.join(', ')}"
+
+      manager = McpClientManager.new(server_names)
+      result = manager.connect_all
+
+      @logger.info "[TaskAgentRuntimeService] MCP connection results: #{result.inspect}"
+
+      manager
+    rescue StandardError => e
+      @logger.error "[TaskAgentRuntimeService] Failed to initialize MCP manager: #{e.message}"
+      nil
+    end
+
+    # Cleanup MCP connections
+    #
+    # @return [void]
+    def cleanup_mcp_manager
+      return unless @mcp_manager
+
+      @logger.info "[TaskAgentRuntimeService] Cleaning up MCP connections"
+      @mcp_manager.disconnect_all
+    rescue StandardError => e
+      @logger.error "[TaskAgentRuntimeService] Error cleaning up MCP manager: #{e.message}"
+    end
+
+    # Fetch MCP tools from the manager
+    #
+    # @return [Array<Hash>] array of MCP tool definitions in LLM format
+    def fetch_mcp_tools
+      return [] unless @mcp_manager
+
+      @mcp_manager.list_all_tools
+    rescue StandardError => e
+      @logger.error "[TaskAgentRuntimeService] Failed to fetch MCP tools: #{e.message}"
+      []
+    end
 
     def render_initial_prompt
       template = task_agent.task_configuration[:initial_prompt]
@@ -359,6 +409,13 @@ module PromptTracker
           return result
         end
 
+        # Check if this is an MCP tool (prefixed with server name)
+        if mcp_tool?(function_name)
+          result = execute_mcp_tool(function_name, arguments)
+          @current_iteration_function_calls << { name: function_name, arguments: arguments, result: result }
+          return result
+        end
+
         # Regular function execution
         func_def = task_agent.function_definitions.find_by(name: function_name)
         unless func_def
@@ -437,6 +494,13 @@ module PromptTracker
           planning_tools = build_planning_functions
           @logger.info "[TaskAgentRuntimeService] Injecting #{planning_tools.size} planning functions"
           tools += planning_tools
+        end
+
+        # Inject MCP tools if MCP manager is initialized
+        if @mcp_manager
+          mcp_tools = fetch_mcp_tools
+          @logger.info "[TaskAgentRuntimeService] Injecting #{mcp_tools.size} MCP tools"
+          tools += mcp_tools
         end
       end
 
@@ -728,6 +792,69 @@ module PromptTracker
       @logger.info "[TaskAgentRuntimeService] ✅ Plan forcibly completed with #{in_progress_steps.size} failed steps"
     end
 
+    # ========================================
+    # MCP Tool Helpers
+    # ========================================
+
+    # Check if a function name is an MCP tool (prefixed with server name)
+    #
+    # @param function_name [String] the function name to check
+    # @return [Boolean] true if this is an MCP tool
+    def mcp_tool?(function_name)
+      return false unless @mcp_manager
+
+      # MCP tools are prefixed with server name: "server__tool"
+      function_name.include?("__")
+    end
+
+    # Execute an MCP tool
+    #
+    # @param function_name [String] the MCP tool name (e.g., "filesystem__read_file")
+    # @param arguments [Hash] the tool arguments
+    # @return [Hash] the tool execution result
+    def execute_mcp_tool(function_name, arguments)
+      @logger.info "[TaskAgentRuntimeService] 🔌 Executing MCP tool: #{function_name}"
+      @logger.info "[TaskAgentRuntimeService] 🔌 Arguments: #{arguments.inspect}"
+
+      start_time = Time.current
+
+      result = @mcp_manager.call_tool(function_name, arguments)
+
+      execution_time_ms = ((Time.current - start_time) * 1000).round(2)
+
+      @logger.info "[TaskAgentRuntimeService] 🔌 MCP tool result: #{result.inspect}"
+
+      # Track MCP tool execution (without function_definition since it's external)
+      success = !result["isError"]
+      error_message = result["isError"] ? result["content"]&.first&.dig("text") : nil
+
+      # Ensure arguments is always a Hash (never nil)
+      normalized_arguments = arguments.is_a?(Hash) ? arguments : {}
+
+      function_execution = PromptTracker::FunctionExecution.new(
+          function_definition: nil,  # MCP tools are external
+          function_name: function_name,
+        deployed_agent: task_agent,
+        task_run: task_run,
+        arguments: normalized_arguments,
+        result: result,
+        success: success,
+        error_message: error_message,
+        execution_time_ms: execution_time_ms,
+        executed_at: Time.current,
+        planning_step_id: nil
+      )
+
+      function_execution.save!
+
+      @logger.info "[TaskAgentRuntimeService] 🔌 Created FunctionExecution #{function_execution.id} for MCP tool"
+
+      result
+    rescue StandardError => e
+      @logger.error "[TaskAgentRuntimeService] 🔌 MCP tool execution failed: #{e.message}"
+      { "isError" => true, "content" => [ { "type" => "text", "text" => "Error: #{e.message}" } ] }
+    end
+
     def enhance_system_prompt_with_planning(original_prompt, phase: :execution)
       if phase == :planning
         # Planning Phase Instructions (Iteration 0)
@@ -959,23 +1086,36 @@ module PromptTracker
         }
       end
 
-      # Sort by timestamp
-      events.sort_by! { |e| e[:timestamp] }
+        # Sort by timestamp
+        events.sort_by! { |e| e[:timestamp] }
 
       # Group by iteration
       grouped = events.group_by { |e| e[:iteration] }
 
       # Build hierarchical structure
       iterations = grouped.map do |iteration_num, iteration_events|
-        {
-          iteration: iteration_num,
-          events: iteration_events,
-          started_at: iteration_events.first[:timestamp],
-          completed_at: iteration_events.last[:timestamp],
-          duration_ms: ((iteration_events.last[:timestamp] - iteration_events.first[:timestamp]) * 1000).round(0),
-          llm_calls_count: iteration_events.count { |e| e[:type] == :llm_response },
-          function_calls_count: iteration_events.count { |e| e[:type] == :function_execution }
-        }
+          # Within each iteration, ensure LLM responses appear before function executions
+          sorted_iteration_events = iteration_events.sort_by do |event|
+            type_order = case event[:type]
+            when :llm_response then 0
+            when :function_execution then 1
+            else 2
+            end
+
+            [ type_order, event[:timestamp] ]
+          end
+
+          timestamps = iteration_events.map { |event| event[:timestamp] }
+
+          {
+            iteration: iteration_num,
+            events: sorted_iteration_events,
+            started_at: timestamps.min,
+            completed_at: timestamps.max,
+            duration_ms: ((timestamps.max - timestamps.min) * 1000).round(0),
+            llm_calls_count: iteration_events.count { |e| e[:type] == :llm_response },
+            function_calls_count: iteration_events.count { |e| e[:type] == :function_execution }
+          }
       end
 
       iterations.sort_by { |i| i[:iteration] }
