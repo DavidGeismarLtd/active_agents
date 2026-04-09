@@ -71,6 +71,9 @@ PromptTracker::Engine.routes.draw do
       end
     end
 
+    # Dataset row count (flat route for AJAX calls from run_test_modal_controller.js)
+    get "datasets/:id/row_count", to: "datasets#row_count", as: :dataset_row_count
+
     # Tests for prompt versions (not nested under prompts for simpler URLs)
     resources :agent_versions, only: [], path: "versions" do
       member do
