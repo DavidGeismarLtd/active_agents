@@ -44,7 +44,7 @@ module PromptTracker
       end
 
       # Pagination
-      @functions = @functions.page(params[:page]).per(20)
+      @functions = pt_paginate(@functions, per_page: 20)
 
       # Get filter options
       @categories = FunctionDefinition.distinct.pluck(:category).compact.sort
@@ -55,10 +55,7 @@ module PromptTracker
     # GET /functions/:id
     # Show function details with execution history
     def show
-      @executions = @function.function_executions
-                             .order(executed_at: :desc)
-                             .page(params[:page])
-                             .per(20)
+      @executions = pt_paginate(@function.function_executions.order(executed_at: :desc), per_page: 20)
 
       # Calculate stats from actual executions (not cached counter)
       all_executions = @function.function_executions

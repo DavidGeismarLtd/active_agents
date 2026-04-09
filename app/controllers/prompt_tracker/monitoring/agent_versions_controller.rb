@@ -31,7 +31,7 @@ module PromptTracker
         end
 
         # Pagination
-        @tracked_calls = @tracked_calls.page(params[:page]).per(20)
+        @tracked_calls = pt_paginate(@tracked_calls, per_page: 20)
 
         # Statistics
         all_calls = LlmResponse.tracked_calls.where(agent_version_id: @version.id)

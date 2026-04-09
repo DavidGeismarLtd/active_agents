@@ -13,7 +13,7 @@ module PromptTracker
         @environment_variables = @environment_variables.search(params[:q])
       end
 
-      @environment_variables = @environment_variables.page(params[:page]).per(20)
+      @environment_variables = pt_paginate(@environment_variables, per_page: 20)
     end
 
     # GET /environment_variables/:id

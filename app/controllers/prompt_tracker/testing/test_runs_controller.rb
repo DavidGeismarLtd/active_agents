@@ -8,10 +8,10 @@ module PromptTracker
 
       # GET /testing/runs
       def index
-        @test_runs = TestRun.includes(:test)
-                            .order(created_at: :desc)
-                            .page(params[:page])
-                            .per(50)
+        @test_runs = pt_paginate(
+          TestRun.includes(:test).order(created_at: :desc),
+          per_page: 50
+        )
 
         # Filter by status if provided
         if params[:status].present?
