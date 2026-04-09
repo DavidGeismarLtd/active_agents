@@ -1,7 +1,10 @@
+// PromptTracker main JavaScript entry point
+// Uses bare specifiers (e.g. "prompt_tracker/controllers") resolved by importmap
+// Works with both importmap-rails gem AND native browser importmaps
 
-// If the engine UI uses Bootstrap:
 import "@hotwired/turbo-rails"
-// Import Stimulus controllers
+
+// Import and register all Stimulus controllers
 import "prompt_tracker/controllers"
 
 // Import Chart.js UMD bundle (automatically assigns to window.Chart)

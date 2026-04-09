@@ -22,18 +22,9 @@
 
   <%= yield :head %>
 
-  <%# Load JavaScript based on available asset pipeline %>
-  <% if defined?(Importmap) %>
-    <%# Using importmap-rails %>
-    <%= javascript_importmap_tags %>
-    <%= javascript_import_module_tag "prompt_tracker/application" %>
-  <% elsif defined?(Webpacker) || defined?(Shakapacker) %>
-    <%# Using Webpacker/Shakapacker - host app should include engine assets %>
-    <%# The host app needs to add: import "prompt_tracker/application" to their pack %>
-  <% else %>
-    <%# Fallback to Sprockets %>
-    <%= javascript_include_tag "prompt_tracker/application", "data-turbo-track": "reload" %>
-  <% end %>
+  <%# Load JavaScript via native browser importmap (no importmap-rails gem needed) %>
+  <%# This maps bare specifiers like "@hotwired/stimulus" to actual URLs %>
+  <%= prompt_tracker_importmap_tags %>
 
 
 
