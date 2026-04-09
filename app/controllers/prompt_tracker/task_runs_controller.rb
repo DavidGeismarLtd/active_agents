@@ -8,14 +8,13 @@ module PromptTracker
 
     # GET /agents/:slug/runs
     def index
-      @task_runs = pt_paginate(
-        @agent.task_runs.includes(:llm_responses, :function_executions).order(created_at: :desc),
-        per_page: 20
-      )
+      @task_runs = @agent.task_runs.includes(:llm_responses, :function_executions).order(created_at: :desc)
 
       # Apply filters
       @task_runs = @task_runs.where(status: params[:status]) if params[:status].present?
       @task_runs = @task_runs.where(trigger_type: params[:trigger_type]) if params[:trigger_type].present?
+
+      @task_runs = pt_paginate(@task_runs, per_page: 20)
 
       # Statistics
       @total_runs = @agent.task_runs.count
