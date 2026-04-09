@@ -47,7 +47,7 @@ module PromptTracker
       end
 
       # Pagination
-      @evaluations = @evaluations.page(params[:page]).per(20)
+      @evaluations = pt_paginate(@evaluations, per_page: 20)
 
       # Get filter options
       @evaluator_types = Evaluation.distinct.pluck(:evaluator_type).compact.sort

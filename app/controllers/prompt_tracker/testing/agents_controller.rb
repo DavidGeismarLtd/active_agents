@@ -38,7 +38,7 @@ module PromptTracker
       end
 
       # Pagination
-      @agents = @agents.page(params[:page]).per(20)
+      @agents = pt_paginate(@agents, per_page: 20)
 
       # Get all categories and tags for filters
       @categories = Agent.distinct.pluck(:category).compact.sort

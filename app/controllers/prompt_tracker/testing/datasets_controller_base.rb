@@ -46,7 +46,7 @@ module PromptTracker
 
       # GET /datasets/:id
       def show
-        @rows = @dataset.dataset_rows.recent.page(params[:page]).per(50)
+        @rows = pt_paginate(@dataset.dataset_rows.recent, per_page: 50)
       end
 
       # GET /datasets/:id/edit
