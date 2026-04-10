@@ -25,7 +25,7 @@ module PromptTracker
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🚀 Starting call_llm (phase: #{phase})"
 
         model_config = task_agent.agent_version.model_config
-        system_prompt = task_agent.agent_version.system_prompt
+        system_prompt = render_system_prompt
 
         # Enhance system prompt with planning instructions if enabled
         if @planning_enabled
@@ -46,7 +46,13 @@ module PromptTracker
         user_prompt = messages.last[:content]
 
         # Convert tools array to Responses API format
+        # Include both function-calling tools AND built-in API tools (web_search, code_interpreter, etc.)
         tools = tools_array.present? ? [ :functions ] : []
+        builtin_tools = (model_config["tools"] || []).map(&:to_sym) - [ :functions ]
+        tools = (tools + builtin_tools).uniq
+
+        @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🔧 Tools to send: #{tools.inspect}"
+
         tool_config = { "functions" => tools_array }
 
         # Make initial API call
@@ -130,11 +136,16 @@ module PromptTracker
           @logger.info "[TaskAgentRuntimeService::OpenaiResponses] ⏳ Calling API with function results (iteration #{iteration})..."
 
           # Call API with function results
+          # Include built-in tools (web_search, etc.) alongside function calling
+          continuation_tools = [ :functions ]
+          builtin_tools = (model_config["tools"] || []).map(&:to_sym) - [ :functions ]
+          continuation_tools = (continuation_tools + builtin_tools).uniq
+
           response = LlmClients::OpenaiResponseService.call_with_context(
             model: model_config["model"],
             input: input_items,
             previous_response_id: response_id,
-            tools: [ :functions ],
+            tools: continuation_tools,
             # Use the same phase-aware tool selection as the initial call
             tool_config: { "functions" => build_tools_array(phase: phase) }
           )
@@ -177,11 +188,14 @@ module PromptTracker
           @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   📝 Arguments: #{arguments.inspect[0..200]}"
           @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   🆔 Call ID: #{call_id}"
 
-          # Execute the function (planning or regular)
+          # Execute the function (planning, MCP, or regular)
           @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   ⚙️  Determining function type..."
           result = if planning_function?(function_name)
             @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   🎯 Planning function detected"
             execute_planning_function(function_name, arguments)
+          elsif mcp_tool?(function_name)
+            @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   🔌 MCP tool detected"
+            execute_mcp_tool(function_name, arguments)
           else
             @logger.info "[TaskAgentRuntimeService::OpenaiResponses]   🔨 Regular function detected"
             execute_regular_function(function_name, arguments)

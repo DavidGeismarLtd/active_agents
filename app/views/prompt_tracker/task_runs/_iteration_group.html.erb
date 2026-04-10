@@ -42,10 +42,20 @@
               <div class="d-flex">
                 <!-- Timeline Marker -->
                 <div class="timeline-marker me-3">
-                  <% if event[:type] == :llm_response %>
+                  <% if event[:type] == :llm_response && event[:data].used_tool?("web_search") %>
+                    <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center"
+                         style="width: 32px; height: 32px;">
+                      <i class="bi bi-search"></i>
+                    </div>
+                  <% elsif event[:type] == :llm_response %>
                     <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
                          style="width: 32px; height: 32px;">
                       <i class="bi bi-chat-left-text"></i>
+                    </div>
+                  <% elsif event[:type] == :function_execution && event[:data].mcp_tool? %>
+                    <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center"
+                         style="width: 32px; height: 32px;">
+                      <i class="bi bi-plugin"></i>
                     </div>
                   <% elsif event[:type] == :function_execution %>
                     <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"

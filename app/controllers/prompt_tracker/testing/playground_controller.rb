@@ -338,10 +338,16 @@ module PromptTracker
         old_config[key] != new_config[key]
       end
 
+      # Check MCP servers (structural change)
+      old_mcp_servers = (version.mcp_servers || []).sort
+      new_mcp_servers = (params[:mcp_servers] || []).sort
+      mcp_servers_changed = old_mcp_servers != new_mcp_servers
+
       # Extract variables_schema from both system_prompt and user_prompt (same logic as model callback)
       new_variables_schema = extract_variables_schema_from_prompts(params[:system_prompt], params[:user_prompt])
 
       structural_keys_changed ||
+        mcp_servers_changed ||
         version.variables_schema != new_variables_schema ||
         version.response_schema != extract_response_schema_param
     end
@@ -403,7 +409,8 @@ module PromptTracker
     def save_params
       @save_params ||= params.permit(
         :user_prompt, :system_prompt, :notes, :prompt_name,
-        :prompt_slug, :save_action
+        :prompt_slug, :save_action,
+        mcp_servers: []
       ).to_h.with_indifferent_access.merge(
         model_config: params[:model_config]&.to_unsafe_h || {},
         response_schema: extract_response_schema_param

@@ -432,6 +432,11 @@ export default class extends Controller {
       modelConfig.tool_config = toolConfig
     }
 
+    // Collect MCP servers
+    const mcpServers = this.hasPlaygroundToolsOutlet
+      ? this.playgroundToolsOutlet.getSelectedMcpServers()
+      : []
+
     return {
       prompt_name: promptName,
       prompt_slug: this.hasPromptSlugTarget ? this.promptSlugTarget.value : '',
@@ -440,7 +445,8 @@ export default class extends Controller {
       template_variables: this.hasPlaygroundVariablesOutlet
         ? this.playgroundVariablesOutlet.getVariables()
         : {},
-      model_config: modelConfig
+      model_config: modelConfig,
+      mcp_servers: mcpServers
     }
   }
 

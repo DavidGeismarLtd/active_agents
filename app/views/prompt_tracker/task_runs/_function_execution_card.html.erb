@@ -1,6 +1,16 @@
 <%# Function Execution Card - Shows actual function execution result %>
-<div class="card <%= execution.success ? 'border-success' : 'border-danger' %>" data-task-timeline-target="eventCard">
-  <div class="card-header <%= execution.success ? 'bg-success' : 'bg-danger' %> bg-opacity-10 cursor-pointer"
+<%
+  # Determine card styling based on function type
+  if execution.mcp_tool?
+    border_class = execution.success ? 'border-info' : 'border-danger'
+    header_class = execution.success ? 'bg-info' : 'bg-danger'
+  else
+    border_class = execution.success ? 'border-success' : 'border-danger'
+    header_class = execution.success ? 'bg-success' : 'bg-danger'
+  end
+%>
+<div class="card <%= border_class %>" data-task-timeline-target="eventCard">
+  <div class="card-header <%= header_class %> bg-opacity-10 cursor-pointer"
        data-action="click->task-timeline#toggleCard"
        data-bs-toggle="collapse"
        data-bs-target="#function-execution-<%= execution.id %>">
@@ -9,6 +19,11 @@
         <h6 class="mb-0">
           <% if execution.function_definition.present? %>
             <i class="bi bi-code-square"></i> Function: <%= execution.function_definition.name %>
+          <% elsif execution.mcp_tool? %>
+            <i class="bi bi-plugin text-info"></i>
+            MCP: <span class="text-info"><%= execution.mcp_server_name %></span> / <%= execution.mcp_tool_name %>
+          <% elsif execution.function_name.present? %>
+            <i class="bi bi-code-square"></i> <%= execution.function_name %>
           <% else %>
             <i class="bi bi-lightbulb text-primary"></i> Planning: <%= execution.display_name %>
           <% end %>
@@ -71,6 +86,19 @@
               <tr>
                 <th>Function ID</th>
                 <td><%= execution.function_definition.id %></td>
+              </tr>
+            <% elsif execution.mcp_tool? %>
+              <tr>
+                <th>Function Type</th>
+                <td><span class="badge bg-info">MCP Tool</span></td>
+              </tr>
+              <tr>
+                <th>MCP Server</th>
+                <td><code><%= execution.mcp_server_name %></code></td>
+              </tr>
+              <tr>
+                <th>Tool Name</th>
+                <td><code><%= execution.mcp_tool_name %></code></td>
               </tr>
             <% else %>
               <tr>

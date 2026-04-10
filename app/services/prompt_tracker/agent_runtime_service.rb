@@ -47,26 +47,29 @@ module PromptTracker
       @metadata = metadata
       @function_calls = []
       @iteration_count = 0
+
+      # Initialize MCP client manager if MCP servers are configured
+      @mcp_manager = initialize_mcp_manager
     end
 
     def execute
       validate_input!
 
       # 1. Load or create conversation
-      conversation = load_or_create_conversation
+      @conversation = load_or_create_conversation
 
       # 2. Add user message to conversation
-      conversation.add_message(role: "user", content: message)
+      @conversation.add_message(role: "user", content: message)
 
       # 3. Execute LLM call with function calling loop
-      llm_response = execute_with_function_calling(conversation)
+      llm_response = execute_with_function_calling(@conversation)
 
       # 4. Save assistant response to conversation
-      conversation.add_message(role: "assistant", content: llm_response[:text])
-      conversation.extend_ttl!
+      @conversation.add_message(role: "assistant", content: llm_response[:text])
+      @conversation.extend_ttl!
 
       # 5. Track in monitoring (create LlmResponse record)
-      track_response(llm_response, conversation)
+      track_response(llm_response, @conversation)
 
       # 6. Update agent stats
       update_agent_stats
@@ -84,6 +87,9 @@ module PromptTracker
       Rails.logger.error("AgentRuntimeService error: #{e.message}\n#{e.backtrace.join("\n")}")
       deployed_agent.update!(status: "error", error_message: e.message)
       Result.new(success?: false, error: "Internal error: #{e.message}")
+    ensure
+      # Cleanup MCP connections
+      cleanup_mcp_manager
     end
 
     private
@@ -208,6 +214,12 @@ module PromptTracker
 
       # Create a custom executor that calls our execute_single_function method
       executor = lambda do |function_name, arguments|
+        # Check if this is an MCP tool (prefixed with server name)
+        if mcp_tool?(function_name)
+          result = execute_mcp_tool(function_name, arguments)
+          return result
+        end
+
         # Find the function definition
         func_def = deployed_agent.function_definitions.find_by(name: function_name)
         unless func_def
@@ -239,13 +251,22 @@ module PromptTracker
 
     def build_tools_array
       # Return array of function definitions in the format expected by RubyLlmService
-      deployed_agent.function_definitions.map do |func_def|
+      tools = deployed_agent.function_definitions.map do |func_def|
         {
           "name" => func_def.name,
           "description" => func_def.description,
           "parameters" => func_def.parameters
         }
       end
+
+      # Inject MCP tools if MCP manager is initialized
+      if @mcp_manager
+        mcp_tools = fetch_mcp_tools
+        Rails.logger.info "[AgentRuntimeService] Injecting #{mcp_tools.size} MCP tools"
+        tools += mcp_tools
+      end
+
+      tools
     end
 
     def parse_tool_symbols(tools)
@@ -373,6 +394,93 @@ module PromptTracker
     rescue StandardError => e
       Rails.logger.error("Failed to update agent stats: #{e.message}")
       # Don't fail the request if stats update fails
+    end
+
+    # Initialize MCP client manager if MCP servers are configured
+    #
+    # @return [McpClientManager, nil] MCP manager instance or nil if no servers configured
+    def initialize_mcp_manager
+      server_names = deployed_agent.agent_version.mcp_server_names
+      return nil if server_names.empty?
+
+      Rails.logger.info "[AgentRuntimeService] Initializing MCP manager with servers: #{server_names.join(', ')}"
+
+      manager = McpClientManager.new(server_names)
+      manager.connect_all
+      manager
+    rescue StandardError => e
+      Rails.logger.error "[AgentRuntimeService] Failed to initialize MCP manager: #{e.message}"
+      nil
+    end
+
+    # Cleanup MCP connections
+    #
+    # @return [void]
+    def cleanup_mcp_manager
+      return unless @mcp_manager
+
+      Rails.logger.info "[AgentRuntimeService] Cleaning up MCP connections"
+      @mcp_manager.disconnect_all
+    rescue StandardError => e
+      Rails.logger.error "[AgentRuntimeService] Failed to cleanup MCP manager: #{e.message}"
+    end
+
+    # Fetch MCP tools from the manager
+    #
+    # @return [Array<Hash>] array of MCP tool definitions in LLM format
+    def fetch_mcp_tools
+      return [] unless @mcp_manager
+
+      @mcp_manager.list_all_tools
+    rescue StandardError => e
+      Rails.logger.error "[AgentRuntimeService] Failed to fetch MCP tools: #{e.message}"
+      []
+    end
+
+    # Check if a function name is an MCP tool (prefixed with server name)
+    #
+    # @param function_name [String] the function name to check
+    # @return [Boolean] true if this is an MCP tool
+    def mcp_tool?(function_name)
+      return false unless @mcp_manager
+
+      function_name.include?("__")
+    end
+
+    # Execute an MCP tool
+    #
+    # @param function_name [String] the MCP tool name (e.g., "filesystem__read_file")
+    # @param arguments [Hash] the tool arguments
+    # @return [Hash] the tool execution result
+    def execute_mcp_tool(function_name, arguments)
+      Rails.logger.info "[AgentRuntimeService] 🔌 Executing MCP tool: #{function_name}"
+
+      start_time = Time.current
+
+      result = @mcp_manager.call_tool(function_name, arguments)
+
+      duration = ((Time.current - start_time) * 1000).round(2)
+      success = !result["isError"]
+
+      Rails.logger.info "[AgentRuntimeService] 🔌 MCP tool #{success ? 'succeeded' : 'failed'} in #{duration}ms"
+
+      FunctionExecution.create!(
+        deployed_agent: deployed_agent,
+        agent_conversation: @conversation,
+        function_name: function_name,
+        function_definition_id: nil,
+        arguments: arguments,
+        result: result,
+        success: success,
+        error_message: success ? nil : result.dig("content", 0, "text"),
+        execution_time_ms: duration,
+        executed_at: start_time
+      )
+
+      result
+    rescue StandardError => e
+      Rails.logger.error "[AgentRuntimeService] 🔌 MCP tool execution failed: #{e.message}"
+      { "content" => [ { "type" => "text", "text" => "Error: #{e.message}" } ], "isError" => true }
     end
   end
 end

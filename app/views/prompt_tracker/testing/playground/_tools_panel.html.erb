@@ -6,12 +6,16 @@
     - available_tools: Array of tool hashes from Configuration#tools_for_api
     - enabled_tools: Hash with tool configs (e.g., {"web_search" => true, "file_search" => {"vector_store_ids" => [...]}})
     - tool_config: Hash with detailed tool configuration (file_search vector_store_ids, functions array)
+    - available_mcp_servers: Hash of MCP servers from configuration (optional)
+    - enabled_mcp_servers: Array of server names from the version (optional)
 %>
 
 <%
   available_tools ||= []
   enabled_tools_hash = enabled_tools_hash_for(enabled_tools)
   tool_config ||= @version&.model_config&.dig('tool_config') || {}
+  available_mcp_servers ||= PromptTracker.configuration.effective_mcp_servers
+  enabled_mcp_servers ||= @version&.mcp_server_names || []
 %>
 
 <div id="tools-panel"
@@ -48,6 +52,46 @@
              enabled_tools_hash: enabled_tools_hash,
              tool_config: tool_config,
              function_definitions: @function_definitions || [] %>
+
+  <%# MCP Servers Selection %>
+  <% if available_mcp_servers.present? %>
+    <div class="mt-4 pt-3 border-top">
+      <label class="form-label">
+        <i class="bi bi-plugin"></i> MCP Servers
+        <span class="badge bg-info ms-1">Beta</span>
+      </label>
+      <div class="form-text mb-3">
+        Select Model Context Protocol servers to enable external tool integrations.
+      </div>
+
+      <div class="d-flex flex-column gap-2">
+        <% available_mcp_servers.each do |server_name, server_config| %>
+          <div class="form-check">
+            <%= check_box_tag(
+              "mcp_server_#{server_name}",
+              server_name,
+              enabled_mcp_servers.include?(server_name.to_s),
+              class: "form-check-input",
+              data: {
+                playground_tools_target: "mcpServerCheckbox",
+                server_name: server_name
+              }
+            ) %>
+            <%= label_tag "mcp_server_#{server_name}", class: "form-check-label" do %>
+              <strong><%= server_name.to_s.titleize %></strong>
+              <% if server_config[:transport] %>
+                <span class="badge bg-secondary ms-1"><%= server_config[:transport] %></span>
+              <% end %>
+              <% if server_config[:description] %>
+                <br>
+                <small class="text-muted"><%= server_config[:description] %></small>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 
   <% if available_tools.empty? %>
     <div class="alert alert-secondary py-2">

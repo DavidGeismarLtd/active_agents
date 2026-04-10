@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # ============================================================================
-# Email Generation Prompts
+# Email Generation Agents
 # ============================================================================
 
-puts "  Creating email generation prompts..."
+puts "  Creating email generation agents..."
 
 email_summary = PromptTracker::Agent.create!(
   name: "email_summary_generator",
@@ -50,4 +50,4 @@ email_summary_v2 = email_summary.agent_versions.create!(
   created_by: "bob@example.com"
 )
 
-puts "  ✓ Created email generation prompts (1 prompt, 2 versions)"
+puts "  ✓ Created email generation agents (1 agent, 2 versions)"
