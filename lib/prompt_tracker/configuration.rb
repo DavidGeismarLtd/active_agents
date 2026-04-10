@@ -35,7 +35,8 @@ module PromptTracker
   #           openai: { api_key: org.openai_api_key },
   #           anthropic: { api_key: org.anthropic_api_key }
   #         },
-  #         contexts: org.prompt_tracker_contexts
+  #         contexts: org.prompt_tracker_contexts,
+  #         mcp_servers: org.prompt_tracker_mcp_servers
   #       }
   #     }
   #   end
@@ -132,7 +133,8 @@ module PromptTracker
     #       contexts: org.prompt_tracker_contexts,
     #       features: org.prompt_tracker_features,
     #       function_providers: org.prompt_tracker_function_providers,
-    #       assistant_chatbot: org.prompt_tracker_assistant_chatbot
+    #       assistant_chatbot: org.prompt_tracker_assistant_chatbot,
+    #       mcp_servers: org.prompt_tracker_mcp_servers
     #     }
     #   }
     attr_accessor :configuration_provider
