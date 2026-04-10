@@ -26,3 +26,4 @@
 .env.local
 .env.backup*
 dump.rdb
+.claude/
