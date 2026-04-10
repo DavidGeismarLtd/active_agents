@@ -39,6 +39,28 @@
       </div>
     <% end %>
 
+    <!-- MCP Servers -->
+    <% if version.has_mcp_servers? %>
+      <div class="mb-3 pb-3 border-bottom">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <small class="text-muted">
+            <i class="bi bi-plugin"></i> MCP Servers
+          </small>
+          <span class="badge bg-info"><%= version.mcp_server_names.count %></span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <% version.mcp_server_names.each do |server_name| %>
+            <span class="badge bg-info d-flex align-items-center gap-1 px-2 py-1"
+                  style="font-size: 0.875rem;">
+              <i class="bi bi-plugin"></i>
+              <%= server_name.titleize %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
     <!-- Tools -->
     <% if config.normalized_tools.any? %>
       <div class="mb-3 pb-3 border-bottom">

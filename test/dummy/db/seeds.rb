@@ -10,7 +10,7 @@ seed_files = Dir[Rails.root.join("db/seeds/*.rb")].sort
 
 if seed_files.empty?
   puts "⚠️  No seed files found in db/seeds/"
-  puts "   Expected files like: 01_cleanup.rb, 02_prompts_customer_support.rb, etc."
+  puts "   Expected files like: 01_cleanup.rb, 02_agents_customer_support.rb, etc."
   exit 1
 end
 

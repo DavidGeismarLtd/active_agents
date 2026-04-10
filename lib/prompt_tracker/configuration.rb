@@ -217,6 +217,35 @@ module PromptTracker
       # NOTE: the getter is overridden below to support dynamic configuration.
       attr_accessor :assistant_chatbot
 
+    # MCP (Model Context Protocol) server configurations.
+    # Maps server names to connection configurations.
+    # @return [Hash] hash of server name => server config hash
+    # @example Stdio transport (local subprocess)
+    #   {
+    #     "filesystem" => {
+    #       transport: "stdio",
+    #       command: "npx",
+    #       args: ["-y", "@modelcontextprotocol/server-filesystem"],
+    #       env: { "ALLOWED_PATHS" => "/tmp/agent_workspace" }
+    #     }
+    #   }
+    # @example HTTP transport (remote server)
+    #   {
+    #     "weather_api" => {
+    #       transport: "http",
+    #       url: "https://mcp.example.com/weather",
+    #       headers: { "Authorization" => "Bearer #{ENV['WEATHER_API_KEY']}" }
+    #     }
+    #   }
+    attr_reader :mcp_servers
+
+    # Set MCP servers configuration.
+    # Automatically stringifies keys for consistent access.
+    # @param servers [Hash] hash of server name => server config
+    def mcp_servers=(servers)
+      @mcp_servers = servers&.transform_keys(&:to_s) || {}
+    end
+
     # Initialize with default values.
     def initialize
       @basic_auth_username = nil
@@ -229,6 +258,7 @@ module PromptTracker
       @url_options_provider = nil
       @base_record_class = "::ActiveRecord::Base"
       @function_providers = {}
+      @mcp_servers = {}
       @agent_base_url = "http://localhost:3000"
       @default_deployment_config = {
         auth: { type: "api_key" },
@@ -315,6 +345,15 @@ module PromptTracker
       dynamic_config[:features] || @features
     end
 
+    # Get the effective MCP servers configuration.
+    # Returns dynamic config from configuration_provider if set, otherwise static @mcp_servers.
+    # @return [Hash] hash of server name => server config hash
+    def effective_mcp_servers
+      return @mcp_servers unless dynamic_configuration?
+
+      dynamic_config = @configuration_provider.call
+      dynamic_config[:mcp_servers] || @mcp_servers
+    end
 
     # Get the effective function execution providers configuration.
     # Returns dynamic config from configuration_provider if set, otherwise static @function_providers.
@@ -572,6 +611,55 @@ module PromptTracker
     # @return [Hash, nil] the provider configuration or nil
     def function_provider_config(provider)
         function_providers[provider.to_sym]
+    end
+
+    # =========================================================================
+    # MCP Server Methods
+    # =========================================================================
+
+    # Check if an MCP server is configured.
+    # @param server_name [String, Symbol] the server name
+    # @return [Boolean] true if the server is configured
+    def mcp_server_configured?(server_name)
+      effective_mcp_servers.key?(server_name.to_s)
+    end
+
+    # Get configuration for an MCP server.
+    # @param server_name [String, Symbol] the server name
+    # @return [Hash, nil] the server configuration or nil
+    def mcp_server_config(server_name)
+      effective_mcp_servers[server_name.to_s]
+    end
+
+    # Get all configured MCP server names.
+    # @return [Array<String>] list of configured server names
+    def mcp_server_names
+      effective_mcp_servers.keys
+    end
+
+    # Validate MCP server configuration.
+    # @param server_name [String] the server name
+    # @param config [Hash] the server configuration
+    # @return [Array<String>] array of error messages (empty if valid)
+    def validate_mcp_server_config(server_name, config)
+      errors = []
+
+      unless %w[stdio http].include?(config[:transport])
+        errors << "Invalid transport type: #{config[:transport]}. Must be 'stdio' or 'http'"
+      end
+
+      if config[:transport] == "stdio"
+        errors << "Missing 'command' for stdio transport" if config[:command].blank?
+      end
+
+      if config[:transport] == "http"
+        errors << "Missing 'url' for http transport" if config[:url].blank?
+        if config[:url].present? && !config[:url].start_with?("http://", "https://")
+          errors << "Invalid URL format: #{config[:url]}"
+        end
+      end
+
+      errors
     end
 
     # =========================================================================

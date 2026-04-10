@@ -105,12 +105,19 @@ module PromptTracker
 
       # Build hierarchical structure
       iterations = grouped.map do |iteration_num, iteration_events|
+        # Sort chronologically within each iteration.
+        # This naturally pairs LLM responses with their subsequent function executions:
+        # LLM Response (with tool call intent) → Function Execution → LLM Response → ...
+        sorted_iteration_events = iteration_events.sort_by { |event| event[:timestamp] }
+
+        timestamps = iteration_events.map { |event| event[:timestamp] }
+
         {
           iteration: iteration_num,
-          events: iteration_events,
-          started_at: iteration_events.first[:timestamp],
-          completed_at: iteration_events.last[:timestamp],
-          duration_ms: ((iteration_events.last[:timestamp] - iteration_events.first[:timestamp]) * 1000).round(0),
+          events: sorted_iteration_events,
+          started_at: timestamps.min,
+          completed_at: timestamps.max,
+          duration_ms: ((timestamps.max - timestamps.min) * 1000).round(0),
           llm_calls_count: iteration_events.count { |e| e[:type] == :llm_response },
           function_calls_count: iteration_events.count { |e| e[:type] == :function_execution }
         }

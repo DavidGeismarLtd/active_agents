@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # ============================================================================
-# Code Review Prompts
+# Code Review Agents
 # ============================================================================
 
-puts "  Creating code review prompts..."
+puts "  Creating code review agents..."
 
 code_review = PromptTracker::Agent.create!(
   name: "code_review_assistant",
@@ -43,7 +43,8 @@ code_review_v1 = code_review.agent_versions.create!(
     "temperature" => 0.4,
     "max_tokens" => 500
   },
+  mcp_servers: [ "filesystem" ],
   created_by: "bob@example.com"
 )
 
-puts "  ✓ Created code review prompts (1 prompt, 1 version)"
+puts "  ✓ Created code review agents (1 agent, 1 version with MCP: filesystem)"

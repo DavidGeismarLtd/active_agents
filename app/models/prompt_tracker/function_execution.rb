@@ -101,13 +101,44 @@ module PromptTracker
       average(:execution_time_ms).to_f.round(2)
     end
 
+    # Check if this execution is an MCP tool call.
+    # MCP tools have a function_name with double-underscore separator (e.g., "filesystem__read_file")
+    # and no associated function_definition.
+    #
+    # @return [Boolean] true if this is an MCP tool execution
+    def mcp_tool?
+      function_definition_id.nil? && function_name.present? && function_name.include?("__")
+    end
+
+    # Get the MCP server name from a prefixed function name.
+    # e.g., "filesystem__read_file" => "filesystem"
+    #
+    # @return [String, nil] the server name, or nil if not an MCP tool
+    def mcp_server_name
+      return nil unless mcp_tool?
+
+      function_name.split("__", 2).first
+    end
+
+    # Get the original MCP tool name (without server prefix).
+    # e.g., "filesystem__read_file" => "read_file"
+    #
+    # @return [String, nil] the tool name, or nil if not an MCP tool
+    def mcp_tool_name
+      return nil unless mcp_tool?
+
+      function_name.split("__", 2).last
+    end
+
     # Get the function name for display
     # For regular functions, use the function_definition name
+    # For MCP/virtual functions, use the stored function_name
     # For planning functions (no function_definition), infer from result/arguments
     #
     # @return [String] function name
     def display_name
       return function_definition.name if function_definition.present?
+      return function_name if function_name.present?
 
       # For planning functions, try to infer from result shape
       if result.is_a?(Hash)

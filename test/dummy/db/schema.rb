@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_10_110001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -72,6 +72,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "mcp_servers", default: []
     t.index [ "agent_id", "status" ], name: "index_agent_versions_on_prompt_and_status"
     t.index [ "agent_id", "version_number" ], name: "index_agent_versions_on_prompt_and_version_number", unique: true
     t.index [ "agent_id" ], name: "index_prompt_tracker_agent_versions_on_agent_id"
@@ -268,6 +269,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
     t.bigint "task_run_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "function_name"
     t.index [ "agent_conversation_id" ], name: "idx_on_agent_conversation_id_74963468f2"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_function_executions_on_deployed_agent_id"
     t.index [ "executed_at" ], name: "index_prompt_tracker_function_executions_on_executed_at"
@@ -432,11 +434,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
 
   create_table "prompt_tracker_task_schedules", force: :cascade do |t|
     t.bigint "deployed_agent_id", null: false
-      t.string "schedule_type", default: "interval", null: false
+    t.string "schedule_type", null: false
     t.string "cron_expression"
     t.integer "interval_value"
     t.string "interval_unit"
-      t.string "run_at_time", default: "09:00", null: false
     t.string "timezone", default: "UTC", null: false
     t.boolean "enabled", default: true, null: false
     t.datetime "last_run_at"
@@ -444,6 +445,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_03_101731) do
     t.integer "run_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "run_at_time", default: "09:00"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_task_schedules_on_deployed_agent_id", unique: true
     t.index [ "enabled", "next_run_at" ], name: "index_task_schedules_on_enabled_and_next_run"
     t.index [ "enabled" ], name: "index_prompt_tracker_task_schedules_on_enabled"

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # ============================================================================
-# Prompts with Response API Tools (Web Search, Code Interpreter, Functions)
+# Agents with Response API Tools (Web Search, Code Interpreter, Functions, MCP)
 # ============================================================================
 
-puts "  Creating prompts with Response API tools..."
+puts "  Creating agents with Response API tools..."
 
 # ============================================================================
 # 1. Research Assistant Prompt (Web Search)
@@ -42,11 +42,12 @@ research_prompt.agent_versions.create!(
     "max_tokens" => 2000,
     "tools" => [ "web_search" ]
   },
-  notes: "Uses web search to research topics with source citations",
+  mcp_servers: [ "filesystem" ],
+  notes: "Uses web search + filesystem MCP for local document research",
   created_by: "research-team@example.com"
 )
 
-puts "  ✓ Created research assistant prompt with web search"
+puts "  ✓ Created research assistant agent with web search + MCP: filesystem"
 
 # ============================================================================
 # 2. Competitive Intelligence Prompt (Web Search with Domain Focus)
@@ -535,10 +536,11 @@ tech_support_prompt.agent_versions.create!(
       ]
     }
   },
-  notes: "Anthropic Claude tech support with function calls for diagnostics and ticketing",
+  mcp_servers: [ "filesystem", "slack" ],
+  notes: "Anthropic Claude tech support with function calls + MCP for filesystem access and Slack notifications",
   created_by: "support-team@example.com"
 )
 
-puts "  ✓ Created tech support assistant prompt with Anthropic + function calls"
+puts "  ✓ Created tech support assistant agent with Anthropic + function calls + MCP: filesystem, slack"
 
-puts "\n  ✅ Created 8 prompts with API tools (web_search, code_interpreter, functions)"
+puts "\n  ✅ Created 8 agents with API tools (web_search, code_interpreter, functions, MCP)"

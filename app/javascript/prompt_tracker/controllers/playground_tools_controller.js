@@ -15,7 +15,8 @@ export default class extends Controller {
     "toolCheckbox",      // All tool checkboxes
     "toolCardsContainer", // Container for tool cards (for dynamic updates)
     "fileSearchPanel",   // File search config panel
-    "functionsPanel"     // Functions config panel
+    "functionsPanel",    // Functions config panel
+    "mcpServerCheckbox"  // MCP server checkboxes
   ]
 
   connect() {
@@ -184,6 +185,19 @@ export default class extends Controller {
     return Array.from(this.getCheckboxes())
       .filter(checkbox => checkbox.checked)
       .map(checkbox => checkbox.dataset.toolId)
+  }
+
+  /**
+   * Get array of selected MCP server names
+   * @returns {Array<string>} Array of selected MCP server names
+   */
+  getSelectedMcpServers() {
+    if (!this.hasMcpServerCheckboxTarget) {
+      return []
+    }
+    return Array.from(this.mcpServerCheckboxTargets)
+      .filter(checkbox => checkbox.checked)
+      .map(checkbox => checkbox.dataset.serverName)
   }
 
   /**

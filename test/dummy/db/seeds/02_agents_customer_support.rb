@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # ============================================================================
-# Customer Support Prompts
+# Customer Support Agents
 # ============================================================================
 
-puts "  Creating customer support prompts..."
+puts "  Creating customer support agents..."
 
 support_greeting = PromptTracker::Agent.create!(
   name: "customer_support_greeting",
@@ -69,7 +69,8 @@ support_greeting_v3 = support_greeting.agent_versions.create!(
     "temperature" => 0.7,
     "max_tokens" => 120
   },
-  notes: "Best performing version - friendly but professional",
+  mcp_servers: [ "slack" ],
+  notes: "Best performing version - friendly but professional, with Slack MCP for customer context",
   created_by: "john@example.com"
 )
 
@@ -113,4 +114,4 @@ support_greeting_v5 = support_greeting.agent_versions.create!(
   created_by: "alice@example.com"
 )
 
-puts "  ✓ Created customer support prompts (1 prompt, 5 versions)"
+puts "  ✓ Created customer support agents (1 agent, 5 versions, v3 with MCP: slack)"
