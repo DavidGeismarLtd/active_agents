@@ -22,20 +22,20 @@ module PromptTracker
   #
   class TaskRun < ApplicationRecord
     # Status enum
-    enum status: {
+    enum :status, {
       queued: "queued",
       running: "running",
       completed: "completed",
       failed: "failed",
       cancelled: "cancelled"
-    }, _prefix: true
+    }, prefix: true
 
     # Trigger type enum
-    enum trigger_type: {
+    enum :trigger_type, {
       scheduled: "scheduled",
       manual: "manual",
       api: "api"
-    }, _prefix: true
+    }, prefix: true
 
     # Associations
     belongs_to :deployed_agent,

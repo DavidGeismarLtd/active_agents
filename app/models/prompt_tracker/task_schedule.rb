@@ -18,18 +18,18 @@ module PromptTracker
   #
   class TaskSchedule < ApplicationRecord
     # Schedule type enum
-    enum schedule_type: {
+    enum :schedule_type, {
       interval: "interval"
-    }, _prefix: true
+    }, prefix: true
 
     # Interval unit enum
-    enum interval_unit: {
+    enum :interval_unit, {
       minutes: "minutes",
       hours: "hours",
       days: "days",
       weeks: "weeks",
       months: "months"
-    }, _prefix: true, _default: nil
+    }, prefix: true, default: nil
 
     INTERVAL_PRESETS = {
       "every_1_hour" => { value: 1, unit: "hours" },
