@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_10_100001) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_10_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -445,6 +445,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_10_100001) do
     t.integer "run_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "run_at_time", default: "09:00"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_task_schedules_on_deployed_agent_id", unique: true
     t.index [ "enabled", "next_run_at" ], name: "index_task_schedules_on_enabled_and_next_run"
     t.index [ "enabled" ], name: "index_prompt_tracker_task_schedules_on_enabled"
