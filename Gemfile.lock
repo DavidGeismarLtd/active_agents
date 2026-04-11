@@ -8,6 +8,7 @@ PATH
       kaminari (~> 1.2)
       liquid (~> 5.5)
       rails (>= 7.2.3)
+      ruby-openai (~> 8.0)
       rubyzip (~> 2.3)
       stimulus-rails
       turbo-rails
