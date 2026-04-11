@@ -29,6 +29,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rubyzip", "~> 2.3"
   spec.add_dependency "bcrypt", "~> 3.1"
 
-  spec.add_dependency "ruby-openai", "~> 7.0"
+  spec.add_dependency "ruby-openai", "~> 8.0"
 
 end
