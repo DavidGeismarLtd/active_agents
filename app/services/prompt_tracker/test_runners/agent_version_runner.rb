@@ -193,6 +193,9 @@ module PromptTracker
 
       # Calculate cost from output_data
       #
+      # Uses with_dynamic_config to ensure RubyLLM.models.find has access
+      # to per-tenant API keys in multi-tenant apps.
+      #
       # @param output_data [Hash] the output data with token info
       # @return [BigDecimal, nil] the calculated cost or nil
       def calculate_cost(output_data)
@@ -208,16 +211,18 @@ module PromptTracker
         model_name = output_data["model"] || model_config["model"]
         return nil unless model_name
 
-        model_info = RubyLLM.models.find(model_name)
-        return nil unless model_info
+        LlmClients::RubyLlmService.with_dynamic_config do |_llm|
+          model_info = RubyLLM.models.find(model_name)
+          return nil unless model_info
 
-        input_price = model_info.input_price_per_million
-        output_price = model_info.output_price_per_million
-        return nil unless input_price && output_price
+          input_price = model_info.input_price_per_million
+          output_price = model_info.output_price_per_million
+          return nil unless input_price && output_price
 
-        input_cost = (prompt_tokens * input_price / 1_000_000.0)
-        output_cost = (completion_tokens * output_price / 1_000_000.0)
-        input_cost + output_cost
+          input_cost = (prompt_tokens * input_price / 1_000_000.0)
+          output_cost = (completion_tokens * output_price / 1_000_000.0)
+          input_cost + output_cost
+        end
       end
     end
   end
