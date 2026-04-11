@@ -131,13 +131,16 @@ module PromptTracker
           schema = build_schema
 
           # Call the judge LLM with structured output
-          chat = RubyLLM.chat(model: config[:judge_model]).with_schema(schema)
-          response = chat.ask(judge_prompt)
+          # Use with_dynamic_config to pick up per-tenant API keys
+          LlmClients::RubyLlmService.with_dynamic_config do |llm|
+            chat = llm.chat(model: config[:judge_model]).with_schema(schema)
+            response = chat.ask(judge_prompt)
 
-          # Parse the response content
-          # OpenAI returns a Hash directly, Anthropic returns a String with JSON
-          parsed = parse_structured_response(response.content)
-          raw_response = response.raw.to_s
+            # Parse the response content
+            # OpenAI returns a Hash directly, Anthropic returns a String with JSON
+            parsed = parse_structured_response(response.content)
+            raw_response = response.raw.to_s
+          end
         end
 
         {
