@@ -14,9 +14,15 @@ module PromptTracker
 
         test_run.update!(output_data: output_data)
 
-        Rails.logger.info "[AgentVersionRunner] Step 2: Running evaluators..."
-        evaluator_results = run_evaluators(output_data)
-        Rails.logger.info "[AgentVersionRunner] Step 2: DONE"
+        begin
+          Rails.logger.info "[AgentVersionRunner] Step 2: Running evaluators..."
+          evaluator_results = run_evaluators(output_data)
+          Rails.logger.info "[AgentVersionRunner] Step 2: DONE"
+        rescue => e
+          Rails.logger.error "[AgentVersionRunner] Step 2 FAILED: #{e.class}: #{e.message}"
+          Rails.logger.error "[AgentVersionRunner] BACKTRACE:\n#{e.backtrace.first(20).join("\n")}"
+          raise
+        end
 
         passed = evaluator_results.empty? || evaluator_results.all? { |r| r[:passed] }
 
@@ -25,14 +31,13 @@ module PromptTracker
         Rails.logger.info "[AgentVersionRunner] Step 3: DONE"
 
         execution_time = ((Time.current - start_time) * 1000).to_i
-        Rails.logger.info "[AgentVersionRunner] Step 4: Updating results..."
         update_test_run_results(
           passed: passed,
           execution_time_ms: execution_time,
           evaluator_results: evaluator_results,
           cost_usd: cost
         )
-        Rails.logger.info "[AgentVersionRunner] Step 4: DONE"
+        Rails.logger.info "[AgentVersionRunner] All steps DONE"
       end
 
       private
