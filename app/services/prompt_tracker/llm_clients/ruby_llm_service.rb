@@ -2,111 +2,47 @@
 
 module PromptTracker
   module LlmClients
-    # Unified service for all RubyLLM-compatible LLM providers.
-    #
-    # This service uses RubyLLM's native tool handling for automatic tool execution.
-    # It supports OpenAI Chat Completions, Anthropic Claude, Google Gemini, DeepSeek,
-    # OpenRouter, Ollama, and any other RubyLLM-supported provider.
-    #
-    # @example Basic call
-    #   response = LlmClients::RubyLlmService.call(
-    #     model: "gpt-4o",
-    #     prompt: "Hello!",
-    #     system: "You are a helpful assistant."
-    #   )
-    #   response.text  # => "Hello! How can I help you today?"
-    #
-    # @example With tools (automatic execution)
-    #   response = LlmClients::RubyLlmService.call(
-    #     model: "claude-3-5-sonnet-20241022",
-    #     prompt: "What's the weather in Berlin?",
-    #     tools: [:functions],
-    #     tool_config: { "functions" => [{ "name" => "get_weather", ... }] },
-    #     mock_function_outputs: { "get_weather" => { "temp" => 72 } }
-    #   )
-    #   # RubyLLM automatically: calls tool → executes → sends result → returns final response
-    #
     class RubyLlmService
       DEFAULT_MAX_TOKENS = 4096
 
-      # Make a single-turn LLM call with optional tools
-      #
-      # @param model [String] Model ID (e.g., "gpt-4o", "claude-3-5-sonnet-20241022")
-      # @param prompt [String] User message
-      # @param system [String, nil] System prompt
-      # @param tools [Array<Symbol>] Tools to enable (e.g., [:functions])
-      # @param tool_config [Hash] Tool configuration with functions array
-      # @param mock_function_outputs [Hash, nil] Mock outputs for tool execution
-      # @param function_executor [Proc, nil] Custom executor proc(function_name, arguments) for real execution
-      # @param temperature [Float, nil] Temperature (0.0-2.0)
-      # @param max_tokens [Integer, nil] Maximum output tokens
-      # @return [NormalizedLlmResponse] Normalized response
       def self.call(model:, prompt:, system: nil, tools: [], tool_config: {},
                     mock_function_outputs: nil, function_executor: nil, temperature: nil, max_tokens: nil, **options)
         new(
-          model: model,
-          prompt: prompt,
-          system: system,
-          tools: tools,
-          tool_config: tool_config,
-          mock_function_outputs: mock_function_outputs,
-          function_executor: function_executor,
-          temperature: temperature,
-          max_tokens: max_tokens,
-          **options
+          model: model, prompt: prompt, system: system, tools: tools, tool_config: tool_config,
+          mock_function_outputs: mock_function_outputs, function_executor: function_executor,
+          temperature: temperature, max_tokens: max_tokens, **options
         ).call
       end
 
-      # Build a configured RubyLLM::Chat instance without making a call
-      #
-      # Use this when you need the chat instance for multi-turn conversations
-      # or want to control when/how the LLM is called.
-      #
-      # @param model [String] Model ID (e.g., "gpt-4o", "claude-3-5-sonnet-20241022")
-      # @param system [String, nil] System prompt
-      # @param tools [Array<Symbol>] Tools to enable (e.g., [:functions])
-      # @param tool_config [Hash] Tool configuration with functions array
-      # @param mock_function_outputs [Hash, nil] Mock outputs for tool execution
-      # @param function_executor [Proc, nil] Custom executor proc(function_name, arguments) for real execution
-      # @param temperature [Float, nil] Temperature (0.0-2.0)
-      # @param max_tokens [Integer, nil] Maximum output tokens
-      # @return [RubyLLM::Chat] Configured chat instance
       def self.build_chat(model:, system: nil, tools: [], tool_config: {},
                           mock_function_outputs: nil, function_executor: nil, temperature: nil, max_tokens: nil)
         new(
-          model: model,
-          prompt: "", # Not used for chat building
-          system: system,
-          tools: tools,
-          tool_config: tool_config,
-          mock_function_outputs: mock_function_outputs,
-          function_executor: function_executor,
-          temperature: temperature,
-          max_tokens: max_tokens
+          model: model, prompt: "", system: system, tools: tools, tool_config: tool_config,
+          mock_function_outputs: mock_function_outputs, function_executor: function_executor,
+          temperature: temperature, max_tokens: max_tokens
         ).build_chat
       end
 
-      # Execute block with dynamic RubyLLM configuration if configuration_provider is set.
-      # Creates an isolated RubyLLM context with per-request API keys for multi-tenant apps.
-      # Yields a "chat source" object (either RubyLLM module or a context) that responds to .chat(model:).
+      # Execute block with dynamic RubyLLM configuration.
+      # Temporarily sets the global RubyLLM config with per-tenant API keys,
+      # then restores the original values after the block completes.
+      # This ensures providers properly pick up the API keys during HTTP calls.
       #
-      # @example Usage in other services
-      #   LlmClients::RubyLlmService.with_dynamic_config do |llm|
-      #     chat = llm.chat(model: "gpt-4o")
-      #     response = chat.ask("Hello!")
-      #   end
-      #
-      # @yield [llm] Block to execute with the chat source
-      # @yieldparam llm [Module, RubyLLM::Context] Object that responds to .chat(model:)
+      # @yield [RubyLLM] The RubyLLM module with config applied
       # @return [Object] Result of the block
       def self.with_dynamic_config(&block)
         config = PromptTracker.configuration
 
         if config.dynamic_configuration?
-          ctx = RubyLLM.context do |c|
-            config.ruby_llm_config.each { |key, value| c.public_send("#{key}=", value) }
+          llm_config = config.ruby_llm_config
+          original = {}
+          llm_config.each { |key, _| original[key] = RubyLLM.config.public_send(key) }
+          llm_config.each { |key, value| RubyLLM.config.public_send("#{key}=", value) }
+          begin
+            yield(RubyLLM)
+          ensure
+            original.each { |key, value| RubyLLM.config.public_send("#{key}=", value) }
           end
-          yield(ctx)
         else
           yield(RubyLLM)
         end
@@ -130,37 +66,22 @@ module PromptTracker
         @tool_calls_log = []
       end
 
-      # Execute the LLM call
-      #
-      # @return [NormalizedLlmResponse] Normalized response
       def call
         log_request
-
         with_dynamic_config do |llm|
           chat = build_chat_instance(llm)
           response = chat.ask(prompt)
-
           log_response(response)
-          # Pass chat.messages to extract all tool calls from conversation history
           LlmResponseNormalizers::RubyLlm.normalize(response, chat_messages: chat.messages)
         end
       end
 
-      # Build a RubyLLM chat instance with all configurations.
-      # When called externally, wraps in dynamic config.
-      # When called from #call, dynamic config is already applied.
-      #
-      # @return [RubyLLM::Chat] Configured chat instance
       def build_chat
         with_dynamic_config { |llm| build_chat_instance(llm) }
       end
 
       private
 
-      # Build the actual chat instance (internal, without config wrapper)
-      #
-      # @param llm [Module, RubyLLM::Context] Chat source that responds to .chat(model:)
-      # @return [RubyLLM::Chat] Configured chat instance
       def build_chat_instance(llm)
         chat = llm.chat(model: model)
         chat = chat.with_instructions(system) if system.present?
@@ -171,46 +92,26 @@ module PromptTracker
         chat
       end
 
-      # Delegate to class method for DRY
       def with_dynamic_config(&block)
         self.class.with_dynamic_config(&block)
       end
 
-      # Apply additional parameters (max_tokens)
-      #
-      # @param chat [RubyLLM::Chat] Chat instance
-      # @return [RubyLLM::Chat] Chat with params applied
       def apply_params(chat)
         return chat unless max_tokens
-
         chat.with_params { |p| p[:max_tokens] = max_tokens }
       end
 
-      # Apply tools using RubyLLM's native tool handling
-      #
-      # @param chat [RubyLLM::Chat] Chat instance
-      # @return [RubyLLM::Chat] Chat with tools applied
       def apply_tools(chat)
         return chat unless tools.include?(:functions) && tool_config["functions"].present?
-
-        # Build dynamic RubyLLM::Tool classes from JSON config
         tool_classes = RubyLlm::DynamicToolBuilder.build(
           tool_config: tool_config,
           mock_function_outputs: mock_function_outputs,
           executor: function_executor
         )
-
-        # Register each tool with the chat
-        tool_classes.each do |tool_class|
-          chat = chat.with_tool(tool_class.new)
-        end
+        tool_classes.each { |tc| chat = chat.with_tool(tc.new) }
         chat
       end
 
-      # Apply event callbacks for logging
-      #
-      # @param chat [RubyLLM::Chat] Chat instance
-      # @return [RubyLLM::Chat] Chat with callbacks applied
       def apply_callbacks(chat)
         chat
           .on_tool_call { |tc| log_tool_call(tc) }
