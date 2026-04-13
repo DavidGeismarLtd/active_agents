@@ -38,7 +38,8 @@ module PromptTracker
       end
 
       # Pagination
-      @agents = @agents.page(params[:page]).per(20)
+      @agents = pt_paginate(@agents, per_page: 20)
+      @prompts = @agents # View uses @prompts (legacy naming)
 
       # Get all categories and tags for filters
       @categories = Agent.distinct.pluck(:category).compact.sort
@@ -49,6 +50,7 @@ module PromptTracker
     # Show agent details with all versions
     def show
       @agent = Agent.includes(agent_versions: [ :llm_responses, :evaluator_configs ]).find(params[:id])
+      @prompt = @agent # View uses @prompt (legacy naming)
       @versions = @agent.agent_versions.order(version_number: :desc)
       @active_version = @agent.active_version
       @latest_version = @agent.latest_version

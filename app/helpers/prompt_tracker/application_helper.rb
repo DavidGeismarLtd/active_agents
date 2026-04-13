@@ -8,6 +8,45 @@ module PromptTracker
     include EvaluatorConfigsHelper
     include UrlHelper
     include TestsHelper
+
+    # Generate a native browser importmap + module script tag for PromptTracker JS.
+    # Works without importmap-rails gem. Maps external libraries to CDN/Sprockets URLs
+    # and all engine JS files to their Sprockets asset paths.
+    def prompt_tracker_importmap_tags
+      engine_root = PromptTracker::Engine.root
+
+      # Collect all JS files from the engine
+      js_files = Dir.glob(engine_root.join("app/javascript/prompt_tracker/**/*.js")).sort
+      pins = {}
+      js_files.each do |path|
+        # Convert file path to module specifier: "prompt_tracker/controllers/tooltip_controller"
+        relative = path.sub("#{engine_root}/app/javascript/", "").sub(/\.js$/, "")
+        pins[relative] = asset_path("#{relative}.js")
+      end
+
+      # External library mappings
+      external = {
+        "@hotwired/turbo-rails" => (asset_path("turbo.min.js") rescue "https://cdn.jsdelivr.net/npm/@hotwired/turbo-rails@8.0.12/+esm"),
+        "@hotwired/stimulus" => (asset_path("stimulus.min.js") rescue "https://cdn.jsdelivr.net/npm/@hotwired/stimulus@3.2.2/+esm"),
+        "chart.js" => "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js",
+        "bootstrap" => "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.esm.min.js",
+        "@popperjs/core" => "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/index.js"
+      }
+
+      # Add alias for directory-style imports (e.g. "prompt_tracker/controllers" → index.js)
+      if pins.key?("prompt_tracker/controllers/index")
+        pins["prompt_tracker/controllers"] = pins["prompt_tracker/controllers/index"]
+      end
+
+      imports = external.merge(pins)
+      importmap_json = { imports: imports }.to_json
+
+      safe_join([
+        tag.script(importmap_json.html_safe, type: "importmap"),
+        "\n  ".html_safe,
+        tag.script("import 'prompt_tracker/application'".html_safe, type: "module")
+      ])
+    end
     # Format USD amount with dollar sign
     #
     # @param amount [Float, nil] the amount in USD

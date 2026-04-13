@@ -28,7 +28,7 @@ module PromptTracker
       end
 
       # Pagination
-      @ab_tests = @ab_tests.page(params[:page]).per(20)
+      @ab_tests = pt_paginate(@ab_tests, per_page: 20)
 
       # Get prompts for filter dropdown
       @prompts = Agent.order(:name)

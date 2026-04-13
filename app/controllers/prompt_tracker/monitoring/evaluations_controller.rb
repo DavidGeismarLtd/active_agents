@@ -59,7 +59,7 @@ module PromptTracker
         end
 
         # Pagination
-        @evaluations = @evaluations.page(params[:page]).per(50)
+        @evaluations = pt_paginate(@evaluations, per_page: 50)
 
         # Get filter options
         @prompts = Agent.active.order(:name)

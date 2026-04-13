@@ -7,6 +7,14 @@ module PromptTracker
     helper DatasetsHelper
     helper TestsHelper
 
+    private
+
+    # Paginate a scope using Kaminari, bypassing will_paginate conflicts.
+    # Use this instead of .page(params[:page]).per(N) in all controllers.
+    def pt_paginate(scope, per_page: 25)
+      scope.model.pt_paginate(scope, page: params[:page], per_page: per_page)
+    end
+
     # Override default_url_options to support multi-tenant mounting.
     # When the engine is mounted under a scoped route like /orgs/:org_slug/app,
     # the url_options_provider configuration allows the host app to provide

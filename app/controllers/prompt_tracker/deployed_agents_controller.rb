@@ -8,13 +8,12 @@ module PromptTracker
     # GET /agents
     # Dashboard showing all deployed agents
     def index
-      @agents = DeployedAgent.includes(:agent_version)
-                             .order(created_at: :desc)
-                             .page(params[:page])
-                             .per(20)
+      @agents = DeployedAgent.includes(:agent_version).order(created_at: :desc)
 
       # Apply filters
       @agents = @agents.where(status: params[:status]) if params[:status].present?
+
+      @agents = pt_paginate(@agents, per_page: 20)
 
       # Statistics
       @total_agents = DeployedAgent.count
