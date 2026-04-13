@@ -31,7 +31,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <%= form_with(url: form_url, method: :post, data: { turbo: false }) do |f| %>
+      <%= form_with(url: form_url, method: :post, data: { turbo: false }, html: { novalidate: true }) do |f| %>
         <div class="modal-body">
           <% if intro_text.present? %>
             <p class="text-muted mb-3">
