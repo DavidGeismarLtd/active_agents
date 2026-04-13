@@ -35,7 +35,7 @@
       </span>
     <% end %>
     <%= f.select :dataset_id,
-        options_from_collection_for_select(available_datasets, :id, :name),
+        available_datasets.map { |d| [d.name, d.id, { "data-row-count" => d.dataset_rows.count }] },
         { prompt: "Choose a dataset..." },
         class: "form-select",
         data: { "run-test-modal-target": "datasetSelect" } %>
