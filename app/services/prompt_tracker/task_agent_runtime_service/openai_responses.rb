@@ -63,14 +63,25 @@ module PromptTracker
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🌡️  Temperature: #{temperature.inspect} (model: #{model_config['model']})"
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] ⏳ Making initial API call (this may take a while for GPT-5)..."
 
-        response = LlmClients::OpenaiResponseService.call(
+        # During planning phase, force the LLM to call create_plan by setting tool_choice
+        tool_choice_param = if phase == :planning && tools_array.present?
+          @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 🎯 Forcing tool_choice=required for planning phase"
+          "required"
+        else
+          nil
+        end
+
+        call_params = {
           model: model_config["model"],
           input: user_prompt,
           instructions: system_prompt,
           tools: tools,
           tool_config: tool_config,
           temperature: temperature
-        )
+        }
+        call_params[:tool_choice] = tool_choice_param if tool_choice_param
+
+        response = LlmClients::OpenaiResponseService.call(**call_params)
 
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] ✅ Initial API call completed"
         @logger.info "[TaskAgentRuntimeService::OpenaiResponses] 📊 Response has #{response[:tool_calls]&.length || 0} tool calls"
