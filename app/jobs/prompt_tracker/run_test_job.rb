@@ -19,8 +19,6 @@ module PromptTracker
   class RunTestJob < ApplicationJob
     queue_as :prompt_tracker_tests
 
-    # Disable retries for now to avoid noise in logs
-    sidekiq_options retry: false
 
     # Execute the test run
     #

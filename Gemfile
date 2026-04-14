@@ -12,22 +12,12 @@ gem "sprockets-rails"
 gem "pry-byebug"
 gem "ostruct" # Required for Ruby 3.5+ compatibility
 
-# LLM API clients - unified interface for all providers
-gem "ruby_llm"
-
-# OpenAI gem for Responses API (not covered by ruby_llm)
-gem "ruby-openai", "~> 8.0"
-
 # Background job processing
 gem "sidekiq", "~> 7.0"
 gem "redis", "~> 5.0"
 
 # Cron expression parsing for task scheduling
 gem "fugit", "~> 1.11"
-
-# Hotwire's SPA-like page accelerator and real-time updates
-gem "turbo-rails"
-gem "stimulus-rails"
 
 # Import maps for JavaScript modules
 gem "importmap-rails"

@@ -30,5 +30,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "bcrypt", "~> 3.1"
 
   spec.add_dependency "ruby-openai", "~> 8.0"
-
+  spec.add_dependency "ruby_llm"
 end
