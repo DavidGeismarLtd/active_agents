@@ -45,18 +45,33 @@
           <div class="form-text">The prompt that starts the task. Use {{variable_name}} for variables.</div>
         </div>
 
-        <!-- Variables (JSON) -->
-        <div class="mb-3">
-          <%= f.label :variables, "Variables (JSON)", class: "form-label" %>
-          <%= f.fields_for :task_config do |task_f| %>
-            <%= task_f.text_area :variables,
-                value: agent.task_config[:variables]&.to_json || "{}",
-                class: "form-control font-monospace",
-                rows: 4,
-                placeholder: '{"source_url": "https://example.com"}' %>
-          <% end %>
-          <div class="form-text">Variables to substitute in the initial prompt (JSON format)</div>
-        </div>
+        <!-- Variables -->
+        <% if version.variables_schema.present? %>
+          <div class="mb-3">
+            <label class="form-label"><i class="bi bi-braces"></i> Variables</label>
+            <div class="form-text mb-2">Values for the variables defined in the agent version's prompts.</div>
+            <% existing_variables = agent.task_config[:variables] || {} %>
+            <% version.variables_schema.each do |var_schema| %>
+              <% var_name = var_schema["name"] %>
+              <% var_required = var_schema["required"] %>
+              <div class="mb-2">
+                <label class="form-label small" for="deployed_agent_task_config_variables_<%= var_name %>">
+                  <%= var_name %>
+                  <% if var_required %>
+                    <span class="text-danger">*</span>
+                  <% end %>
+                </label>
+                <input type="text"
+                       name="deployed_agent[task_config][variables][<%= var_name %>]"
+                       id="deployed_agent_task_config_variables_<%= var_name %>"
+                       value="<%= existing_variables[var_name] || existing_variables[var_name.to_sym] %>"
+                       class="form-control"
+                       placeholder="Value for {{<%= var_name %>}}"
+                       <%= "required" if var_required %>>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
         <!-- Execution Settings -->
         <div class="row">

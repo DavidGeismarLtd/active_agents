@@ -190,9 +190,9 @@ module PromptTracker
         ],
         task_config: [
           :initial_prompt,
-          :variables,
           execution: [ :max_iterations, :timeout_seconds ],
-          planning: [ :enabled, :max_steps, :allow_plan_modifications ]
+          planning: [ :enabled, :max_steps, :allow_plan_modifications ],
+          variables: {}
         ]
       )
 
@@ -231,12 +231,8 @@ module PromptTracker
       if permitted[:task_config].present?
         config = permitted[:task_config].to_h
 
-        # Parse variables JSON string to hash
-        variables = begin
-          JSON.parse(config[:variables] || "{}")
-        rescue JSON::ParserError
-          {}
-        end
+        # Variables come as individual fields from the form
+        variables = (config[:variables] || {}).to_h
 
         permitted[:task_config] = {
           initial_prompt: config[:initial_prompt],
