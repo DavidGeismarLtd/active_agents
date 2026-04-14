@@ -52,7 +52,7 @@ module PromptTracker
     def initialize(task_agent:, task_run:, variables: nil, logger: nil)
       @task_agent = task_agent
       @task_run = task_run
-      @variables = variables || task_agent.task_configuration.dig(:variables) || {}
+      @variables = resolve_variables(variables)
       @iteration_count = 0
       @conversation_history = []
       @start_time = Time.current
@@ -183,7 +183,24 @@ module PromptTracker
 
     def render_initial_prompt
       template = task_agent.task_configuration[:initial_prompt]
-      render_template(template)
+      rendered = render_template(template)
+
+      # Append any variables that are not referenced in the template
+      # so the LLM always knows about them even if the user forgot {{placeholders}}
+      if variables.present?
+        unreferenced = variables.reject { |key, _| template&.include?("{{#{key}}}") }
+        if unreferenced.present?
+          rendered = rendered.to_s
+          rendered += "\n\nContext variables:\n"
+          unreferenced.each do |key, value|
+            rendered += "- #{key}: #{value}\n"
+          end
+          @logger.info "[TaskAgentRuntimeService] 📋 Appended #{unreferenced.size} unreferenced variable(s) to initial prompt"
+        end
+      end
+
+      @logger.info "[TaskAgentRuntimeService] 📋 Rendered initial prompt: #{rendered[0..200]}..."
+      rendered
     end
 
     # Render system prompt with variable substitution.
@@ -209,6 +226,27 @@ module PromptTracker
         rendered.gsub!("{{#{key}}}", value.to_s)
       end
       rendered
+    end
+
+    # Resolve variables from multiple sources (in priority order):
+    # 1. Explicitly passed variables (from API call)
+    # 2. task_run.variables_used (set when the run was created, includes merged defaults)
+    # 3. task_config variables (default values from deployed agent config)
+    # 4. Empty hash as fallback
+    #
+    # @param explicit_variables [Hash, nil] explicitly passed variables
+    # @return [Hash] resolved variables
+    def resolve_variables(explicit_variables)
+      resolved = explicit_variables.presence ||
+                 task_run&.variables_used.presence ||
+                 task_agent.task_configuration.dig(:variables) ||
+                 {}
+
+      # Stringify keys for consistent template substitution
+      resolved = resolved.transform_keys(&:to_s)
+
+      @logger&.info "[TaskAgentRuntimeService] 📋 Resolved variables: #{resolved.inspect}"
+      resolved
     end
 
     # Execute planning phase (Iteration 0)
