@@ -137,16 +137,8 @@ module PromptTracker
       # Merge default variables with runtime overrides
       default_variables = @agent.task_config[:variables] || {}
 
-      # Parse JSON string from form if present
-      runtime_variables = {}
-      if params[:variables].present?
-        begin
-          runtime_variables = JSON.parse(params[:variables])
-        rescue JSON::ParserError => e
-          redirect_to deployed_agent_path(@agent.slug), alert: "Invalid JSON in variables: #{e.message}"
-          return
-        end
-      end
+      # Collect non-blank variable overrides from individual form fields
+      runtime_variables = (params[:variables] || {}).to_unsafe_h.reject { |_, v| v.blank? }
 
       merged_variables = default_variables.merge(runtime_variables)
 

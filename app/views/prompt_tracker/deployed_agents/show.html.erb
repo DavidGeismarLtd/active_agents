@@ -246,25 +246,35 @@
                 </small>
               </div>
 
-              <div class="mb-3">
-                <label class="form-label fw-bold">Default Variables</label>
-                <pre class="bg-light p-2 rounded"><code><%= JSON.pretty_generate(@agent.task_config[:variables] || {}) %></code></pre>
-              </div>
-
-              <div class="mb-3">
-                <label for="variables_override" class="form-label fw-bold">
-                  Variable Overrides (JSON)
-                  <span class="text-muted fw-normal">- Optional</span>
-                </label>
-                <%= f.text_area :variables,
-                    id: "variables_override",
-                    class: "form-control font-monospace",
-                    rows: 6,
-                    placeholder: '{\n  "source_url": "https://example.com",\n  "topic": "AI agents"\n}' %>
-                <small class="text-muted">
-                  Only specify variables you want to override. These will be merged with defaults.
-                </small>
-              </div>
+              <% if @agent.agent_version.variables_schema.present? %>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">
+                    Variable Overrides
+                    <span class="text-muted fw-normal">- Optional</span>
+                  </label>
+                  <small class="text-muted d-block mb-2">
+                    Override default variable values for this run. Leave empty to use defaults.
+                  </small>
+                  <% default_variables = @agent.task_config[:variables] || {} %>
+                  <% @agent.agent_version.variables_schema.each do |var_schema| %>
+                    <% var_name = var_schema["name"] %>
+                    <% default_value = default_variables[var_name] || default_variables[var_name.to_sym] %>
+                    <div class="mb-2">
+                      <label class="form-label small" for="variables_<%= var_name %>">
+                        <%= var_name %>
+                        <% if default_value.present? %>
+                          <span class="text-muted">(default: <%= default_value %>)</span>
+                        <% end %>
+                      </label>
+                      <input type="text"
+                             name="variables[<%= var_name %>]"
+                             id="variables_<%= var_name %>"
+                             class="form-control"
+                             placeholder="<%= default_value || "Value for {{#{var_name}}}" %>">
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
