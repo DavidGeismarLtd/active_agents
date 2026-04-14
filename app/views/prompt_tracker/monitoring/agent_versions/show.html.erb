@@ -1,4 +1,4 @@
-<% content_for :breadcrumbs do %>
+<% content_for :breadcrumbs, flush: true do %>
   <li class="breadcrumb-item"><%= @prompt.name %></li>
   <li class="breadcrumb-item active" aria-current="page">v<%= @version.version_number %></li>
 <% end %>

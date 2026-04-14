@@ -1,4 +1,4 @@
-<% content_for :breadcrumbs do %>
+<% content_for :breadcrumbs, flush: true do %>
   <li class="breadcrumb-item"><%= link_to "Prompts", testing_agents_path %></li>
   <li class="breadcrumb-item"><%= link_to "v#{@version.version_number}", testing_agent_agent_version_path(@prompt, @version) %></li>
   <li class="breadcrumb-item"><%= link_to "Tests", testing_agent_version_tests_path(@version) %></li>

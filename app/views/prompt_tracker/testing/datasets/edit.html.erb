@@ -1,4 +1,4 @@
-<% content_for :breadcrumbs do %>
+<% content_for :breadcrumbs, flush: true do %>
   <li class="breadcrumb-item"><%= link_to @testable.name, testable_show_path(@testable) %></li>
   <li class="breadcrumb-item"><%= link_to "Datasets", datasets_index_path(@testable) %></li>
   <li class="breadcrumb-item"><%= link_to @dataset.name, dataset_path(@dataset) %></li>

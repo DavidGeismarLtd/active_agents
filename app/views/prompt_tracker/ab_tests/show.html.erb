@@ -1,4 +1,4 @@
-<% content_for :breadcrumbs do %>
+<% content_for :breadcrumbs, flush: true do %>
   <li class="breadcrumb-item"><%= link_to "A/B Tests", ab_tests_path %></li>
   <li class="breadcrumb-item active"><%= @ab_test.name %></li>
 <% end %>

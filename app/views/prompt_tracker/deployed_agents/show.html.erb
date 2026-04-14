@@ -1,4 +1,4 @@
-<% content_for :breadcrumbs do %>
+<% content_for :breadcrumbs, flush: true do %>
   <li class="breadcrumb-item"><%= link_to "Deployed Agents", deployed_agents_path %></li>
   <li class="breadcrumb-item active"><%= @agent.name %></li>
 <% end %>

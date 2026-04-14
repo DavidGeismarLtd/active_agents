@@ -187,9 +187,9 @@
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <% if request.path.start_with?("/prompt_tracker/testing") %>
+            <% if controller_path.start_with?("prompt_tracker/testing") %>
               <%= link_to "Testing", testing_root_path %>
-            <% elsif request.path.start_with?("/prompt_tracker/monitoring") %>
+            <% elsif controller_path.start_with?("prompt_tracker/monitoring") %>
               <%= link_to "Monitoring", monitoring_root_path %>
             <% else %>
               <%= link_to "Home", root_path %>
