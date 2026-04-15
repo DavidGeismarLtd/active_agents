@@ -101,6 +101,8 @@ module PromptTracker
     # Configure RubyLLM with API keys from PromptTracker providers configuration
     # This runs after host app initializers so PromptTracker.configuration is available
     initializer "prompt_tracker.configure_ruby_llm", after: :load_config_initializers do
+      require "ruby_llm"
+
       # Map PromptTracker provider names to RubyLLM config attributes
       PROVIDER_KEY_MAPPING = {
         openai: :openai_api_key,

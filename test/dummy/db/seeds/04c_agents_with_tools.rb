@@ -28,8 +28,9 @@ research_prompt.agent_versions.create!(
     5. Note when information may be outdated or uncertain
 
     Always use web search for factual queries. Never make up information.
+
+    Research the following topic and provide a well-sourced answer: {{query}}
   SYSTEM
-  user_prompt: "Research the following topic and provide a well-sourced answer: {{query}}",
   status: "active",
   variables_schema: [
     { "name" => "query", "type" => "string", "required" => true }
@@ -71,8 +72,9 @@ competitor_prompt.agent_versions.create!(
     5. Focus on factual, verifiable information
 
     Use web search to find the latest competitive intelligence.
+
+    Provide a competitive analysis of {{company}} in the {{industry}} industry. Focus on market position, recent developments, and competitive advantages.
   SYSTEM
-  user_prompt: "Provide a competitive analysis of {{company}} in the {{industry}} industry. Focus on market position, recent developments, and competitive advantages.",
   status: "active",
   variables_schema: [
     { "name" => "company", "type" => "string", "required" => true },
@@ -114,8 +116,13 @@ data_analysis_prompt.agent_versions.create!(
     5. Export results as needed
 
     Always execute code to verify calculations. Show your work with clear explanations.
+
+    Analyze the following data and provide insights:
+
+    {{data}}
+
+    Provide: {{analysis_type}}
   SYSTEM
-  user_prompt: "Analyze the following data and provide insights:\n\n{{data}}\n\nProvide: {{analysis_type}}",
   status: "active",
   variables_schema: [
     { "name" => "data", "type" => "string", "required" => true },
@@ -157,8 +164,11 @@ finance_prompt.agent_versions.create!(
     5. Explain financial concepts clearly
 
     Always use code for calculations. Create visualizations for complex data.
+
+    Create a financial model for: {{scenario}}
+
+    Include calculations for: {{metrics}}
   SYSTEM
-  user_prompt: "Create a financial model for: {{scenario}}\n\nInclude calculations for: {{metrics}}",
   status: "active",
   variables_schema: [
     { "name" => "scenario", "type" => "string", "required" => true },
@@ -200,8 +210,9 @@ travel_prompt.agent_versions.create!(
 
     Use the available functions to look up real-time information.
     Always confirm booking details with the user before finalizing.
+
+    Help me plan travel: {{request}}
   SYSTEM
-  user_prompt: "Help me plan travel: {{request}}",
   status: "active",
   variables_schema: [
     { "name" => "request", "type" => "string", "required" => true }
@@ -304,8 +315,9 @@ ecommerce_prompt.agent_versions.create!(
 
     Use the available functions to access the product catalog and order system.
     Be helpful, friendly, and efficient.
+
+    Customer inquiry: {{inquiry}}
   SYSTEM
-  user_prompt: "Customer inquiry: {{inquiry}}",
   status: "active",
   variables_schema: [
     { "name" => "inquiry", "type" => "string", "required" => true }
@@ -403,8 +415,11 @@ news_prompt.agent_versions.create!(
     5. Distinguish between facts and opinions
 
     Use the fetch_news_articles function to find current news. Always verify information across sources.
+
+    Provide a news analysis on: {{topic}}
+
+    Focus on: {{focus_areas}}
   SYSTEM
-  user_prompt: "Provide a news analysis on: {{topic}}\n\nFocus on: {{focus_areas}}",
   status: "active",
   variables_schema: [
     { "name" => "topic", "type" => "string", "required" => true },
@@ -467,8 +482,9 @@ tech_support_prompt.agent_versions.create!(
 
     Use the available functions to access the knowledge base and ticketing system.
     Be patient, thorough, and explain technical concepts clearly.
+
+    Technical issue: {{issue_description}}
   SYSTEM
-  user_prompt: "Technical issue: {{issue_description}}",
   status: "active",
   variables_schema: [
     { "name" => "issue_description", "type" => "string", "required" => true }

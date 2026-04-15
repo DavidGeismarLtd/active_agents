@@ -15,9 +15,10 @@ code_review = PromptTracker::Agent.create!(
 )
 
 code_review_v1 = code_review.agent_versions.create!(
-    system_prompt: "You are a code review assistant that provides constructive feedback on code snippets.",
-    user_prompt: <<~TEMPLATE,
-    Review the following {{language}} code and provide constructive feedback:
+    system_prompt: <<~SYSTEM.strip,
+    You are a code review assistant that provides constructive feedback on code snippets.
+
+    When given code, review the following {{language}} code and provide constructive feedback:
 
     ```{{language}}
     {{code}}
@@ -30,7 +31,7 @@ code_review_v1 = code_review.agent_versions.create!(
     - Best practices
 
     Be constructive and specific.
-  TEMPLATE
+  SYSTEM
   status: "active",
   variables_schema: [
     { "name" => "language", "type" => "string", "required" => true },

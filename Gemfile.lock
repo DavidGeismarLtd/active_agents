@@ -11,8 +11,6 @@ PATH
       ruby-openai (~> 8.0)
       ruby_llm
       rubyzip (~> 2.3)
-      stimulus-rails
-      turbo-rails
 
 GEM
   remote: https://rubygems.org/
@@ -421,7 +419,7 @@ GEM
     thor (1.4.0)
     timeout (0.4.4)
     tsort (0.2.0)
-    turbo-rails (2.0.20)
+    turbo-rails (2.0.23)
       actionpack (>= 7.1.0)
       railties (>= 7.1.0)
     tzinfo (2.0.6)
@@ -469,8 +467,6 @@ DEPENDENCIES
   redis (~> 5.0)
   rspec-rails (~> 6.1)
   rubocop-rails-omakase
-  ruby-openai (~> 8.0)
-  ruby_llm
   selenium-webdriver (~> 4.15)
   shoulda-matchers (~> 6.0)
   sidekiq (~> 7.0)

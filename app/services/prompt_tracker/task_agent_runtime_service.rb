@@ -54,6 +54,7 @@ module PromptTracker
       @task_run = task_run
       @variables = resolve_variables(variables)
       @iteration_count = 0
+      @max_iterations = nil
       @conversation_history = []
       @start_time = Time.current
       @current_iteration_function_calls = []
@@ -73,8 +74,9 @@ module PromptTracker
 
       # Get execution config (with optional overrides from task_run metadata)
       execution_overrides = task_run.metadata&.dig("execution_overrides") || {}
-      max_iterations = execution_overrides["max_iterations"] ||
-                       task_agent.task_configuration.dig(:execution, :max_iterations) || 5
+      @max_iterations = execution_overrides["max_iterations"] ||
+                        task_agent.task_configuration.dig(:execution, :max_iterations) || 5
+      max_iterations = @max_iterations
       timeout_seconds = execution_overrides["timeout_seconds"] ||
                         task_agent.task_configuration.dig(:execution, :timeout_seconds) || 3600
 
@@ -445,6 +447,9 @@ module PromptTracker
         @logger.info "[TaskAgentRuntimeService] 🎯 Enhancing system prompt with planning instructions (phase: #{phase})"
         system_prompt = enhance_system_prompt_with_planning(system_prompt, phase: phase)
       end
+
+      # Add iteration awareness so the agent can pace itself and wrap up
+      system_prompt = enhance_system_prompt_with_iteration_context(system_prompt)
 
       # Build tools array from function definitions + planning functions
       tools = build_tools_array(phase: phase)
@@ -835,6 +840,47 @@ module PromptTracker
         ]
       end
 
+    def standard_iteration_instructions(remaining)
+      <<~INSTRUCTIONS
+
+        ## ⏱️ ITERATION STATUS
+        You are on iteration #{@iteration_count} of #{@max_iterations}.
+        You have #{remaining} iterations remaining.
+        Pace yourself accordingly — prioritize the most important work first.
+      INSTRUCTIONS
+    end
+
+    def penultimate_iteration_instructions
+      <<~INSTRUCTIONS
+
+        ## ⚠️ ITERATION STATUS — ALMOST OUT OF TIME
+        You are on iteration #{@iteration_count} of #{@max_iterations}.
+        You have only 1 iteration remaining after this one.
+        Start wrapping up:
+        - Finish the current step if possible
+        - On your next (final) iteration you MUST produce a summary and complete the task
+        - Do NOT start any new major work
+      INSTRUCTIONS
+    end
+
+    def final_iteration_instructions
+      <<~INSTRUCTIONS
+
+        ## 🛑 FINAL ITERATION — YOU MUST WRAP UP NOW
+        You are on iteration #{@iteration_count} of #{@max_iterations}. This is your LAST iteration.
+        You will NOT get another turn after this.
+
+        **You MUST do the following:**
+        1. Do NOT start any new work or function calls
+        2. Summarize what you have accomplished so far
+        3. Note any work that remains incomplete
+        4. Call `mark_task_complete()` with a summary of completed and incomplete work
+        5. If mark_task_complete is not available, simply produce a final summary as your response
+
+        Failure to wrap up will result in the task being forcibly terminated with no summary.
+      INSTRUCTIONS
+    end
+
     def force_plan_completion(reason)
       @logger.warn "[TaskAgentRuntimeService] 🛑 Forcing plan completion: #{reason}"
 
@@ -1033,6 +1079,30 @@ module PromptTracker
       end
 
       original_prompt + planning_instructions
+    end
+
+    # Enhance system prompt with iteration budget context.
+    #
+    # Injects the current iteration number, total budget, and remaining iterations
+    # into the system prompt so the LLM can pace itself. On the final iteration,
+    # adds urgent wrap-up instructions to force a useful summary instead of being
+    # hard-killed mid-task.
+    #
+    # @param system_prompt [String] the current system prompt
+    # @return [String] enhanced system prompt with iteration context
+    def enhance_system_prompt_with_iteration_context(system_prompt)
+      return system_prompt unless @max_iterations && @iteration_count > 0
+
+      remaining = @max_iterations - @iteration_count
+      iteration_context = if remaining <= 0
+        final_iteration_instructions
+      elsif remaining == 1
+        penultimate_iteration_instructions
+      else
+        standard_iteration_instructions(remaining)
+      end
+
+      system_prompt + iteration_context
     end
 
     # Broadcast timeline update to the task run show page

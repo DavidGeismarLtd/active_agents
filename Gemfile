@@ -8,6 +8,8 @@ gem "puma"
 gem "pg", "~> 1.5"
 
 gem "sprockets-rails"
+gem "turbo-rails"
+gem "stimulus-rails"
 
 gem "pry-byebug"
 gem "ostruct" # Required for Ruby 3.5+ compatibility

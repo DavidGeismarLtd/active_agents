@@ -33,6 +33,9 @@ module PromptTracker
           system_prompt = enhance_system_prompt_with_planning(system_prompt, phase: phase)
         end
 
+        # Add iteration awareness so the agent can pace itself and wrap up
+        system_prompt = enhance_system_prompt_with_iteration_context(system_prompt)
+
         # Build tools array from function definitions + planning functions
         # IMPORTANT: respect the phase so that planning phase (iteration 0)
         # only exposes the planning tools (typically just create_plan).

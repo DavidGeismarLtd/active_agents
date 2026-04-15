@@ -251,4 +251,84 @@ RSpec.describe PromptTracker::TaskAgentRuntimeService, type: :service do
         end
       end
   end
+
+  describe "#enhance_system_prompt_with_iteration_context" do
+    let(:service) do
+      described_class.new(task_agent: task_agent, task_run: task_run, variables: variables)
+    end
+    let(:base_prompt) { "You are a helpful assistant." }
+
+    context "when max_iterations is not set" do
+      it "returns the system prompt unchanged" do
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to eq(base_prompt)
+      end
+    end
+
+    context "when iteration_count is 0" do
+      it "returns the system prompt unchanged" do
+        service.instance_variable_set(:@max_iterations, 10)
+        service.instance_variable_set(:@iteration_count, 0)
+
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to eq(base_prompt)
+      end
+    end
+
+    context "with plenty of iterations remaining" do
+      it "includes standard iteration status" do
+        service.instance_variable_set(:@max_iterations, 10)
+        service.instance_variable_set(:@iteration_count, 3)
+
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to include("ITERATION STATUS")
+        expect(result).to include("iteration 3 of 10")
+        expect(result).to include("7 iterations remaining")
+        expect(result).not_to include("FINAL ITERATION")
+        expect(result).not_to include("ALMOST OUT OF TIME")
+      end
+    end
+
+    context "on the penultimate iteration" do
+      it "includes warning about almost out of time" do
+        service.instance_variable_set(:@max_iterations, 5)
+        service.instance_variable_set(:@iteration_count, 4)
+
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to include("ALMOST OUT OF TIME")
+        expect(result).to include("iteration 4 of 5")
+        expect(result).to include("only 1 iteration remaining")
+        expect(result).to include("Do NOT start any new major work")
+      end
+    end
+
+    context "on the final iteration" do
+      it "includes urgent wrap-up instructions" do
+        service.instance_variable_set(:@max_iterations, 5)
+        service.instance_variable_set(:@iteration_count, 5)
+
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to include("FINAL ITERATION")
+        expect(result).to include("LAST iteration")
+        expect(result).to include("mark_task_complete()")
+        expect(result).to include("Summarize what you have accomplished")
+      end
+    end
+
+    context "when iteration_count exceeds max_iterations" do
+      it "includes final iteration instructions" do
+        service.instance_variable_set(:@max_iterations, 3)
+        service.instance_variable_set(:@iteration_count, 4)
+
+        result = service.send(:enhance_system_prompt_with_iteration_context, base_prompt)
+
+        expect(result).to include("FINAL ITERATION")
+      end
+    end
+  end
 end
