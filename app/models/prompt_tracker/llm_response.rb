@@ -472,6 +472,49 @@ module PromptTracker
       tools_used.join(", ")
     end
 
+    PLANNING_FUNCTION_NAMES = %w[create_plan get_plan update_step add_step mark_task_complete].freeze
+
+    # Checks if a tool call is a planning function
+    #
+    # @param tool_call [Hash] a tool call hash with "function_name" key
+    # @return [Boolean]
+    def self.planning_tool_call?(tool_call)
+      name = tool_call["function_name"] || tool_call[:function_name]
+      PLANNING_FUNCTION_NAMES.include?(name)
+    end
+
+    # Returns only planning tool calls from this response
+    #
+    # @return [Array<Hash>]
+    def planning_tool_calls
+      return [] unless tool_calls.present?
+
+      tool_calls.select { |tc| self.class.planning_tool_call?(tc) }
+    end
+
+    # Returns only custom (non-planning) tool calls from this response
+    #
+    # @return [Array<Hash>]
+    def custom_tool_calls
+      return [] unless tool_calls.present?
+
+      tool_calls.reject { |tc| self.class.planning_tool_call?(tc) }
+    end
+
+    # Checks if this response has any planning tool calls
+    #
+    # @return [Boolean]
+    def has_planning_tool_calls?
+      planning_tool_calls.any?
+    end
+
+    # Checks if this response has any custom (non-planning) tool calls
+    #
+    # @return [Boolean]
+    def has_custom_tool_calls?
+      custom_tool_calls.any?
+    end
+
     private
 
     # Triggers automatic evaluation after response is created

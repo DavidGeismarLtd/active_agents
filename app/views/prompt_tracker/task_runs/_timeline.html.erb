@@ -3,7 +3,7 @@
 	  <% if timeline.any? %>
 		  <div class="timeline-container">
 		    <% timeline.each do |iteration| %>
-		      <%= render "prompt_tracker/task_runs/iteration_group", iteration: iteration %>
+		      <%= render "prompt_tracker/task_runs/iteration_group", iteration: iteration, task_run: task_run %>
 		    <% end %>
 		  </div>
 

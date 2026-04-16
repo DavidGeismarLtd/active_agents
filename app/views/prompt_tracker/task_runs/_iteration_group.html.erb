@@ -1,4 +1,24 @@
 <%# Iteration Group - Collapsible container for all events in one iteration %>
+<%
+  # Determine which plan step(s) this iteration worked on
+  plan = defined?(task_run) ? task_run.metadata&.dig("plan") : nil
+  active_step_ids = []
+  if plan && iteration[:iteration] > 0
+    iteration[:events].each do |evt|
+      next unless evt[:type] == :function_execution
+      fn = evt[:data]
+      next if fn.function_definition.present? || fn.mcp_tool?
+      # Planning function execution — check if it's update_step with in_progress/completed
+      if fn.display_name == "update_step" && fn.arguments.is_a?(Hash)
+        step_id = fn.arguments["step_id"] || fn.arguments[:step_id]
+        active_step_ids << step_id if step_id.present?
+      end
+    end
+    active_step_ids.uniq!
+  end
+  plan_steps = plan&.dig("steps") || []
+  active_steps = plan_steps.select { |s| active_step_ids.include?(s["id"]) }
+%>
 <div class="iteration-group mb-4" data-task-timeline-target="iterationGroup">
   <!-- Iteration Header -->
   <div class="card border-primary">
@@ -24,6 +44,29 @@
             • <%= iteration[:llm_calls_count] %> LLM call<%= iteration[:llm_calls_count] == 1 ? '' : 's' %>
             • <%= iteration[:function_calls_count] %> function call<%= iteration[:function_calls_count] == 1 ? '' : 's' %>
           </small>
+          <% if active_steps.any? %>
+            <div class="mt-1">
+              <% active_steps.each do |step| %>
+                <%
+                  step_color = case step["status"]
+                  when "completed" then "success"
+                  when "in_progress" then "primary"
+                  when "failed" then "danger"
+                  else "secondary"
+                  end
+                  step_icon = case step["status"]
+                  when "completed" then "bi-check-circle-fill"
+                  when "in_progress" then "bi-arrow-repeat"
+                  when "failed" then "bi-x-circle-fill"
+                  else "bi-circle"
+                  end
+                %>
+                <span class="badge bg-<%= step_color %> bg-opacity-75 me-1">
+                  <i class="bi <%= step_icon %> me-1"></i><%= step["id"].gsub("_", " ").titleize %>: <%= truncate(step["description"], length: 60) %>
+                </span>
+              <% end %>
+            </div>
+          <% end %>
         </div>
         <div>
           <small class="text-muted"><%= iteration[:started_at].strftime("%H:%M:%S.%L") %></small>
@@ -47,6 +90,11 @@
                          style="width: 32px; height: 32px;">
                       <i class="bi bi-search"></i>
                     </div>
+                  <% elsif event[:type] == :llm_response && event[:data].has_planning_tool_calls? && !event[:data].has_custom_tool_calls? %>
+                    <div class="text-white rounded-circle d-flex align-items-center justify-content-center"
+                         style="width: 32px; height: 32px; background-color: #6f42c1;">
+                      <i class="bi bi-list-check"></i>
+                    </div>
                   <% elsif event[:type] == :llm_response %>
                     <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
                          style="width: 32px; height: 32px;">
@@ -56,6 +104,11 @@
                     <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center"
                          style="width: 32px; height: 32px;">
                       <i class="bi bi-plugin"></i>
+                    </div>
+                  <% elsif event[:type] == :function_execution && event[:data].function_definition.nil? && !event[:data].mcp_tool? %>
+                    <div class="text-white rounded-circle d-flex align-items-center justify-content-center"
+                         style="width: 32px; height: 32px; background-color: #6f42c1;">
+                      <i class="bi bi-list-check"></i>
                     </div>
                   <% elsif event[:type] == :function_execution %>
                     <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"

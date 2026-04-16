@@ -11,8 +11,11 @@
           <% if response.used_tool?("web_search") %>
             <span class="badge bg-info"><i class="bi bi-search"></i> Web Search</span>
           <% end %>
-          <% if response.tool_calls.present? %>
-            <span class="badge bg-warning text-dark"><%= response.tool_calls.count %> tool call<%= response.tool_calls.count == 1 ? '' : 's' %></span>
+          <% if response.has_custom_tool_calls? %>
+            <span class="badge bg-warning text-dark"><i class="bi bi-code-square"></i> <%= response.custom_tool_calls.count %> function<%= response.custom_tool_calls.count == 1 ? '' : 's' %></span>
+          <% end %>
+          <% if response.has_planning_tool_calls? %>
+            <span class="badge bg-purple text-white" style="background-color: #6f42c1;"><i class="bi bi-list-check"></i> <%= response.planning_tool_calls.count %> plan action<%= response.planning_tool_calls.count == 1 ? '' : 's' %></span>
           <% end %>
         </h6>
       </div>
@@ -25,13 +28,13 @@
 
   <div id="llm-response-<%= response.id %>" class="collapse">
     <div class="card-body">
-      <!-- Tool Calls (Intent) -->
-      <% if response.tool_calls.present? %>
+      <!-- Custom Function Tool Calls (Intent) -->
+      <% if response.has_custom_tool_calls? %>
         <div class="mb-3">
           <h6 class="text-warning">
-            <i class="bi bi-lightning"></i> Tool Calls (Intent)
+            <i class="bi bi-lightning"></i> Function Calls (Intent)
           </h6>
-          <% response.tool_calls.each do |tool_call| %>
+          <% response.custom_tool_calls.each do |tool_call| %>
             <div class="card bg-warning bg-opacity-10 mb-2">
               <div class="card-body p-2">
                 <div class="d-flex justify-content-between align-items-start">
@@ -39,7 +42,37 @@
                     <strong><%= tool_call["function_name"] || tool_call[:function_name] %></strong>
                     <small class="text-muted d-block">ID: <%= tool_call["id"] || tool_call[:id] %></small>
                   </div>
-                  <span class="badge bg-warning text-dark">Intent</span>
+                  <span class="badge bg-warning text-dark">Function</span>
+                </div>
+                <% arguments = tool_call["arguments"] || tool_call[:arguments] %>
+                <% if arguments.present? %>
+                  <details class="mt-2">
+                    <summary class="text-muted" style="cursor: pointer;">Arguments</summary>
+                    <pre class="mb-0 mt-2 code-block-scrollable"><code><%= JSON.pretty_generate(arguments) %></code></pre>
+                  </details>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Planning Tool Calls (Intent) -->
+      <% if response.has_planning_tool_calls? %>
+        <div class="mb-3">
+          <h6 style="color: #6f42c1;">
+            <i class="bi bi-list-check"></i> Planning Actions (Intent)
+          </h6>
+          <% response.planning_tool_calls.each do |tool_call| %>
+            <% fn_name = tool_call["function_name"] || tool_call[:function_name] %>
+            <div class="card mb-2" style="border-color: #6f42c1; background-color: rgba(111, 66, 193, 0.08);">
+              <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong><%= fn_name %></strong>
+                    <small class="text-muted d-block">ID: <%= tool_call["id"] || tool_call[:id] %></small>
+                  </div>
+                  <span class="badge text-white" style="background-color: #6f42c1;">Planning</span>
                 </div>
                 <% arguments = tool_call["arguments"] || tool_call[:arguments] %>
                 <% if arguments.present? %>

@@ -102,7 +102,7 @@
 	  <!-- Timeline -->
 	  <div class="card" data-controller="task-timeline">
 	    <div class="card-header">
-	      <div class="d-flex justify-content-between align-items-center">
+	      <div class="d-flex justify-content-between align-items-center mb-2">
 	        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Execution Timeline</h5>
 	        <div class="btn-group btn-group-sm">
 	          <button type="button" class="btn btn-outline-secondary" data-action="click->task-timeline#expandAll">
@@ -112,6 +112,21 @@
 	            <i class="bi bi-arrows-collapse"></i> Collapse All
 	          </button>
 	        </div>
+	      </div>
+	      <div class="input-group input-group-sm">
+	        <span class="input-group-text"><i class="bi bi-search"></i></span>
+	        <input type="text"
+	               class="form-control"
+	               placeholder="Search timeline events..."
+	               data-task-timeline-target="searchInput"
+	               data-action="input->task-timeline#search">
+	        <button class="btn btn-outline-secondary"
+	                type="button"
+	                data-action="click->task-timeline#clearSearch"
+	                data-task-timeline-target="clearButton"
+	                style="display: none;">
+	          <i class="bi bi-x-lg"></i>
+	        </button>
 	      </div>
 	    </div>
 	    <%= render "timeline", timeline: @timeline, task_run: @task_run %>

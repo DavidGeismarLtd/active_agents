@@ -2,9 +2,9 @@ import { Controller } from "@hotwired/stimulus"
 import * as bootstrap from "bootstrap"
 
 // Task Timeline Controller
-// Handles expand/collapse functionality for iteration groups and event cards
+// Handles expand/collapse, search/filter for iteration groups and event cards
 export default class extends Controller {
-  static targets = ["iterationGroup", "eventCard"]
+  static targets = ["iterationGroup", "eventCard", "searchInput", "clearButton"]
 
   connect() {
     console.log("TaskTimelineController connected")
@@ -13,10 +13,7 @@ export default class extends Controller {
   // Expand all iterations and event cards
   expandAll(event) {
     event.preventDefault()
-
-    // Expand all iteration groups and event cards
     this.element.querySelectorAll('.collapse').forEach(collapse => {
-      // Get or create Bootstrap Collapse instance
       let bsCollapse = bootstrap.Collapse.getInstance(collapse)
       if (!bsCollapse) {
         bsCollapse = new bootstrap.Collapse(collapse, { toggle: false })
@@ -28,10 +25,7 @@ export default class extends Controller {
   // Collapse all iterations and event cards
   collapseAll(event) {
     event.preventDefault()
-
-    // Collapse all iteration groups and event cards
     this.element.querySelectorAll('.collapse').forEach(collapse => {
-      // Get or create Bootstrap Collapse instance
       let bsCollapse = bootstrap.Collapse.getInstance(collapse)
       if (!bsCollapse) {
         bsCollapse = new bootstrap.Collapse(collapse, { toggle: false })
@@ -43,13 +37,73 @@ export default class extends Controller {
   // Toggle a single iteration
   toggleIteration(event) {
     // Bootstrap handles the toggle automatically via data-bs-toggle
-    // This method is here for potential custom logic
   }
 
   // Toggle a single event card
   toggleCard(event) {
     // Bootstrap handles the toggle automatically via data-bs-toggle
-    // This method is here for potential custom logic
+  }
+
+  // Search/filter timeline events by text
+  search() {
+    const query = this.searchInputTarget.value.trim().toLowerCase()
+
+    // Show/hide clear button
+    if (this.hasClearButtonTarget) {
+      this.clearButtonTarget.style.display = query ? "block" : "none"
+    }
+
+    if (!query) {
+      this._showAll()
+      return
+    }
+
+    // Filter iteration groups
+    this.iterationGroupTargets.forEach(group => {
+      const timelineItems = group.querySelectorAll('.timeline-item')
+      let groupHasMatch = false
+
+      timelineItems.forEach(item => {
+        const text = item.textContent.toLowerCase()
+        const matches = text.includes(query)
+        item.style.display = matches ? "" : "none"
+        if (matches) groupHasMatch = true
+      })
+
+      // Show/hide the entire iteration group
+      group.style.display = groupHasMatch ? "" : "none"
+
+      // If group has matches, expand it
+      if (groupHasMatch) {
+        const collapse = group.querySelector('.collapse')
+        if (collapse) {
+          let bsCollapse = bootstrap.Collapse.getInstance(collapse)
+          if (!bsCollapse) {
+            bsCollapse = new bootstrap.Collapse(collapse, { toggle: false })
+          }
+          bsCollapse.show()
+        }
+      }
+    })
+  }
+
+  // Clear search and show all events
+  clearSearch() {
+    this.searchInputTarget.value = ""
+    if (this.hasClearButtonTarget) {
+      this.clearButtonTarget.style.display = "none"
+    }
+    this._showAll()
+  }
+
+  // Show all iteration groups and timeline items
+  _showAll() {
+    this.iterationGroupTargets.forEach(group => {
+      group.style.display = ""
+      group.querySelectorAll('.timeline-item').forEach(item => {
+        item.style.display = ""
+      })
+    })
   }
 
   // Copy event data to clipboard
@@ -62,7 +116,6 @@ export default class extends Controller {
       const text = dataElement.textContent
 
       navigator.clipboard.writeText(text).then(() => {
-        // Show success feedback
         const originalHTML = button.innerHTML
         button.innerHTML = '<i class="bi bi-check"></i> Copied!'
         button.classList.remove('btn-outline-secondary')
