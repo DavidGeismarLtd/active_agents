@@ -62,7 +62,10 @@
         <% end %>
       </div>
 
-      <%= f.hidden_field :evaluator_configs, id: "evaluator_configs_json", data: { evaluator_configs_target: "hiddenField" } %>
+      <%= f.hidden_field :evaluator_configs,
+                         id: "evaluator_configs_json",
+                         value: evaluator_configs_json_for(test),
+                         data: { evaluator_configs_target: "hiddenField" } %>
     </div>
   </div>
 

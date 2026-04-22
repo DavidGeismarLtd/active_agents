@@ -59,6 +59,28 @@ module PromptTracker
       }
     }.freeze
 
+    # Serialize a test's existing evaluator_configs into the JSON shape
+    # expected by evaluator_configs_controller.js#initializeConfigsFromHiddenField
+    # (an array of { evaluator_key, config }). The association getter on Test
+    # returns an AR::Associations::CollectionProxy, which Rails renders via
+    # .to_s (= #<PromptTracker::...>) when fed directly to hidden_field — that
+    # string is not valid JSON and makes the Stimulus controller skip prefill.
+    #
+    # @param test [PromptTracker::Test]
+    # @return [String] JSON array string, or "" when no configs exist
+    def evaluator_configs_json_for(test)
+      configs = Array(test.evaluator_configs)
+      return "" if configs.empty?
+
+      registry = PromptTracker::EvaluatorRegistry.all
+      configs.map do |ec|
+        entry = registry.find { |_key, meta| meta[:evaluator_class].name == ec.evaluator_type }
+        next unless entry
+
+        { evaluator_key: entry.first, config: ec.config || {} }
+      end.compact.to_json
+    end
+
     # Build form data for evaluator configuration section
     #
     # @param test [PromptTracker::Test] The test being edited
