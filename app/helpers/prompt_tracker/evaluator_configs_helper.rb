@@ -66,11 +66,15 @@ module PromptTracker
     # .to_s (= #<PromptTracker::...>) when fed directly to hidden_field — that
     # string is not valid JSON and makes the Stimulus controller skip prefill.
     #
+    # Returns "[]" (not "") when there are no configs: if JS fails to rewrite
+    # the hidden field before submit, tests_controller_base#test_params calls
+    # JSON.parse on the raw string and an empty string would raise.
+    #
     # @param test [PromptTracker::Test]
-    # @return [String] JSON array string, or "" when no configs exist
+    # @return [String] JSON array string, "[]" when no configs exist
     def evaluator_configs_json_for(test)
       configs = Array(test.evaluator_configs)
-      return "" if configs.empty?
+      return "[]" if configs.empty?
 
       registry = PromptTracker::EvaluatorRegistry.all
       configs.map do |ec|
