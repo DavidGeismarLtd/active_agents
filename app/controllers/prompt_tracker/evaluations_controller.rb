@@ -6,7 +6,12 @@ module PromptTracker
     # GET /evaluations
     # List all evaluations with filtering
     def index
-      @evaluations = Evaluation.includes(llm_response: { agent_version: :agent })
+      # The index view renders rows from `evaluation.llm_response.agent_version.agent`;
+      # evaluations with evaluation_context == "test_run" or "manual" may have a nil
+      # llm_response (belongs_to is optional), so we exclude them here rather than in
+      # the view so pagination and summary stats stay consistent.
+      @evaluations = Evaluation.where.not(llm_response_id: nil)
+                               .includes(llm_response: { agent_version: :agent })
 
       # Filter by evaluator_type
       @evaluations = @evaluations.where(evaluator_type: params[:evaluator_type]) if params[:evaluator_type].present?
