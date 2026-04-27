@@ -11,6 +11,12 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 
 require "rspec/rails"
 require "rails-controller-testing" # For assigns and assert_template in controller tests
+
+# The engine requires "openai" lazily inside service methods to keep production
+# load times low. Specs reference OpenAI::Client at let-time (before the service
+# method runs), so we have to load it eagerly here or every OpenAI-touching spec
+# blows up at module load with `uninitialized constant OpenAI`.
+require "openai"
 # Add additional requires below this line. Rails is not loaded until this point!
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
