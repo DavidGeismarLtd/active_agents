@@ -4,26 +4,28 @@ import { Controller } from "@hotwired/stimulus"
  * Playground Prompt Editor Controller
  *
  * @description
- * Manages prompt text editing functionality including system prompt
- * textarea, character counting, and tab key indentation.
+ * Manages prompt text editing functionality including system prompt and user prompt
+ * textareas, character counting, and tab key indentation.
  *
  * @responsibilities
- * - Manage system prompt textarea editor
+ * - Manage system prompt and user prompt textarea editors
  * - Handle tab key for 2-space indentation
  * - Update character count with color coding
  * - Dispatch promptChanged events when content changes
  *
  * @targets
  * - systemPromptEditor: System prompt textarea
+ * - userPromptEditor: User prompt textarea
  * - charCount: Character count display element
  *
  * @events_dispatched
- * - playground-prompt-editor:promptChanged: When prompt changes
+ * - playground-prompt-editor:promptChanged: When any prompt changes
  *   Detail: { systemPrompt, userPrompt }
  */
 export default class extends Controller {
   static targets = [
     "systemPromptEditor",
+    "userPromptEditor",
     "charCount"
   ]
 
@@ -42,6 +44,15 @@ export default class extends Controller {
         if (e.key === "Tab") {
           e.preventDefault()
           this.insertTabSpaces(this.systemPromptEditorTarget)
+        }
+      })
+    }
+
+    if (this.hasUserPromptEditorTarget) {
+      this.userPromptEditorTarget.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+          e.preventDefault()
+          this.insertTabSpaces(this.userPromptEditorTarget)
         }
       })
     }
@@ -69,14 +80,27 @@ export default class extends Controller {
   }
 
   /**
+   * Action: User prompt input
+   */
+  onUserPromptInput() {
+    console.log("[PlaygroundPromptEditorController] onUserPromptInput")
+    this.updateCharCount()
+    this.dispatchPromptChanged()
+  }
+
+  /**
    * Update character count with color coding
    */
   updateCharCount() {
     if (!this.hasCharCountTarget) return
 
-    const totalLength = this.hasSystemPromptEditorTarget
+    const systemLength = this.hasSystemPromptEditorTarget
       ? this.systemPromptEditorTarget.value.length
       : 0
+    const userLength = this.hasUserPromptEditorTarget
+      ? this.userPromptEditorTarget.value.length
+      : 0
+    const totalLength = systemLength + userLength
 
     this.charCountTarget.textContent = `${totalLength.toLocaleString()} chars`
 
@@ -115,6 +139,9 @@ export default class extends Controller {
   }
 
   getUserPrompt() {
-    return ""
+    return this.hasUserPromptEditorTarget
+      ? this.userPromptEditorTarget.value
+      : ""
   }
 }
+
