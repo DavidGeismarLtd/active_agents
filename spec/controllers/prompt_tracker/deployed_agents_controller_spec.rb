@@ -100,7 +100,7 @@ RSpec.describe PromptTracker::DeployedAgentsController, type: :controller do
             agent_type: "task",
             task_config: {
               initial_prompt: "Fetch data from {{source_url}}",
-              variables: '{"source_url": "https://example.com"}',
+              variables: { source_url: "https://example.com" },
               execution: {
                 max_iterations: 10,
                 timeout_seconds: 7200
