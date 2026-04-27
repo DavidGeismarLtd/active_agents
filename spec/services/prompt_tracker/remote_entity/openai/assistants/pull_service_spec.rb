@@ -24,11 +24,11 @@ module PromptTracker
               })
           end
 
-          let(:openai_client) { instance_double(OpenAI::Client) }
+          let(:openai_client) { instance_double(::OpenAI::Client) }
           let(:assistants_api) { instance_double("Assistants") }
 
           before do
-            allow(OpenAI::Client).to receive(:new).and_return(openai_client)
+            allow(::OpenAI::Client).to receive(:new).and_return(openai_client)
             allow(openai_client).to receive(:assistants).and_return(assistants_api)
             allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
           end

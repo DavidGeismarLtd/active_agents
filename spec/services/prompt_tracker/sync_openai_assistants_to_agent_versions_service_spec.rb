@@ -4,7 +4,7 @@ require "rails_helper"
 
 module PromptTracker
   RSpec.describe SyncOpenaiAssistantsToAgentVersionsService, type: :service do
-    let(:mock_client) { instance_double(OpenAI::Client) }
+    let(:mock_client) { instance_double(::OpenAI::Client) }
     let(:mock_assistants) { double("assistants") }
 
     let(:assistant_data_1) do
@@ -43,7 +43,7 @@ module PromptTracker
       allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test_api_key")
 
       # Stub OpenAI client
-      allow(OpenAI::Client).to receive(:new).with(access_token: "test_api_key").and_return(mock_client)
+      allow(::OpenAI::Client).to receive(:new).with(access_token: "test_api_key").and_return(mock_client)
       allow(mock_client).to receive(:assistants).and_return(mock_assistants)
       allow(mock_assistants).to receive(:list).and_return({
         "data" => [ assistant_data_1, assistant_data_2 ]

@@ -11,7 +11,7 @@ module PromptTracker
     let(:mock_responses) { double("responses") }
 
     before do
-      allow(OpenAI::Client).to receive(:new).and_return(mock_client)
+      allow(::OpenAI::Client).to receive(:new).and_return(mock_client)
       allow(mock_client).to receive(:responses).and_return(mock_responses)
       allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
     end

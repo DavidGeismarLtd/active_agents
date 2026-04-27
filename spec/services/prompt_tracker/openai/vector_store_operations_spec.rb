@@ -5,7 +5,7 @@ require "rails_helper"
 module PromptTracker
   module Openai
     RSpec.describe VectorStoreOperations, type: :service do
-      let(:mock_client) { instance_double(OpenAI::Client) }
+      let(:mock_client) { instance_double(::OpenAI::Client) }
       let(:mock_vector_stores) { double("vector_stores") }
       let(:mock_vector_store_files) { double("vector_store_files") }
       let(:mock_files) { double("files") }
@@ -15,7 +15,7 @@ module PromptTracker
         allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test_api_key")
 
         # Stub OpenAI client
-        allow(OpenAI::Client).to receive(:new).with(access_token: "test_api_key").and_return(mock_client)
+        allow(::OpenAI::Client).to receive(:new).with(access_token: "test_api_key").and_return(mock_client)
         allow(mock_client).to receive(:vector_stores).and_return(mock_vector_stores)
         allow(mock_client).to receive(:vector_store_files).and_return(mock_vector_store_files)
         allow(mock_client).to receive(:files).and_return(mock_files)
