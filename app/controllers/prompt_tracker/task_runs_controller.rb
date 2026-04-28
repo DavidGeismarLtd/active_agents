@@ -33,6 +33,8 @@ module PromptTracker
 
       # Build timeline of events
       @timeline = build_timeline(@llm_responses, @function_executions)
+
+      Rails.logger.info "[TaskRunsController#show] task_run #{@task_run.id} — metadata.keys=#{(@task_run.metadata || {}).keys.inspect}, plan present?=#{!@task_run.metadata&.dig('plan').nil?}, plan steps=#{(@task_run.metadata&.dig('plan', 'steps') || []).size}"
     end
 
     # POST /agents/:slug/runs/:id/cancel

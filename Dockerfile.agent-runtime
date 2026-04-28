@@ -1,0 +1,46 @@
+FROM ruby:3.3.0-slim
+
+# Install minimal dependencies
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    nodejs \
+    npm \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MCP filesystem server globally
+RUN npm install -g @modelcontextprotocol/server-filesystem
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY Gemfile Gemfile.lock ./
+COPY prompt_tracker.gemspec ./
+COPY lib ./lib
+
+# Install only runtime gems (no development/test dependencies)
+RUN bundle config set --local without 'development test' && \
+    bundle install --jobs 4
+
+# Copy service layer and models (no views, assets, or migrations)
+COPY app/services ./app/services
+COPY app/models ./app/models
+
+# Copy the agent runtime entrypoint and its bootstrap (must be siblings —
+# the entrypoint requires runtime_bootstrap from its own directory).
+COPY docker/agent-runtime-entrypoint.rb /app/agent-runtime-entrypoint.rb
+COPY docker/runtime_bootstrap.rb /app/runtime_bootstrap.rb
+
+# Create workspace directories
+RUN mkdir -p /workspace/input /workspace/output /workspace/tmp
+
+# Run as non-root user for security
+RUN useradd -m agent && \
+    chown -R agent:agent /workspace /app
+USER agent
+
+ENTRYPOINT ["ruby", "/app/agent-runtime-entrypoint.rb"]

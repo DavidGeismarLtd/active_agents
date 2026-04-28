@@ -37,6 +37,12 @@ module PromptTracker
       api: "api"
     }, prefix: true
 
+    # Execution mode enum
+    enum :execution_mode, {
+      in_process: "in_process",
+      containerized: "containerized"
+    }, prefix: true
+
     # Associations
     belongs_to :deployed_agent,
                class_name: "PromptTracker::DeployedAgent",
@@ -51,6 +57,10 @@ module PromptTracker
              class_name: "PromptTracker::FunctionExecution",
              dependent: :nullify,
              inverse_of: :task_run
+
+    # Output files produced by the agent during containerized execution.
+    # Collected from /workspace/output/ after the container exits.
+    has_many_attached :output_files
 
     # Validations
     validates :status, presence: true

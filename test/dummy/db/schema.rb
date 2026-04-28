@@ -10,9 +10,56 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_10_110001) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_17_164348) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "action_mailbox_inbound_emails", force: :cascade do |t|
+    t.integer "status", default: 0, null: false
+    t.string "message_id", null: false
+    t.string "message_checksum", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "message_id", "message_checksum" ], name: "index_action_mailbox_inbound_emails_uniqueness", unique: true
+  end
+
+  create_table "action_text_rich_texts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "body"
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "record_type", "record_id", "name" ], name: "index_action_text_rich_texts_uniqueness", unique: true
+  end
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index [ "blob_id" ], name: "index_active_storage_attachments_on_blob_id"
+    t.index [ "record_type", "record_id", "name", "blob_id" ], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index [ "key" ], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index [ "blob_id", "variation_digest" ], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
 
   create_table "prompt_tracker_ab_tests", force: :cascade do |t|
     t.bigint "agent_id", null: false
@@ -425,6 +472,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_10_110001) do
     t.decimal "total_cost_usd", precision: 10, scale: 6
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "container_id"
+    t.string "execution_mode", default: "in_process", null: false
     t.index [ "deployed_agent_id", "created_at" ], name: "index_task_runs_on_agent_and_created"
     t.index [ "deployed_agent_id" ], name: "index_prompt_tracker_task_runs_on_deployed_agent_id"
     t.index [ "started_at" ], name: "index_prompt_tracker_task_runs_on_started_at"
@@ -512,6 +561,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_10_110001) do
     t.index [ "user_id" ], name: "index_prompt_tracker_traces_on_user_id"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "prompt_tracker_ab_tests", "prompt_tracker_agents", column: "agent_id"
   add_foreign_key "prompt_tracker_agent_conversations", "prompt_tracker_deployed_agents", column: "deployed_agent_id"
   add_foreign_key "prompt_tracker_agent_versions", "prompt_tracker_agents", column: "agent_id"

@@ -58,20 +58,28 @@ module PromptTracker
 
       Rails.logger.info "[ExecuteTaskAgentJob] Executing task agent #{task_agent.name} (run ##{task_run.id})"
 
-      # Execute the task
-      result = TaskAgentRuntimeService.call(
-        task_agent: task_agent,
-        task_run: task_run,
-        variables: options[:variables],
-        logger: @task_logger
-      )
-
-      if result[:success]
-        log_task "[ExecuteTaskAgentJob] ✅ Task run #{task_run.id} completed successfully"
-        Rails.logger.info "[ExecuteTaskAgentJob] Task run #{task_run.id} completed successfully"
+      # Execute the task - either in a container or in-process
+      if containerized_execution_enabled?
+        log_task "[ExecuteTaskAgentJob] 🐳 Executing in Docker container"
+        ContainerOrchestrator.new(task_run: task_run).execute
+        log_task "[ExecuteTaskAgentJob] ✅ Container execution completed for task run #{task_run.id}"
+        Rails.logger.info "[ExecuteTaskAgentJob] Container execution completed for task run #{task_run.id}"
       else
-        log_task "[ExecuteTaskAgentJob] ❌ Task run #{task_run.id} failed: #{result[:error]}"
-        Rails.logger.error "[ExecuteTaskAgentJob] Task run #{task_run.id} failed: #{result[:error]}"
+        log_task "[ExecuteTaskAgentJob] Executing in-process (legacy mode)"
+        result = TaskAgentRuntimeService.call(
+          task_agent: task_agent,
+          task_run: task_run,
+          variables: options[:variables],
+          logger: @task_logger
+        )
+
+        if result[:success]
+          log_task "[ExecuteTaskAgentJob] ✅ Task run #{task_run.id} completed successfully"
+          Rails.logger.info "[ExecuteTaskAgentJob] Task run #{task_run.id} completed successfully"
+        else
+          log_task "[ExecuteTaskAgentJob] ❌ Task run #{task_run.id} failed: #{result[:error]}"
+          Rails.logger.error "[ExecuteTaskAgentJob] Task run #{task_run.id} failed: #{result[:error]}"
+        end
       end
 
       log_task "[ExecuteTaskAgentJob] =========================================="
@@ -111,6 +119,10 @@ module PromptTracker
     end
 
     private
+
+    def containerized_execution_enabled?
+      PromptTracker.configuration.containerized_execution_enabled
+    end
 
     def setup_task_logger(task_run_id)
       log_dir = Rails.root.join("log", "task_executions")

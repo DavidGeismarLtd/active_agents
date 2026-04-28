@@ -141,6 +141,27 @@ PromptTracker.configure do |config|
   }
 
   # ===========================================================================
+  # 7. CONTAINERIZED AGENT EXECUTION
+  # ===========================================================================
+  # When enabled, task agents run inside isolated Docker containers instead of
+  # in the Sidekiq process. Requires the `prompt-tracker-agent-runtime` image
+  # to be built: `docker build -f Dockerfile.agent-runtime -t prompt-tracker-agent-runtime:latest .`
+  # and the agent network to exist: `docker network create prompt-tracker-agent-network`
+  config.containerized_execution_enabled = ENV.fetch("CONTAINERIZED_EXECUTION_ENABLED", "true") == "true"
+  config.agent_runtime_image = "prompt-tracker-agent-runtime:latest"
+  config.container_resource_limits = {
+    memory: "512m",
+    cpus: "1.0",
+    timeout_seconds: 1800
+  }
+  config.max_concurrent_containers = 5
+
+  # The callback URL the container uses to report events back to Rails.
+  # Must be reachable from inside the container — localhost won't work from
+  # inside Docker, use host.docker.internal on macOS/Windows or the host IP on Linux.
+  config.agent_base_url = ENV.fetch("AGENT_CALLBACK_BASE_URL", "http://host.docker.internal:3000")
+
+  # ===========================================================================
   # 6. ASSISTANT CHATBOT
   # ===========================================================================
   config.assistant_chatbot = {

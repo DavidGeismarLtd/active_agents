@@ -520,25 +520,7 @@ module PromptTracker
       # During planning phase, ONLY include create_plan function
       if phase == :planning
         if @planning_enabled && !task_run.metadata&.dig("plan")
-          tools << {
-            "name" => "create_plan",
-            "description" => "Create an execution plan with specific steps. MUST be called before starting work on the first iteration.",
-            "parameters" => {
-              "type" => "object",
-              "required" => [ "goal", "steps" ],
-              "properties" => {
-                "goal" => {
-                  "type" => "string",
-                  "description" => "Clear statement of what you're trying to achieve"
-                },
-                "steps" => {
-                  "type" => "array",
-                  "description" => "List of 3-7 specific steps to accomplish the goal",
-                  "items" => { "type" => "string" }
-                }
-              }
-            }
-          }
+          tools.concat(AgentRuntime::PlanningFunctions.planning_phase_functions)
         end
       else
         # During execution phase, include all regular functions
@@ -552,7 +534,7 @@ module PromptTracker
 
         # Inject planning functions if enabled (but not create_plan)
         if @planning_enabled
-          planning_tools = build_planning_functions
+          planning_tools = AgentRuntime::PlanningFunctions.execution_phase_functions
           @logger.info "[TaskAgentRuntimeService] Injecting #{planning_tools.size} planning functions"
           tools += planning_tools
         end
@@ -772,141 +754,10 @@ module PromptTracker
       result
     end
 
-      def build_planning_functions
-        [
-          {
-            "name" => "get_plan",
-            "description" => "Get the current execution plan with progress information",
-            "parameters" => {
-              "type" => "object",
-              "properties" => {}
-            }
-          },
-          {
-            "name" => "update_step",
-            "description" => "Update a step's status and add notes about progress",
-            "parameters" => {
-              "type" => "object",
-              "required" => [ "step_id", "status" ],
-              "properties" => {
-                "step_id" => {
-                  "type" => "string",
-                  "description" => "Step ID (e.g., 'step_1', 'step_2')"
-                },
-                "status" => {
-                  "type" => "string",
-                  "enum" => [ "pending", "in_progress", "completed", "failed", "skipped" ],
-                  "description" => "New status for the step"
-                },
-                "notes" => {
-                  "type" => "string",
-                  "description" => "Optional notes about what was done or discovered"
-                }
-              }
-            }
-          },
-          {
-            "name" => "add_step",
-            "description" => "Add a new step to the plan if you discover additional work needed",
-            "parameters" => {
-              "type" => "object",
-              "required" => [ "description" ],
-              "properties" => {
-                "description" => {
-                  "type" => "string",
-                  "description" => "Description of the new step"
-                },
-                "after_step_id" => {
-                  "type" => "string",
-                  "description" => "Optional: Insert after this step ID"
-                }
-              }
-            }
-          },
-          {
-            "name" => "mark_task_complete",
-            "description" => "Mark the entire task as complete with a summary. MUST be called when all steps are done.",
-            "parameters" => {
-              "type" => "object",
-              "required" => [ "summary" ],
-              "properties" => {
-                "summary" => {
-                  "type" => "string",
-                  "description" => "Comprehensive summary of what was accomplished"
-                }
-              }
-            }
-          }
-        ]
-      end
-
-    def standard_iteration_instructions(remaining)
-      <<~INSTRUCTIONS
-
-        ## ⏱️ ITERATION STATUS
-        You are on iteration #{@iteration_count} of #{@max_iterations}.
-        You have #{remaining} iterations remaining.
-        Pace yourself accordingly — prioritize the most important work first.
-      INSTRUCTIONS
-    end
-
-    def penultimate_iteration_instructions
-      <<~INSTRUCTIONS
-
-        ## ⚠️ ITERATION STATUS — ALMOST OUT OF TIME
-        You are on iteration #{@iteration_count} of #{@max_iterations}.
-        You have only 1 iteration remaining after this one.
-        Start wrapping up:
-        - Finish the current step if possible
-        - On your next (final) iteration you MUST produce a summary and complete the task
-        - Do NOT start any new major work
-      INSTRUCTIONS
-    end
-
-    def final_iteration_instructions
-      <<~INSTRUCTIONS
-
-        ## 🛑 FINAL ITERATION — YOU MUST WRAP UP NOW
-        You are on iteration #{@iteration_count} of #{@max_iterations}. This is your LAST iteration.
-        You will NOT get another turn after this.
-
-        **You MUST do the following:**
-        1. Do NOT start any new work or function calls
-        2. Summarize what you have accomplished so far
-        3. Note any work that remains incomplete
-        4. Call `mark_task_complete()` with a summary of completed and incomplete work
-        5. If mark_task_complete is not available, simply produce a final summary as your response
-
-        Failure to wrap up will result in the task being forcibly terminated with no summary.
-      INSTRUCTIONS
-    end
-
     def force_plan_completion(reason)
       @logger.warn "[TaskAgentRuntimeService] 🛑 Forcing plan completion: #{reason}"
-
-      plan = task_run.metadata&.dig("plan")
-      return unless plan
-
-      # Mark all in-progress steps as incomplete
-      in_progress_steps = plan["steps"].select { |s| s["status"] == "in_progress" }
-      in_progress_steps.each do |step|
-        step["status"] = "failed"
-        step["notes"] = (step["notes"] || "") + "\n\n[Auto-failed: #{reason}]"
-        step["completed_at"] = Time.current.iso8601
-      end
-
-      # Mark plan as failed
-      plan["status"] = "failed"
-      plan["completion_summary"] = "Task failed to complete properly. #{reason}. #{in_progress_steps.size} step(s) were left incomplete."
-      plan["updated_at"] = Time.current.iso8601
-
-      task_run.output_summary = plan["completion_summary"]
-      task_run.save!
-
-      # Broadcast final update
-      PlanningService.send(:broadcast_plan_update, task_run, "failed")
-
-      @logger.info "[TaskAgentRuntimeService] ✅ Plan forcibly completed with #{in_progress_steps.size} failed steps"
+      PlanningService.force_failure!(task_run, reason)
+      @logger.info "[TaskAgentRuntimeService] ✅ Plan forcibly completed"
     end
 
     # ========================================
@@ -968,141 +819,20 @@ module PromptTracker
       { "isError" => true, "content" => [ { "type" => "text", "text" => "Error: #{e.message}" } ] }
     end
 
+    # Delegates to the shared PromptEnhancer so the in-process and
+    # containerized runtimes use the same prompt copy.
     def enhance_system_prompt_with_planning(original_prompt, phase: :execution)
-      if phase == :planning
-        # Planning Phase Instructions (Iteration 0)
-        planning_instructions = <<~INSTRUCTIONS
-
-
-          ## 🎯 PLANNING PHASE
-
-          This is the PLANNING PHASE. Your ONLY job right now is to create a plan.
-
-          **What to do:**
-          1. Understand the task goal from the user's request
-          2. Call `create_plan(goal, steps)` with:
-             - A clear, specific goal statement
-             - 3-7 concrete, actionable steps
-          3. Do NOT execute any work yet - just create the plan
-
-          **Important:**
-          - Steps should be ACTUAL WORK steps (e.g., "Fetch news articles", "Analyze data", "Generate summary")
-          - Do NOT include "Create a plan" as a step - that's what you're doing right now
-          - Each step should be specific and measurable
-          - Steps should be in logical order
-
-          **After you create the plan:**
-          - The EXECUTION PHASE will begin
-          - You'll work through the steps one by one
-          - You can update step statuses and adapt the plan as needed
-
-          **Example:**
-          ```
-          create_plan(
-            goal: "Monitor technology news and create a daily summary",
-            steps: [
-              "Fetch latest AI news articles",
-              "Fetch latest cloud computing news",
-              "Fetch latest cybersecurity news",
-              "Analyze gathered articles for key trends",
-              "Draft comprehensive summary"
-            ]
-          )
-          ```
-
-          Now, create your plan!
-        INSTRUCTIONS
-      else
-        # Execution Phase Instructions (Iteration 1+)
-        planning_instructions = <<~INSTRUCTIONS
-
-
-          ## 🎯 EXECUTION PHASE
-
-          You have already created a plan. Now execute it step by step.
-
-          **Workflow:**
-
-          1. **Check Your Plan**:
-             - Call `get_plan()` to see your current plan and step statuses
-             - Identify which step to work on next (usually the first "pending" step)
-
-          2. **Execute Steps Sequentially**:
-             - Work on ONE step at a time
-             - For each step:
-               a) Call `update_step(step_id, "in_progress", "Starting...")`
-               b) Perform the necessary function calls
-               c) If successful: Call `update_step(step_id, "completed", "Summary of results")`
-               d) If failed: Call `update_step(step_id, "failed", "Error: [description]")`
-             - ALWAYS update the step status before moving to the next step
-             - At the end of each iteration, reflect: Did I complete/fail the current step?
-
-          3. **Handle Errors Gracefully**:
-             - If a function returns an error (e.g., syntax errors, API failures):
-               * Mark the current step as "failed" with the error details
-               * Decide: Can you continue with remaining steps, or must you abort?
-               * If aborting: Clean up remaining steps (see step 5) then call `mark_task_complete()`
-               * DO NOT continue calling the same failing function repeatedly
-
-          4. **Adapt if Needed**:
-             - If you discover new work, call `add_step()` to add it to the plan
-             - Update step status to "skipped" if a step becomes unnecessary
-
-          5. **Clean Up Before Completion** (CRITICAL):
-             - BEFORE calling `mark_task_complete()`, you MUST clean up all step statuses:
-               * Any steps still "in_progress" → update to "completed", "failed", or "skipped"
-               * Any steps still "pending" that won't be done → update to "skipped"
-             - Example cleanup sequence:
-               ```
-               update_step("step_3", "completed", "Finished analysis")
-               update_step("step_4", "skipped", "Not needed due to earlier errors")
-               update_step("step_5", "skipped", "Cannot proceed without step 2 data")
-               mark_task_complete("Summary of what was accomplished...")
-               ```
-
-          6. **Complete Explicitly**:
-             - When ALL steps are done (or task cannot continue), call `mark_task_complete(summary)`
-             - The summary should describe what was accomplished AND any failures encountered
-             - DO NOT stop without calling this function
-             - Even if you hit errors, you MUST call `mark_task_complete()` to end the task
-
-          7. **Never Over-Iterate**:
-             - If you've completed your plan, clean up step statuses then call `mark_task_complete()` immediately
-             - Don't perform redundant searches or unnecessary follow-ups
-             - Trust your initial findings unless there's a clear gap
-             - If you encounter the same error twice, stop, clean up, and complete the task
-
-          You can check your current plan anytime with `get_plan()`.
-
-          REMEMBER: The UI shows step statuses to users. Always keep them accurate and up-to-date!
-        INSTRUCTIONS
-      end
-
-      original_prompt + planning_instructions
+      AgentRuntime::PromptEnhancer.with_planning(original_prompt, phase: phase)
     end
 
-    # Enhance system prompt with iteration budget context.
-    #
-    # Injects the current iteration number, total budget, and remaining iterations
-    # into the system prompt so the LLM can pace itself. On the final iteration,
-    # adds urgent wrap-up instructions to force a useful summary instead of being
-    # hard-killed mid-task.
-    #
-    # @param system_prompt [String] the current system prompt
-    # @return [String] enhanced system prompt with iteration context
+    # Enhance system prompt with iteration budget context. Delegates to the
+    # shared PromptEnhancer.
     def enhance_system_prompt_with_iteration_context(system_prompt)
-      return system_prompt unless @max_iterations && @iteration_count > 0
-
-      remaining = @max_iterations - @iteration_count
-      iteration_context = if remaining <= 0
-        final_iteration_instructions
-      elsif remaining == 1
-        penultimate_iteration_instructions
-      else
-        standard_iteration_instructions(remaining)
-      end
-
-      system_prompt + iteration_context
+      AgentRuntime::PromptEnhancer.with_iteration_context(
+        system_prompt,
+        iteration: @iteration_count,
+        max_iterations: @max_iterations
+      )
     end
 
     # Broadcast timeline update to the task run show page
