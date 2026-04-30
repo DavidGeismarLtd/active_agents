@@ -157,6 +157,41 @@ module PromptTracker
       end
     end
 
+    describe "container spawn logging" do
+      # Regression: the raw `docker run` command embeds env-var values as
+      # plaintext `-e KEY=VALUE` flags. Those values include CALLBACK_TOKEN
+      # and provider API keys (OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, …).
+      # Logging the command verbatim leaks credentials into app log
+      # aggregators, so the orchestrator must log structured metadata only.
+      it "does not leak env-var values when logging container spawn" do
+        config = {
+          image: "prompt-tracker-agent-runtime:latest",
+          name: "task-run-1",
+          environment: {
+            "OPENAI_API_KEY" => "sk-secret-abcdef",
+            "CALLBACK_TOKEN" => "token-supersecret-xyz",
+            "AWS_SECRET_ACCESS_KEY" => "aws-supersecret-789"
+          },
+          volumes: [ "/tmp/input:/workspace/input:ro" ],
+          memory: "512m",
+          cpus: "1.0",
+          network: "prompt-tracker-agent-network"
+        }
+
+        message = orchestrator.send(:safe_spawn_log_message, config)
+
+        expect(message).not_to include("sk-secret-abcdef")
+        expect(message).not_to include("token-supersecret-xyz")
+        expect(message).not_to include("aws-supersecret-789")
+        # Env keys are still logged for debuggability.
+        expect(message).to include("OPENAI_API_KEY")
+        expect(message).to include("CALLBACK_TOKEN")
+        expect(message).to include("AWS_SECRET_ACCESS_KEY")
+        expect(message).to include("prompt-tracker-agent-runtime:latest")
+        expect(message).to include("task-run-1")
+      end
+    end
+
     describe "Docker command building" do
       it "builds a valid docker run command" do
         config = {

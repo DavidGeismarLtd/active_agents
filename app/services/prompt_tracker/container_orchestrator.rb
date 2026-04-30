@@ -146,8 +146,7 @@ module PromptTracker
 
     def spawn_container(container_config)
       cmd = build_docker_run_command(container_config)
-      Rails.logger.info "[ContainerOrchestrator] Spawning container for TaskRun #{@task_run.id}"
-      Rails.logger.info "[ContainerOrchestrator] Command: #{cmd}"
+      Rails.logger.info(safe_spawn_log_message(container_config))
 
       output = `#{cmd} 2>&1`.strip
       unless $?.success?
@@ -157,6 +156,20 @@ module PromptTracker
       container_id = output.lines.last&.strip
       Rails.logger.info "[ContainerOrchestrator] Container started: #{container_id}"
       container_id
+    end
+
+    # Structured, credential-safe log line for container spawn.
+    #
+    # The raw `docker run` command embeds env-var VALUES as plaintext `-e`
+    # flags — those values include CALLBACK_TOKEN, OPENAI_API_KEY,
+    # AWS_SECRET_ACCESS_KEY, etc. Logging the command verbatim leaks
+    # credentials into app log aggregators. This helper returns env *keys*
+    # only, never values.
+    def safe_spawn_log_message(container_config)
+      "[ContainerOrchestrator] Spawning container for TaskRun #{@task_run.id} " \
+        "(image=#{container_config[:image]}, name=#{container_config[:name]}, " \
+        "env_keys=[#{container_config[:environment].keys.sort.join(', ')}], " \
+        "volumes=[#{container_config[:volumes].join(', ')}])"
     end
 
     def build_docker_run_command(container_config)
