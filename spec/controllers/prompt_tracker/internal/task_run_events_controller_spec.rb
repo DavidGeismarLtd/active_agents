@@ -84,6 +84,30 @@ module PromptTracker
           expect(llm_response.tokens_prompt).to eq(100)
           expect(llm_response.tokens_completion).to eq(50)
         end
+
+        it "stores tool_calls and tools_used so the timeline shows agent intent" do
+          tool_calls = [
+            { id: "call_1", type: "function", function_name: "fetch_news", arguments: { topic: "energy" } }
+          ]
+
+          post_event(
+            event_type: "llm_response",
+            data: {
+              model: "gpt-4o",
+              text: nil,
+              rendered_prompt: "What's the news on energy?",
+              tool_calls: tool_calls,
+              tools_used: [ "fetch_news" ],
+              context: { iteration: 1 }
+            }
+          )
+
+          expect(response).to have_http_status(:ok)
+          llm_response = task_run.llm_responses.first
+          expect(llm_response.tool_calls.size).to eq(1)
+          expect(llm_response.tool_calls.first["function_name"]).to eq("fetch_news")
+          expect(llm_response.tools_used).to eq([ "fetch_news" ])
+        end
       end
 
       describe "function_execution event" do
@@ -117,6 +141,16 @@ module PromptTracker
           expect(response).to have_http_status(:ok)
           task_run.reload
           expect(task_run.metadata["plan"]).to eq(plan)
+        end
+
+        it "broadcasts the execution_plan partial so the show page updates live" do
+          allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
+
+          plan = { "steps" => [ { "name" => "Step 1", "status" => "completed" } ] }
+          post_event(event_type: "plan_update", data: { plan: plan })
+
+          expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to)
+            .with("task_run_#{task_run.id}", hash_including(target: "execution_plan")).at_least(:once)
         end
       end
 

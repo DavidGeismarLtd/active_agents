@@ -99,6 +99,29 @@ module PromptTracker
         expect(task_run.output_files.count).to eq(0)
         expect(task_run.metadata["output_files_count"]).to eq(0)
       end
+
+      # Regression: the orchestrator holds a TaskRun loaded BEFORE the
+      # container ran. While the container runs it writes plan_update and
+      # log events to task_run.metadata. Without an explicit reload, the
+      # metadata merge here would clobber those writes with a stale snapshot.
+      it "preserves metadata written by the container during execution" do
+        # Simulate the container writing plan + logs during the run.
+        TaskRun.find(task_run.id).update!(
+          metadata: {
+            "plan" => { "goal" => "G", "steps" => [ { "id" => "step_1", "status" => "completed" } ] },
+            "logs" => [ { "level" => "info", "message" => "started" } ]
+          }
+        )
+
+        File.write(File.join(output_dir, "out.txt"), "content")
+        orchestrator.send(:collect_output_files)
+
+        task_run.reload
+        expect(task_run.metadata["output_files_count"]).to eq(1)
+        expect(task_run.metadata["plan"]).to be_present
+        expect(task_run.metadata.dig("plan", "steps").size).to eq(1)
+        expect(task_run.metadata["logs"]).to be_present
+      end
     end
 
     describe "environment building" do
