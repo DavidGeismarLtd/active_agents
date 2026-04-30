@@ -147,7 +147,12 @@ PromptTracker.configure do |config|
   # in the Sidekiq process. Requires the `prompt-tracker-agent-runtime` image
   # to be built: `docker build -f Dockerfile.agent-runtime -t prompt-tracker-agent-runtime:latest .`
   # and the agent network to exist: `docker network create prompt-tracker-agent-network`
-  config.containerized_execution_enabled = ENV.fetch("CONTAINERIZED_EXECUTION_ENABLED", "true") == "true"
+  #
+  # Default is false. Always disabled in test env so the existing job specs
+  # (which mock TaskAgentRuntimeService) don't accidentally route through the
+  # Docker orchestrator and try to talk to Redis. Set
+  # CONTAINERIZED_EXECUTION_ENABLED=true to opt in locally.
+  config.containerized_execution_enabled = !Rails.env.test? && ENV.fetch("CONTAINERIZED_EXECUTION_ENABLED", "false") == "true"
   config.agent_runtime_image = "prompt-tracker-agent-runtime:latest"
   config.container_resource_limits = {
     memory: "512m",

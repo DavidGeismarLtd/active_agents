@@ -112,5 +112,23 @@ RSpec.describe PromptTracker::ExecuteTaskAgentJob, type: :job do
         expect(task_run.error_message).to eq("Execution failed")
       end
     end
+
+    context "with containerized execution enabled" do
+      before do
+        allow(PromptTracker.configuration).to receive(:containerized_execution_enabled).and_return(true)
+      end
+
+      it "routes through ContainerOrchestrator instead of TaskAgentRuntimeService" do
+        task_run = create(:task_run, deployed_agent: task_agent)
+
+        orchestrator = instance_double(PromptTracker::ContainerOrchestrator)
+        expect(PromptTracker::ContainerOrchestrator).to receive(:new)
+          .with(task_run: task_run).and_return(orchestrator)
+        expect(orchestrator).to receive(:execute)
+        expect(PromptTracker::TaskAgentRuntimeService).not_to receive(:call)
+
+        described_class.perform_now(task_agent.id, task_run.id)
+      end
+    end
   end
 end
