@@ -147,13 +147,10 @@ module PromptTracker
           PromptTracker.configuration.configuration_provider = nil
         end
 
-        let(:mock_context) { double("RubyLLM::Context") }
-        let(:mock_config_block) { double("config_block").as_null_object }
-
         before do
-          # RubyLLM.context yields a config block for setting API keys, then returns a context
-          allow(RubyLLM).to receive(:context).and_yield(mock_config_block).and_return(mock_context)
-          allow(mock_context).to receive(:chat).and_return(mock_chat)
+          # The service applies the dynamic config via RubyLlmService.with_dynamic_config,
+          # which yields RubyLLM (the module) and the calling code does RubyLLM.chat(...).
+          allow(RubyLLM).to receive(:chat).and_return(mock_chat)
         end
 
         it 'detects dynamic_configuration is enabled' do
@@ -164,7 +161,7 @@ module PromptTracker
         end
 
         it 'uses the dynamically configured model' do
-          expect(mock_context).to receive(:chat).with(model: 'gpt-4o').at_least(:once).and_return(mock_chat)
+          expect(RubyLLM).to receive(:chat).with(model: 'gpt-4o').at_least(:once).and_return(mock_chat)
           allow(mock_chat).to receive(:ask).and_return(mock_response, mock_variables_response, mock_generation_response)
 
           described_class.generate(description: description)

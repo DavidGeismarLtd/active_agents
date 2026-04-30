@@ -33,7 +33,7 @@ module PromptTracker
               )
             end
 
-            let(:openai_client) { instance_double(OpenAI::Client) }
+            let(:openai_client) { instance_double(::OpenAI::Client) }
             let(:vector_stores_api) { instance_double("VectorStores") }
 
             before do

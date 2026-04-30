@@ -8,11 +8,11 @@ module PromptTracker
     let(:user_message) { "What's the weather in Berlin?" }
     let(:thread_id) { "thread_xyz789" }
     let(:run_id) { "run_123456" }
-    let(:mock_client) { instance_double(OpenAI::Client) }
+    let(:mock_client) { instance_double(::OpenAI::Client) }
 
     before do
       # Mock OpenAI client
-      allow(OpenAI::Client).to receive(:new).and_return(mock_client)
+      allow(::OpenAI::Client).to receive(:new).and_return(mock_client)
       # Configure API key through the configuration system
       allow(PromptTracker.configuration).to receive(:api_key_for).with(:openai).and_return("test-api-key")
     end
