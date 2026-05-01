@@ -233,11 +233,19 @@ PromptTracker::Engine.routes.draw do
   end
 
   # ========================================
+  # INTERNAL API - Container callback endpoints
+  # ========================================
+  namespace :internal do
+    resources :task_run_events, only: [ :create ]
+  end
+
+  # ========================================
   # PUBLIC API - External API endpoints
   # ========================================
   namespace :public, path: "api" do
-    # Task agent triggering
+    # Task agent triggering and run status
     post "task_agents/:slug/trigger", to: "task_agents#trigger", as: :trigger_task_agent
+    get "task_agents/:slug/runs/:id", to: "task_agents#show_run", as: :task_agent_run
   end
 
   # ========================================

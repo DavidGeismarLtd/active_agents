@@ -87,6 +87,52 @@
     </div>
   <% end %>
 
+  <!-- Output Files -->
+  <% if @task_run.output_files.attached? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="bi bi-paperclip"></i> Output Files
+          <span class="badge bg-secondary"><%= @task_run.output_files.count %></span>
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @task_run.output_files.each do |file| %>
+                <tr>
+                  <td>
+                    <i class="bi bi-file-earmark"></i>
+                    <%= file.filename %>
+                  </td>
+                  <td><code><%= file.content_type %></code></td>
+                  <td><%= number_to_human_size(file.byte_size) %></td>
+                  <td>
+                    <%= link_to "Download", main_app.rails_blob_path(file, disposition: :attachment),
+                        class: "btn btn-sm btn-outline-primary" %>
+                    <% if file.content_type&.start_with?("text/", "application/json") %>
+                      <%= link_to "Preview", main_app.rails_blob_path(file, disposition: :inline),
+                          class: "btn btn-sm btn-outline-secondary", target: "_blank" %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <!-- Error -->
   <% if @task_run.error_message.present? %>
     <div class="card mb-4 border-danger">

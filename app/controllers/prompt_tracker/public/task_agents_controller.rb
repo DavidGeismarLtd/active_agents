@@ -24,6 +24,41 @@ module PromptTracker
       before_action :find_agent
       before_action :authenticate_api_key!
 
+      # GET /api/task_agents/:slug/runs/:id
+      def show_run
+        task_run = @agent.task_runs.find(params[:id])
+
+        response = {
+          id: task_run.id,
+          status: task_run.status,
+          trigger_type: task_run.trigger_type,
+          execution_mode: task_run.execution_mode,
+          variables_used: task_run.variables_used,
+          output_summary: task_run.output_summary,
+          error_message: task_run.error_message,
+          iterations_count: task_run.iterations_count,
+          llm_calls_count: task_run.llm_calls_count,
+          function_calls_count: task_run.function_calls_count,
+          total_cost_usd: task_run.total_cost_usd,
+          started_at: task_run.started_at,
+          completed_at: task_run.completed_at,
+          created_at: task_run.created_at
+        }
+
+        if task_run.output_files.attached?
+          response[:output_files] = task_run.output_files.map do |file|
+            {
+              filename: file.filename.to_s,
+              content_type: file.content_type,
+              byte_size: file.byte_size,
+              download_url: Rails.application.routes.url_helpers.rails_blob_path(file, disposition: :attachment, only_path: true)
+            }
+          end
+        end
+
+        render json: response
+      end
+
       # POST /api/task_agents/:slug/trigger
       def trigger
         unless @agent.agent_type_task?

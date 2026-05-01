@@ -87,6 +87,39 @@ Supporting models: `AbTest`, `Test`/`TestRun`, `Dataset`/`DatasetRow`, `Evaluato
 
 The engine is configured via `PromptTracker.configure` in a host app initializer. Supports both static config and dynamic per-request configuration (multi-tenant). See `lib/prompt_tracker/configuration.rb`.
 
+### Task agent execution: two modes
+
+Task agents (autonomous, multi-iteration agents — distinct from conversational agents) can run in either of two modes, gated by `PromptTracker.configuration.containerized_execution_enabled`:
+
+- **In-process (default)** — `app/services/prompt_tracker/task_agent_runtime_service.rb` runs inside the Sidekiq worker. Direct ActiveRecord access, full Rails environment.
+- **Containerized** — `app/services/prompt_tracker/container_orchestrator.rb` spawns a Docker container per `TaskRun`. The container reports execution events back to Rails via `app/controllers/prompt_tracker/internal/task_run_events_controller.rb`, authenticated by a per-run `CallbackTokenStore` token (Redis-backed). Files written to `/workspace/output/` are auto-attached to the `TaskRun` via Active Storage.
+
+The containerized mode is **always disabled in `Rails.env.test?`** (so existing job specs that mock `TaskAgentRuntimeService` don't accidentally route through Docker + Redis). Opt in locally with `CONTAINERIZED_EXECUTION_ENABLED=true`.
+
+#### Shared agent-runtime modules — `lib/prompt_tracker/agent_runtime/`
+
+Pure-Ruby modules used by **both** execution modes:
+
+- `Planning` — plan state machine (create/update/add/complete/force_failure). Operates on a plain Hash; no ActiveRecord.
+- `PlanningFunctions` — function-call schemas (`create_plan`, `get_plan`, `update_step`, `add_step`, `mark_task_complete`).
+- `PromptEnhancer` — appends planning-phase / execution-phase / iteration-budget instructions to a base system prompt.
+
+When changing planning behavior, prompt copy, or function schemas, edit these modules — `PlanningService` (the in-process Rails wrapper) and `docker/agent-runtime-entrypoint.rb` (the container entrypoint) both delegate. Do not duplicate logic.
+
+**Don't add Rails-y dependencies (ActiveRecord, `Rails.logger`, ActiveSupport beyond what's commonly available) to anything in `lib/prompt_tracker/agent_runtime/`** — the container loads these without booting Rails.
+
+#### Container runtime — `docker/`
+
+- `Dockerfile.agent-runtime` — minimal Ruby 3.3 image; copies `lib/`, `app/services/`, `app/models/`, plus the entrypoint and bootstrap.
+- `docker/agent-runtime-entrypoint.rb` — autonomous loop. Routes by `model_config.api`: `responses` → `LlmClients::OpenaiResponseService` (with manual function-call loop and `tool_choice: "required"` for planning); everything else → `LlmClients::RubyLlmService`.
+- `docker/runtime_bootstrap.rb` — loaded before any service from `app/services/`. Provides ActiveSupport, a `Rails.logger` stub, a `PromptTracker.configuration` stub (only `dynamic_configuration?` and `api_key_for`), and a configured `RubyLLM` client. **If you add a new in-process service that the container needs to reuse, audit it for AR access and `PromptTracker.configuration` calls beyond what the bootstrap stubs.**
+
+#### Security
+
+- **Never log env-var VALUES** when launching containers — they include `CALLBACK_TOKEN`, provider API keys (`OPENAI_API_KEY`, etc.), and `AWS_SECRET_ACCESS_KEY`. `ContainerOrchestrator#safe_spawn_log_message` logs keys-only metadata. Don't `Rails.logger.info "Command: #{cmd}"`.
+- Container has only the API key for the agent's configured provider, not all env vars.
+- Output volume size/file-count limits enforced in `ContainerOrchestrator` (100MB total, 25MB per file, 50 files max).
+
 ### CI
 
 GitHub Actions runs RuboCop lint + RSpec against PostgreSQL 14 on Ruby 3.3.5.

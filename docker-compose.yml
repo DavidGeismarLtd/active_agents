@@ -72,7 +72,22 @@ services:
       redis:
         condition: service_healthy
 
+  # Build agent runtime image (not a running service - build only)
+  agent-runtime-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent-runtime
+    image: prompt-tracker-agent-runtime:latest
+    profiles: ["build"]
+
 volumes:
   postgres_data:
   redis_data:
   bundle_cache:
+
+networks:
+  default:
+    name: prompt-tracker-default
+  agent-network:
+    driver: bridge
+    name: prompt-tracker-agent-network

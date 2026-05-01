@@ -219,6 +219,23 @@ module PromptTracker
       # NOTE: the getter is overridden below to support dynamic configuration.
       attr_accessor :assistant_chatbot
 
+    # Whether to run task agents in isolated Docker containers.
+    # When false, agents run in the Sidekiq process (legacy behavior).
+    # @return [Boolean]
+    attr_accessor :containerized_execution_enabled
+
+    # Docker image for agent runtime containers.
+    # @return [String]
+    attr_accessor :agent_runtime_image
+
+    # Resource limits for agent containers.
+    # @return [Hash] hash with :memory, :cpus, :timeout_seconds keys
+    attr_accessor :container_resource_limits
+
+    # Maximum number of concurrent agent containers allowed.
+    # @return [Integer]
+    attr_accessor :max_concurrent_containers
+
     # MCP (Model Context Protocol) server configurations.
     # Maps server names to connection configurations.
     # @return [Hash] hash of server name => server config hash
@@ -261,6 +278,14 @@ module PromptTracker
       @base_record_class = "::ActiveRecord::Base"
       @function_providers = {}
       @mcp_servers = {}
+      @containerized_execution_enabled = false
+      @agent_runtime_image = "prompt-tracker-agent-runtime:latest"
+      @container_resource_limits = {
+        memory: "512m",
+        cpus: "1.0",
+        timeout_seconds: 1800
+      }
+      @max_concurrent_containers = 5
       @agent_base_url = "http://localhost:3000"
       @default_deployment_config = {
         auth: { type: "api_key" },
