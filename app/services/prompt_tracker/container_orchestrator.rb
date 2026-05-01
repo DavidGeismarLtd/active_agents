@@ -315,8 +315,10 @@ module PromptTracker
     end
 
     def callback_url
-      base = PromptTracker.configuration.agent_base_url
-      "#{base}/prompt_tracker/internal/task_run_events"
+      base = PromptTracker.configuration.agent_base_url.to_s.sub(%r{/+\z}, "")
+      path = PromptTracker.configuration.agent_callback_path.to_s
+      path = "/#{path}" unless path.start_with?("/")
+      "#{base}#{path}"
     end
 
     def resource_limits
