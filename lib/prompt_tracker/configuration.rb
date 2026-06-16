@@ -236,6 +236,15 @@ module PromptTracker
     # @return [Integer]
     attr_accessor :max_concurrent_containers
 
+    # Path the container POSTs callback events to, appended to `agent_base_url`.
+    # Defaults to "/prompt_tracker/internal/task_run_events" — the path the
+    # engine routes resolve to when mounted at "/prompt_tracker". Override
+    # this when the engine is mounted elsewhere (e.g. multi-tenant hosts that
+    # mount under "/orgs/:org_slug/app") and expose an alternate route to the
+    # internal callback controller.
+    # @return [String]
+    attr_accessor :agent_callback_path
+
     # MCP (Model Context Protocol) server configurations.
     # Maps server names to connection configurations.
     # @return [Hash] hash of server name => server config hash
@@ -287,6 +296,7 @@ module PromptTracker
       }
       @max_concurrent_containers = 5
       @agent_base_url = "http://localhost:3000"
+      @agent_callback_path = "/prompt_tracker/internal/task_run_events"
       @default_deployment_config = {
         auth: { type: "api_key" },
         rate_limit: { requests_per_minute: 60 },

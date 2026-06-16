@@ -28,6 +28,7 @@ RSpec.configure do |config|
     PROMPT_TRACKER_CONFIG_SNAPSHOT[:configuration_provider] = base_config.configuration_provider
     PROMPT_TRACKER_CONFIG_SNAPSHOT[:url_options_provider] = base_config.url_options_provider
     PROMPT_TRACKER_CONFIG_SNAPSHOT[:agent_base_url] = base_config.agent_base_url
+    PROMPT_TRACKER_CONFIG_SNAPSHOT[:agent_callback_path] = base_config.agent_callback_path
     PROMPT_TRACKER_CONFIG_SNAPSHOT[:default_deployment_config] = base_config.default_deployment_config.deep_dup
   end
 
@@ -47,6 +48,7 @@ RSpec.configure do |config|
     config_obj.configuration_provider = snapshot[:configuration_provider]
     config_obj.url_options_provider = snapshot[:url_options_provider]
     config_obj.agent_base_url = snapshot[:agent_base_url]
+    config_obj.agent_callback_path = snapshot[:agent_callback_path]
     config_obj.default_deployment_config = snapshot[:default_deployment_config].deep_dup
 
       PromptTracker::EvaluatorRegistry.reset!

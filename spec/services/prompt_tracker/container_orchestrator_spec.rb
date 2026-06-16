@@ -215,5 +215,31 @@ module PromptTracker
         expect(cmd).to include("prompt-tracker-agent-runtime:latest")
       end
     end
+
+    describe "#callback_url" do
+      it "joins agent_base_url with the default callback path" do
+        PromptTracker.configuration.agent_base_url = "http://example.test:3000"
+        PromptTracker.configuration.agent_callback_path = "/prompt_tracker/internal/task_run_events"
+
+        expect(orchestrator.send(:callback_url))
+          .to eq("http://example.test:3000/prompt_tracker/internal/task_run_events")
+      end
+
+      it "respects a custom agent_callback_path for hosts that mount the engine elsewhere" do
+        PromptTracker.configuration.agent_base_url = "http://example.test:3000"
+        PromptTracker.configuration.agent_callback_path = "/internal/task_callbacks"
+
+        expect(orchestrator.send(:callback_url))
+          .to eq("http://example.test:3000/internal/task_callbacks")
+      end
+
+      it "tolerates trailing slash on base_url and missing leading slash on path" do
+        PromptTracker.configuration.agent_base_url = "http://example.test:3000/"
+        PromptTracker.configuration.agent_callback_path = "internal/task_callbacks"
+
+        expect(orchestrator.send(:callback_url))
+          .to eq("http://example.test:3000/internal/task_callbacks")
+      end
+    end
   end
 end
