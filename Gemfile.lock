@@ -429,8 +429,7 @@ GEM
     unicode-emoji (4.1.0)
     uri (1.1.1)
     useragent (0.16.11)
-    vcr (6.3.1)
-      base64
+    vcr (6.4.0)
     webmock (3.26.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
@@ -474,7 +473,7 @@ DEPENDENCIES
   sprockets-rails
   stimulus-rails
   turbo-rails
-  vcr (~> 6.2)
+  vcr (~> 6.4)
   webmock (~> 3.19)
 
 BUNDLED WITH

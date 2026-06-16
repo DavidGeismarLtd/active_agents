@@ -42,7 +42,7 @@ group :test do
   gem "database_cleaner-active_record", "~> 2.1"
   gem "simplecov", require: false
   gem "webmock", "~> 3.19"
-  gem "vcr", "~> 6.2"
+  gem "vcr", "~> 6.4"
   gem "rails-controller-testing", "~> 1.0" # For assigns and assert_template in controller tests
   gem "capybara", "~> 3.39"
   gem "selenium-webdriver", "~> 4.15"
