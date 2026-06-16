@@ -5,7 +5,7 @@ gemspec
 
 gem "puma"
 
-gem "pg", "~> 1.5"
+gem "pg", "~> 1.6"
 
 gem "sprockets-rails"
 gem "turbo-rails"
