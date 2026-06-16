@@ -15,7 +15,7 @@ gem "pry-byebug"
 gem "ostruct" # Required for Ruby 3.5+ compatibility
 
 # Background job processing
-gem "sidekiq", "~> 7.0"
+gem "sidekiq", "~> 8.1"
 gem "redis", "~> 5.0"
 
 # Cron expression parsing for task scheduling
